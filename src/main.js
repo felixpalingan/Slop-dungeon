@@ -635,6 +635,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
       });
       audio.playLightningDagger();
     }
+  } else if (msg.type === 'SHOTGUN_FIRE') {
+    if (msg.peerId === network.myPeerId) return;
+    const caster = network.remotePlayers.get(msg.peerId) || { x: msg.x, y: msg.y, angle: msg.angle };
+    spawnShotgunPellets(caster, true);
+    if (audio.playCarnageShotgun) audio.playCarnageShotgun();
   }
 };
 
@@ -683,6 +688,45 @@ function playWeaponAttackSound(weapon) {
     default:
       audio.playSwing();
       break;
+  }
+}
+
+function spawnShotgunPellets(caster, isRemote = false) {
+  const muzzleDist = (caster.radius || 22) + 16;
+  const spreadAngle = 0.38; // ~22° conical spread
+  const totalPellets = 6;
+  const baseSpeed = 1250;
+  const attackAngle = caster.angle !== undefined ? caster.angle : 0;
+  const weapon = caster.equipment?.weapon;
+  const perPelletDmg = weapon?.damage || 14;
+  const critBonus = (caster.equipment?.helmet?.critChance || 0) + (weapon?.critChance || 0);
+
+  for (let i = 0; i < totalPellets; i++) {
+    const coneAngle = -spreadAngle / 2 + (spreadAngle / (totalPellets - 1)) * i;
+    const jitter = (Math.random() - 0.5) * 0.04;
+    const pelletAngle = attackAngle + coneAngle + jitter;
+    const speed = baseSpeed + (Math.random() - 0.5) * 120;
+
+    const isCrit = Math.random() < (0.08 + critBonus);
+    const damage = Math.round(perPelletDmg * (0.88 + Math.random() * 0.24) * (isCrit ? 1.85 : 1.0));
+
+    cinematics.projectiles.push({
+      type: 'shotgun_pellet',
+      caster,
+      isRemote,
+      x: caster.x + Math.cos(attackAngle) * muzzleDist,
+      y: caster.y + Math.sin(attackAngle) * muzzleDist,
+      vx: Math.cos(pelletAngle) * speed,
+      vy: Math.sin(pelletAngle) * speed,
+      angle: pelletAngle,
+      radius: 8,
+      damage,
+      isCrit,
+      knockback: 110,
+      life: 0.35, // ~440px travel distance
+      maxLife: 0.35,
+      color: '#f59e0b'
+    });
   }
 }
 
@@ -1048,6 +1092,17 @@ function gameLoop(now) {
   const cinematicTargets = [dummy, player, ...network.remotePlayers.values()];
   cinematics.update(worldDt, cinematicTargets, (target, proj) => {
     if (target === player) {
+      if (proj.type === 'shotgun_pellet') {
+        const res = player.takeDamage(proj.damage || 14, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
+        if (res) {
+          audio.playBonk();
+          cinematics.addScreenShake(3);
+          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage}`);
+          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#ef4444'));
+          broadcastMyState();
+        }
+        return;
+      }
       if (proj.type === 'bot_energy_orb' || proj.caster === dummy) {
         const res = player.takeDamage(proj.damage || 22, Math.atan2(proj.vy || 0, proj.vx || 0), 450);
         if (res) {
@@ -1075,6 +1130,18 @@ function gameLoop(now) {
       }
     }
     if (target === dummy) {
+      if (proj.type === 'shotgun_pellet') {
+        dummy.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
+        audio.playBonk();
+        cinematics.addScreenShake(Math.min(10, 3 + (proj.isCrit ? 3 : 1)));
+        particles.spawnDashBurst(dummy.x, dummy.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#f59e0b');
+        const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
+        particles.spawnComicText(dummy.x, dummy.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
+        const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), isCrit: proj.isCrit };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
       if (proj.type === 'limitless_repulsion') {
         dummy.takeHit(proj.damage, proj.angle, proj.knockback);
         audio.playRepulsionBurst();
@@ -1131,6 +1198,14 @@ function gameLoop(now) {
             const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
             if (network.isHost) network.broadcast(slapMsg);
             else network.sendToHost(slapMsg);
+          }
+          if (proj.type === 'shotgun_pellet') {
+            audio.playBonk();
+            cinematics.addScreenShake(3);
+            const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
+            particles.spawnComicText(remote.x, remote.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
+            particles.spawnDashBurst(remote.x, remote.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#f59e0b');
+            return;
           }
           if (proj.type === 'levi_whirlwind') {
             audio.playSnapBladesSlash();
@@ -1222,11 +1297,24 @@ function gameLoop(now) {
         playWeaponAttackSound(player.equipment?.weapon);
         if (isShotgun) {
           particles.spawnComicText(player.x, player.y - 28, `SHELLS: ${player.shotgunAmmo}/4`, '#00ff88');
-          cinematics.addScreenShake(6);
-        } else if (isDualBlades) {
-          cinematics.addScreenShake(5);
+          cinematics.addScreenShake(7);
+          spawnShotgunPellets(player, false);
+
+          const fireMsg = {
+            type: 'SHOTGUN_FIRE',
+            peerId: network.myPeerId,
+            x: player.x,
+            y: player.y,
+            angle: player.angle
+          };
+          if (network.isHost) network.broadcast(fireMsg);
+          else network.sendToHost(fireMsg);
+        } else {
+          if (isDualBlades) {
+            cinematics.addScreenShake(5);
+          }
+          handleAttacks();
         }
-        handleAttacks();
         broadcastMyState();
       } else if (isShotgun && player.isReloadingShotgun) {
         audio.playShieldLock();

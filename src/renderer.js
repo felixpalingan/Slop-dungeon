@@ -477,44 +477,38 @@ export class Renderer {
           ctx.stroke();
         }
       } else if (weapon?.visual === 'david_shotgun') {
-        // Carnage Shotgun blast cone: 6 distinct glowing pellet streaks with muzzle fire
+        // Carnage Shotgun blast: Fiery concussive muzzle flash & propellant smoke (physical pellets drawn by cinematics)
         const muzzleDist = radius + 18;
-        const spreadAngle = 0.38;
-        const pelletReach = 120 + p * 60;
 
-        // Orange/yellow muzzle flash burst
+        // Orange/yellow concussive muzzle flash burst
         if (p < 0.35) {
           const flashAlpha = (0.35 - p) * 2.8;
           ctx.fillStyle = `rgba(255, 160, 40, ${flashAlpha})`;
           ctx.shadowColor = '#ff8c00';
-          ctx.shadowBlur = 22;
+          ctx.shadowBlur = 24;
           ctx.beginPath();
           ctx.arc(muzzleDist + 8, 0, 18 - p * 30, 0, Math.PI * 2);
           ctx.fill();
+
+          // High-heat white core spark
+          ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+          ctx.beginPath();
+          ctx.arc(muzzleDist + 4, 0, 8 - p * 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Muzzle brake side vent jets
+          ctx.strokeStyle = `rgba(255, 200, 60, ${flashAlpha})`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(muzzleDist, -2);
+          ctx.lineTo(muzzleDist + 6, -14);
+          ctx.moveTo(muzzleDist, 2);
+          ctx.lineTo(muzzleDist + 6, 14);
+          ctx.stroke();
           ctx.shadowBlur = 0;
         }
 
-        // 6 pellet streaks in conical spread
-        for (let i = 0; i < 6; i++) {
-          const pelletAngle = -spreadAngle / 2 + (spreadAngle / 5) * i;
-          const trailLen = pelletReach * (1 - p * 0.6);
-          const startX = muzzleDist;
-          const endX = startX + Math.cos(pelletAngle) * trailLen;
-          const endY = Math.sin(pelletAngle) * trailLen;
-          const pelletAlpha = Math.max(0, 1 - p * 1.2);
-
-          ctx.strokeStyle = `rgba(255, 200, 60, ${pelletAlpha})`;
-          ctx.shadowColor = '#fbbf24';
-          ctx.shadowBlur = 8;
-          ctx.lineWidth = 2.5;
-          ctx.beginPath();
-          ctx.moveTo(startX, 0);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-        }
-        ctx.shadowBlur = 0;
-
-        // Smoke ring
+        // Propellant smoke ring
         if (p > 0.15 && p < 0.7) {
           const smokeAlpha = Math.max(0, 0.35 - (p - 0.15) * 0.65);
           ctx.strokeStyle = `rgba(200, 200, 200, ${smokeAlpha})`;

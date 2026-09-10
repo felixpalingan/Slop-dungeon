@@ -327,16 +327,17 @@ export class CinematicManager {
         // Trap any active projectiles within barrier radius!
         for (const proj of this.projectiles) {
           if (proj.trappedBy === c.caster) continue;
-          if (proj.caster === c.caster && proj.isRepelled) continue;
+          if (proj.caster === c.caster && !proj.isRepelled) continue;
 
           const dx = proj.x - posX;
           const dy = proj.y - posY;
           const dist = Math.hypot(dx, dy);
-          if (dist <= (c.radius || 36)) {
+          const trapRadius = (c.radius || 40) + (proj.radius || 8);
+          if (dist <= trapRadius) {
             proj.trappedBy = c.caster;
-            proj.trappedDist = Math.max(26, Math.min(35, dist));
+            proj.trappedDist = Math.max(26, Math.min(38, dist));
             proj.trappedAngle = Math.atan2(dy, dx);
-            proj.originalSpeed = Math.hypot(proj.vx, proj.vy) || 600;
+            proj.originalSpeed = Math.hypot(proj.vx, proj.vy) || 1200;
             proj.vx = 0;
             proj.vy = 0;
             proj.life = Math.max(proj.life, c.timer + 1.2);
@@ -376,15 +377,15 @@ export class CinematicManager {
           c.trappedProjectiles.forEach((proj, idx) => {
             const spread = totalTrapped > 1 ? (idx - (totalTrapped - 1) / 2) * 0.12 : 0;
             const fireAngle = targetAngle + spread;
-            const repelSpeed = Math.max(1200, (proj.originalSpeed || 600) * 1.85);
-            proj.x = posX + Math.cos(fireAngle) * 32;
-            proj.y = posY + Math.sin(fireAngle) * 32;
+            const repelSpeed = Math.max(1300, (proj.originalSpeed || 1000) * 1.6);
+            proj.x = posX + Math.cos(fireAngle) * 34;
+            proj.y = posY + Math.sin(fireAngle) * 34;
             proj.vx = Math.cos(fireAngle) * repelSpeed;
             proj.vy = Math.sin(fireAngle) * repelSpeed;
             proj.angle = fireAngle;
             proj.caster = c.caster;
-            proj.damage = Math.round((proj.damage || 45) * 1.85);
-            proj.life = 1.3;
+            proj.damage = Math.round((proj.damage || 14) * 1.85);
+            proj.life = 0.55;
             proj.trappedBy = null;
             proj.hasHit = false;
             proj.isRepelled = true;
@@ -536,6 +537,9 @@ export class CinematicManager {
       if (!proj.isRemote) {
         for (const target of targets) {
           if (!target || target === proj.caster) continue;
+          if (proj.trappedBy === target) continue; // Trapped in Gojo's Mugen: deals 0 damage, cannot hit!
+          if (target.isLimitlessBarrier && !proj.isRepelled) continue; // Barrier active: completely protects target!
+
           const dx = target.x - proj.x;
           const dy = target.y - proj.y;
           const dist = Math.hypot(dx, dy);
@@ -543,6 +547,9 @@ export class CinematicManager {
 
           if (dist <= hitRadius && !proj.hasHit) {
             proj.hasHit = true;
+            if (proj.type === 'shotgun_pellet') {
+              proj.life = 0; // Pellet is consumed on hit
+            }
             if (onHitCallback) {
               onHitCallback(target, proj);
             }
@@ -693,6 +700,65 @@ export class CinematicManager {
         ctx.lineTo(0, 0);
         ctx.closePath();
         ctx.fill();
+      } else if (proj.type === 'shotgun_pellet') {
+        const isTrapped = !!proj.trappedBy;
+        const isRepelled = !!proj.isRepelled;
+
+        if (isTrapped) {
+          // Trapped in Gojo's Mugen Infinity Barrier:
+          // Micro-shiver with spatial tension
+          const jitterX = (Math.random() - 0.5) * 1.6;
+          const jitterY = (Math.random() - 0.5) * 1.6;
+          ctx.translate(jitterX, jitterY);
+
+          // Glowing cyan spatial distortion compression ring
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.9)';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 10;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Frozen hot-lead pellet core
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Flying bullet tracer streak
+          const moveAngle = Math.atan2(proj.vy, proj.vx);
+          const speed = Math.hypot(proj.vx, proj.vy);
+          const streakLen = Math.min(26, Math.max(10, speed * 0.016));
+
+          ctx.rotate(moveAngle);
+
+          // Cursed Energy Infused (if repelled by Gojo) vs Normal Carnage Lead Slug
+          const coreColor = isRepelled ? '#38bdf8' : (proj.isCrit ? '#ef4444' : '#fbbf24');
+          const glowColor = isRepelled ? '#00f0ff' : (proj.isCrit ? '#ff0055' : '#f59e0b');
+
+          // High-velocity tracer streak tail
+          ctx.shadowColor = glowColor;
+          ctx.shadowBlur = 12;
+          ctx.strokeStyle = glowColor;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-streakLen, 0);
+          ctx.stroke();
+
+          // White-hot lead core
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Glowing tip core
+          ctx.fillStyle = coreColor;
+          ctx.beginPath();
+          ctx.arc(1, 0, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       ctx.restore();
