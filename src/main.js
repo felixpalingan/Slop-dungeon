@@ -480,7 +480,8 @@ particles.onComicTextSpawned = (x, y, text, color) => {
 
 // David Martinez Carnage Shotgun Reload Hook
 player.onShotgunReloadComplete = () => {
-  audio.playShieldLock();
+  if (audio.playShotgunPump) audio.playShotgunPump();
+  else audio.playShieldLock();
   particles.spawnComicText(player.x, player.y - 28, 'SHELLS FULL! [4/4] 💥', '#00ff88');
   broadcastMyState();
 };
@@ -720,9 +721,10 @@ function handleAttacks() {
         cinematics.addScreenShake(7);
         particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#10b981');
       } else if (weaponVisual === 'david_shotgun') {
-        if (audio.playCarnageShotgun) audio.playCarnageShotgun();
-        else audio.playExplosion();
-        cinematics.addScreenShake(9);
+        audio.playBonk();
+        const shake = Math.min(14, 6 + (hit.pelletsHit || 1) * 1.4);
+        cinematics.addScreenShake(shake);
+        particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#f59e0b');
       } else {
         audio.playBonk();
       }
@@ -732,6 +734,10 @@ function handleAttacks() {
       if (weaponVisual === 'dual_snap_blades') {
         popupText = hit.isCrit ? `CRIT DUAL SLICE! -${hit.damage} ⚔️` : `DUAL SLICE! -${hit.damage} ⚔️`;
         popupColor = hit.isCrit ? '#ff0055' : '#10b981';
+      } else if (weaponVisual === 'david_shotgun') {
+        const pellets = hit.pelletsHit || 6;
+        popupText = hit.isCrit ? `CRIT [${pellets}/6]! -${hit.damage} 💥` : `BLAST [${pellets}/6]! -${hit.damage} 💥`;
+        popupColor = hit.isCrit ? '#ff0055' : (pellets >= 5 ? '#00ff88' : '#fbbf24');
       }
       particles.spawnComicText(dummy.x, dummy.y - 24, popupText, popupColor);
 
@@ -762,8 +768,14 @@ function handleAttacks() {
           } else {
             audio.playBonk();
           }
-          const effectLabel = hit.isBlocked ? 'BLOCKED!' : (weaponVisual === 'dual_snap_blades' ? 'DUAL SLICE! ⚔️' : (hit.isPull ? 'PULLED! 🌀' : 'WHACK!'));
-          particles.spawnComicText(remote.x, remote.y - 20, effectLabel, weaponVisual === 'dual_snap_blades' ? '#10b981' : (hit.isPull ? '#00f0ff' : '#ff3366'));
+          const effectLabel = hit.isBlocked
+            ? 'BLOCKED!'
+            : (weaponVisual === 'dual_snap_blades'
+                ? 'DUAL SLICE! ⚔️'
+                : (weaponVisual === 'david_shotgun'
+                    ? `BLAST [${hit.pelletsHit || 6}/6]! 💥`
+                    : (hit.isPull ? 'PULLED! 🌀' : 'WHACK!')));
+          particles.spawnComicText(remote.x, remote.y - 20, effectLabel, weaponVisual === 'dual_snap_blades' ? '#10b981' : (weaponVisual === 'david_shotgun' ? '#00ff88' : (hit.isPull ? '#00f0ff' : '#ff3366')));
         }
       }
     }
@@ -1169,7 +1181,8 @@ function gameLoop(now) {
     const isShotgun = player.equipment?.weapon?.visual === 'david_shotgun';
     if (isShotgun && !player.isReloadingShotgun && player.shotgunAmmo < player.maxShotgunAmmo) {
       player.startShotgunReload();
-      audio.playShieldLock();
+      if (audio.playShotgunPump) audio.playShotgunPump();
+      else audio.playShieldLock();
       particles.spawnComicText(player.x, player.y - 30, 'RELOADING... 🔄', '#facc15');
       broadcastMyState();
     }

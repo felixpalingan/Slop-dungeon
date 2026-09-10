@@ -1022,7 +1022,7 @@ export class AudioManager {
   // --- DAVID MARTINEZ (CYBERPUNK: EDGERUNNERS) AUDIO ---
 
   /**
-   * Carnage Shotgun: Heavy punchy explosive blast with metallic pump rack
+   * Carnage Shotgun: Devastating heavy explosive 12-gauge concussive BOOM!
    */
   playCarnageShotgun() {
     if (this.isMuted) return;
@@ -1032,52 +1032,102 @@ export class AudioManager {
     try {
       const now = this.ctx.currentTime;
 
-      // Heavy explosive blast (noise-based)
-      const bufferSize = this.ctx.sampleRate * 0.15;
+      // 1. Concussive Gunpowder Blast (Low-pass filtered explosive noise)
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.42);
       const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = noiseBuffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.12));
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.22));
       }
 
       const noise = this.ctx.createBufferSource();
       noise.buffer = noiseBuffer;
+
+      // Lowpass filter eliminates high-frequency whistle and gives a dense, room-shaking explosion
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.setValueAtTime(800, now);
+      noiseFilter.frequency.exponentialRampToValueAtTime(110, now + 0.36);
+
       const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.45, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      noise.connect(noiseGain);
+      noiseGain.gain.setValueAtTime(0.85, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
       noiseGain.connect(this.ctx.destination);
       noise.start(now);
-      noise.stop(now + 0.18);
+      noise.stop(now + 0.42);
 
-      // Sub-bass boom
+      // 2. Heavy Sub-Bass Boom Body (Sawtooth with steep lowpass cut)
       const bass = this.ctx.createOscillator();
-      bass.type = 'sine';
-      bass.frequency.setValueAtTime(65, now);
-      bass.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+      bass.type = 'sawtooth';
+      bass.frequency.setValueAtTime(115, now);
+      bass.frequency.exponentialRampToValueAtTime(26, now + 0.45);
+
+      const bassFilter = this.ctx.createBiquadFilter();
+      bassFilter.type = 'lowpass';
+      bassFilter.frequency.setValueAtTime(250, now);
+      bassFilter.frequency.exponentialRampToValueAtTime(65, now + 0.4);
+
       const bassGain = this.ctx.createGain();
-      bassGain.gain.setValueAtTime(0.5, now);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      bass.connect(bassGain);
+      bassGain.gain.setValueAtTime(0.8, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+
+      bass.connect(bassFilter);
+      bassFilter.connect(bassGain);
       bassGain.connect(this.ctx.destination);
       bass.start(now);
-      bass.stop(now + 0.2);
+      bass.stop(now + 0.5);
 
-      // Metallic pump rack click
-      const pump = this.ctx.createOscillator();
-      pump.type = 'square';
-      pump.frequency.setValueAtTime(2200, now + 0.22);
-      pump.frequency.exponentialRampToValueAtTime(800, now + 0.28);
-      const pumpGain = this.ctx.createGain();
-      pumpGain.gain.setValueAtTime(0, now);
-      pumpGain.gain.setValueAtTime(0.2, now + 0.22);
-      pumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      pump.connect(pumpGain);
-      pumpGain.connect(this.ctx.destination);
-      pump.start(now + 0.22);
-      pump.stop(now + 0.3);
+      // 3. Chest-thumping Sub Sine (Pure 58Hz -> 20Hz thud)
+      const sub = this.ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(58, now);
+      sub.frequency.exponentialRampToValueAtTime(20, now + 0.38);
+
+      const subGain = this.ctx.createGain();
+      subGain.gain.setValueAtTime(0.75, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.45);
     } catch (e) {
       console.warn('Audio error in Carnage Shotgun:', e);
+    }
+  }
+
+  /**
+   * Shotgun Pump Rack: Crisp mechanical dual click for reload
+   */
+  playShotgunPump() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Mechanical metallic clicks (two rapid clicks)
+      for (let i = 0; i < 2; i++) {
+        const t = now + i * 0.08;
+        const osc = this.ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(850 - i * 120, t);
+        osc.frequency.exponentialRampToValueAtTime(320, t + 0.04);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.05);
+      }
+    } catch (e) {
+      console.warn('Audio error in Shotgun Pump:', e);
     }
   }
 

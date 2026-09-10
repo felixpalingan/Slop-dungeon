@@ -61,6 +61,11 @@ export class CombatSystem {
       arcHalfAngle = Math.PI * 0.38; // ~44° shotgun spread cone
     }
 
+    const isShotgun = weapon.visual === 'david_shotgun';
+    const totalPellets = weapon.pellets || 6;
+    const spreadAngle = weapon.spread || 0.38;
+    const perPelletDmg = weapon.damage || 14;
+
     let hits = [];
 
     for (const target of targets) {
@@ -70,36 +75,102 @@ export class CombatSystem {
       const dy = target.y - attacker.y;
       const dist = Math.hypot(dx, dy);
 
-      // Check distance against attacker radius + weapon reach + target radius
-      const maxHitDist = (attacker.radius || 22) + reach + (target.radius || 24);
-      if (dist <= maxHitDist) {
-        // Check angle within attack cone facing mouse/angle + optional offset
+      // Shotgun Conical Spread Multi-Pellet Hit Calculation
+      if (isShotgun) {
+        const maxHitDist = (attacker.radius || 22) + reach + (target.radius || 24);
+        if (dist > maxHitDist) continue;
+
         const attackAngle = attacker.angle + (options.angleOffset || 0);
         const angleToTarget = Math.atan2(dy, dx);
         let angleDiff = angleToTarget - attackAngle;
-
-        // Normalize angle difference to [-PI, PI]
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-        if (Math.abs(angleDiff) <= arcHalfAngle) {
-          // Check Critical Strike chance (helmet + weapon bonus)
+        // If target is behind player or outside maximum spread cone margin, skip
+        if (Math.abs(angleDiff) > (spreadAngle * 0.5 + 0.32)) continue;
+
+        let pelletsHit = 0;
+        const targetRadius = (target.radius || 24) + 6;
+
+        // Point-blank blast: within point-blank proximity, ALL 6 pellets are guaranteed to connect!
+        if (dist <= (attacker.radius || 22) + targetRadius + 28 && Math.abs(angleDiff) <= 0.65) {
+          pelletsHit = totalPellets;
+        } else {
+          // Ray-circle intersection test for each individual conical pellet ray
+          for (let i = 0; i < totalPellets; i++) {
+            const pelletAngle = -spreadAngle / 2 + (spreadAngle / (totalPellets - 1)) * i;
+            let rayDiff = angleToTarget - (attackAngle + pelletAngle);
+            while (rayDiff > Math.PI) rayDiff -= Math.PI * 2;
+            while (rayDiff < -Math.PI) rayDiff += Math.PI * 2;
+
+            if (Math.cos(rayDiff) > 0) {
+              const perpDist = dist * Math.abs(Math.sin(rayDiff));
+              if (perpDist <= targetRadius) {
+                pelletsHit++;
+              }
+            }
+          }
+        }
+
+        if (pelletsHit > 0) {
           const critBonus = (attacker.equipment?.helmet?.critChance || 0) + (attacker.equipment?.weapon?.critChance || 0);
           const isCrit = Math.random() < (0.08 + critBonus);
-          const finalDamage = Math.round(baseDamage * (isCrit ? 1.85 : (0.9 + Math.random() * 0.2)));
 
-          // Check if target is actively blocking with a shield
-          const isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5; // facing opposite
+          // Sum damage across all hitting pellets (point-blank 6 pellets = up to 84+ base dmg!)
+          let totalDmg = 0;
+          for (let p = 0; p < pelletsHit; p++) {
+            totalDmg += perPelletDmg * (0.9 + Math.random() * 0.2);
+          }
+          const finalDamage = Math.round(totalDmg * (isCrit ? 1.85 : 1.0));
+
+          const isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
           const damageTaken = isBlocked
             ? Math.round(finalDamage * (1 - (target.equipment?.offhand?.blockMitigation || 0.6)))
             : finalDamage;
 
-          // Gojo's Lapse Blue pulls enemies INWARD with negative knockback
+          // Devastating knockback scaling with number of pellets that hit (up to 740 knockback!)
+          const knockback = 340 + (pelletsHit / totalPellets) * 400;
+
+          hits.push({
+            target,
+            damage: damageTaken,
+            isCrit,
+            isBlocked,
+            isPull: false,
+            angle: attacker.angle,
+            knockback,
+            pelletsHit,
+            totalPellets
+          });
+        }
+        continue;
+      }
+
+      // Standard single-hit weapon check (swords, hammers, spears)
+      const maxHitDist = (attacker.radius || 22) + reach + (target.radius || 24);
+      if (dist <= maxHitDist) {
+        const attackAngle = attacker.angle + (options.angleOffset || 0);
+        const angleToTarget = Math.atan2(dy, dx);
+        let angleDiff = angleToTarget - attackAngle;
+
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+        if (Math.abs(angleDiff) <= arcHalfAngle) {
+          const critBonus = (attacker.equipment?.helmet?.critChance || 0) + (attacker.equipment?.weapon?.critChance || 0);
+          const isCrit = Math.random() < (0.08 + critBonus);
+          const finalDamage = Math.round(baseDamage * (isCrit ? 1.85 : (0.9 + Math.random() * 0.2)));
+
+          const isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
+          const damageTaken = isBlocked
+            ? Math.round(finalDamage * (1 - (target.equipment?.offhand?.blockMitigation || 0.6)))
+            : finalDamage;
+
           let knockback = weapon.hands === 2 ? 520 : 340;
           if (isBlue) {
-            knockback = -480; // Suction pull toward Gojo!
+            knockback = -480;
           } else if (attacker.isBerserk) {
-            knockback = 650; // Berserk slams launch enemies far
+            knockback = 650;
           }
 
           hits.push({
