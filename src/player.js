@@ -117,6 +117,17 @@ export class Player {
     this.isAirborne = false;
     this.groundedTimer = 0;
     this.spinTimer = 0;
+
+    // David Martinez (Cyberpunk: Edgerunners) State
+    this.isSandevistan = false;
+    this.sandevistanTimer = 0;
+    this.isOvercharged = false;
+    this.overchargeTimer = 0;
+    this.shotgunAmmo = 4;
+    this.maxShotgunAmmo = 4;
+    this.isReloadingShotgun = false;
+    this.shotgunReloadTimer = 0;
+    this.onShotgunReloadComplete = null;
     this.lastSliceMap = new Map();
 
     // Dual Wield independent blade attack animations (Levi Snap Blades)
@@ -152,15 +163,40 @@ export class Player {
 
   triggerAttack() {
     if (this.isStunned || this.isAttacking || this.attackCooldownTimer > 0) return false;
-    this.isAttacking = true;
+
     const weapon = this.equipment?.weapon;
+    const isShotgun = weapon?.visual === 'david_shotgun';
+
+    if (isShotgun) {
+      if (this.isReloadingShotgun) {
+        return false; // currently reloading
+      }
+      if (this.shotgunAmmo <= 0) {
+        this.startShotgunReload();
+        return false;
+      }
+      this.shotgunAmmo--;
+      // If emptied last shell, start automatic reload
+      if (this.shotgunAmmo <= 0) {
+        setTimeout(() => this.startShotgunReload(), 380);
+      }
+    }
+
+    this.isAttacking = true;
     let speed = weapon?.speed || 1.0;
     if (this.isBerserk) speed *= 1.85; // Berserk rage grants +85% attack speed!
+    if (this.isSandevistan) speed *= 1.4; // Sandevistan faster fire rate!
     this.attackDuration = Math.max(0.08, 0.22 / speed);
     this.attackCooldownTimer = Math.max(0.12, 0.35 / speed);
     this.attackTimer = this.attackDuration;
     this.attackProgress = 0;
     return true;
+  }
+
+  startShotgunReload() {
+    if (this.isReloadingShotgun) return;
+    this.isReloadingShotgun = true;
+    this.shotgunReloadTimer = 1.4;
   }
 
   triggerSlap() {
@@ -379,6 +415,60 @@ export class Player {
         this.isInvulnerable = false;
         this.limitlessTimer = 0;
         this.currentSpeed = this.baseSpeed;
+      }
+    }
+
+    // Sandevistan Time Dilation countdown & neon cyber-ghost after-images
+    if (this.isSandevistan) {
+      this.sandevistanTimer -= dt;
+      // High density cyan/lime/yellow ghost trails
+      if (Math.random() < 0.85) {
+        const ghostColors = ['#00ff88', '#00f0ff', '#facc15'];
+        this.afterImages.push({
+          x: this.x + (Math.random() - 0.5) * 8,
+          y: this.y + (Math.random() - 0.5) * 8,
+          angle: this.angle,
+          color: ghostColors[Math.floor(Math.random() * ghostColors.length)],
+          alpha: 0.75
+        });
+      }
+      if (this.sandevistanTimer <= 0) {
+        this.isSandevistan = false;
+        this.sandevistanTimer = 0;
+        this.currentSpeed = this.baseSpeed;
+      }
+    }
+
+    // Overcharge Boost countdown
+    if (this.isOvercharged) {
+      this.overchargeTimer -= dt;
+      if (Math.random() < 0.4) {
+        this.afterImages.push({
+          x: this.x,
+          y: this.y,
+          angle: this.angle,
+          color: '#00ff88',
+          alpha: 0.5
+        });
+      }
+      if (this.overchargeTimer <= 0) {
+        this.isOvercharged = false;
+        this.overchargeTimer = 0;
+        if (!this.isSandevistan) {
+          this.currentSpeed = this.baseSpeed;
+        }
+      }
+    }
+
+    // Carnage Shotgun Reload timer
+    if (this.isReloadingShotgun) {
+      this.shotgunReloadTimer -= dt;
+      if (this.shotgunReloadTimer <= 0) {
+        this.isReloadingShotgun = false;
+        this.shotgunAmmo = this.maxShotgunAmmo;
+        if (this.onShotgunReloadComplete) {
+          this.onShotgunReloadComplete();
+        }
       }
     }
 

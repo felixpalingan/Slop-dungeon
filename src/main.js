@@ -85,7 +85,15 @@ const batch1Loot = [
   new GroundLoot(ITEM_CATALOG['odm_harness'], -120, 80, 'loot_odm_harness'),
   new GroundLoot(ITEM_CATALOG['scout_trousers'], -80, 80, 'loot_scout_trousers'),
   new GroundLoot(ITEM_CATALOG['scout_boots'], -40, 80, 'loot_scout_boots'),
-  new GroundLoot(ITEM_CATALOG['dual_snap_blades'], 0, 80, 'loot_dual_snap_blades')
+  new GroundLoot(ITEM_CATALOG['dual_snap_blades'], 0, 80, 'loot_dual_snap_blades'),
+
+  // David Martinez items (Cyberpunk: Edgerunners)
+  new GroundLoot(ITEM_CATALOG['david_kiroshi'], 60, 80, 'loot_david_kiroshi'),
+  new GroundLoot(ITEM_CATALOG['david_jacket'], 100, 80, 'loot_david_jacket'),
+  new GroundLoot(ITEM_CATALOG['david_pants'], 140, 80, 'loot_david_pants'),
+  new GroundLoot(ITEM_CATALOG['david_sneakers'], 180, 80, 'loot_david_sneakers'),
+  new GroundLoot(ITEM_CATALOG['david_shotgun'], 220, 80, 'loot_david_shotgun'),
+  new GroundLoot(ITEM_CATALOG['david_gorilla_arms'], 260, 80, 'loot_david_gorilla_arms')
 ];
 
 batch1Loot.forEach((loot) => groundItems.set(loot.id, loot));
@@ -448,6 +456,11 @@ function broadcastMyState() {
     leftAttackProgress: player.leftAttackProgress,
     isRightAttacking: player.isRightAttacking,
     rightAttackProgress: player.rightAttackProgress,
+    isSandevistan: player.isSandevistan,
+    sandevistanTimer: player.sandevistanTimer,
+    shotgunAmmo: player.shotgunAmmo,
+    isReloadingShotgun: player.isReloadingShotgun,
+    shotgunReloadTimer: player.shotgunReloadTimer,
     equipment: player.equipment
   };
 
@@ -463,6 +476,13 @@ particles.onComicTextSpawned = (x, y, text, color) => {
   const comicMsg = { type: 'COMIC_TEXT', x, y, text, color };
   if (network.isHost) network.broadcast(comicMsg);
   else network.sendToHost(comicMsg);
+};
+
+// David Martinez Carnage Shotgun Reload Hook
+player.onShotgunReloadComplete = () => {
+  audio.playShieldLock();
+  particles.spawnComicText(player.x, player.y - 28, 'SHELLS FULL! [4/4] 💥', '#00ff88');
+  broadcastMyState();
 };
 
 // Combat Automaton / Training Dummy Callbacks
@@ -563,6 +583,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
     else if (msg.ultimateType === 'cannon_arm') audio.playExplosion();
     else if (msg.ultimateType === 'levi_grapple_whirlwind') audio.playGrappleWireLaunch();
     else if (msg.ultimateType === 'odm_gas_boost') audio.playOdmGasHiss();
+    else if (msg.ultimateType === 'sandevistan') {
+      if (audio.playSandevistanBoot) audio.playSandevistanBoot();
+    } else if (msg.ultimateType === 'overcharge_boost') {
+      if (audio.playGravitationalSurge) audio.playGravitationalSurge();
+    }
     // Note: network.handleIncomingData already relays to other peers on the host; no duplicate broadcast here!
   } else if (msg.type === 'TARGET_STUNNED') {
     if (msg.targetPeerId === network.myPeerId) {
@@ -650,6 +675,10 @@ function playWeaponAttackSound(weapon) {
     case 'dual_snap_blades':
       audio.playSnapBladesSlash();
       break;
+    case 'david_shotgun':
+      if (audio.playCarnageShotgun) audio.playCarnageShotgun();
+      else audio.playExplosion();
+      break;
     default:
       audio.playSwing();
       break;
@@ -689,6 +718,10 @@ function handleAttacks() {
       } else if (weaponVisual === 'dual_snap_blades') {
         audio.playSnapBladesSlash();
         cinematics.addScreenShake(7);
+      } else if (weaponVisual === 'david_shotgun') {
+        if (audio.playCarnageShotgun) audio.playCarnageShotgun();
+        else audio.playExplosion();
+        cinematics.addScreenShake(9);
       } else {
         audio.playBonk();
       }
@@ -877,6 +910,9 @@ function onTriggerCinematic(ultimateType, triggeringPlayer) {
 
 // --- MAIN GAME LOOP ---
 let lastTime = performance.now();
+let wasSandevistanActive = false;
+let slowMoTickTimer = 0;
+
 function gameLoop(now) {
   const dt = Math.min(0.1, (now - lastTime) / 1000);
   lastTime = now;
@@ -915,16 +951,49 @@ function gameLoop(now) {
     }
   }
 
+  // --- SANDEVISTAN TIME DILATION CHECK ---
+  // Check if local player OR any remote peer has Sandevistan active
+  let isAnySandevistan = player.isSandevistan && player.sandevistanTimer > 0;
+  if (!isAnySandevistan) {
+    for (const [_, remote] of network.remotePlayers.entries()) {
+      if (remote.isSandevistan && remote.sandevistanTimer > 0) {
+        isAnySandevistan = true;
+        break;
+      }
+    }
+  }
+
+  // Sandevistan Audio Feedback: Power-down sound when ending, and deep slow-mo heartbeat ticks
+  if (wasSandevistanActive && !isAnySandevistan) {
+    if (audio.playSandevistanEnd) audio.playSandevistanEnd();
+  }
+  if (isAnySandevistan) {
+    slowMoTickTimer -= dt;
+    if (slowMoTickTimer <= 0) {
+      slowMoTickTimer = 0.65;
+      if (audio.playSlowMoTick) audio.playSlowMoTick();
+    }
+  } else {
+    slowMoTickTimer = 0;
+  }
+  wasSandevistanActive = isAnySandevistan;
+
+  // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
+  const worldTimeScale = isAnySandevistan ? 0.10 : 1.0;
+  const worldDt = dt * worldTimeScale;
+
   // 1. Update entities
-  player.update(dt, input, dungeonBounds);
-  dummy.update(dt, [player, ...network.remotePlayers.values()]);
-  readyCircle.update(dt, player, network.remotePlayers);
-  wardrobeStation.update(dt);
+  // David (the caster) moves at normal/boosted dt; all others update at worldDt!
+  const playerDt = player.isSandevistan ? dt : worldDt;
+  player.update(playerDt, input, dungeonBounds);
+  dummy.update(worldDt, [player, ...network.remotePlayers.values()]);
+  readyCircle.update(worldDt, player, network.remotePlayers);
+  wardrobeStation.update(worldDt);
   player.syncHUD();
 
   // Update ground loot bobbing
   for (const [_, loot] of groundItems.entries()) {
-    loot.update(dt);
+    loot.update(worldDt);
   }
 
   // Check Set Bonus & Levi Gear
@@ -996,7 +1065,7 @@ function gameLoop(now) {
 
   // Update Cinematics & Projectiles (collision with training dummy, player, and remote peers)
   const cinematicTargets = [dummy, player, ...network.remotePlayers.values()];
-  cinematics.update(dt, cinematicTargets, (target, proj) => {
+  cinematics.update(worldDt, cinematicTargets, (target, proj) => {
     if (target === player) {
       if (proj.type === 'bot_energy_orb' || proj.caster === dummy) {
         const res = player.takeDamage(proj.damage || 22, Math.atan2(proj.vy || 0, proj.vx || 0), 450);
@@ -1126,6 +1195,17 @@ function gameLoop(now) {
     combat.triggerActiveAbility(player, activeSet, onTriggerCinematic);
   }
 
+  // [R] Key: Manual Reload for Carnage Shotgun
+  if (input.justPressedR && !modalsOpen) {
+    const isShotgun = player.equipment?.weapon?.visual === 'david_shotgun';
+    if (isShotgun && !player.isReloadingShotgun && player.shotgunAmmo < player.maxShotgunAmmo) {
+      player.startShotgunReload();
+      audio.playShieldLock();
+      particles.spawnComicText(player.x, player.y - 30, 'RELOADING... 🔄', '#facc15');
+      broadcastMyState();
+    }
+  }
+
   // Left Shift Roll
   if (!wasRolling && player.isRolling) {
     audio.playRoll();
@@ -1161,10 +1241,18 @@ function gameLoop(now) {
         broadcastMyState();
       }
     } else {
+      const isShotgun = player.equipment?.weapon?.visual === 'david_shotgun';
       if (player.triggerAttack()) {
         playWeaponAttackSound(player.equipment?.weapon);
+        if (isShotgun) {
+          particles.spawnComicText(player.x, player.y - 28, `SHELLS: ${player.shotgunAmmo}/4`, '#00ff88');
+          cinematics.addScreenShake(6);
+        }
         handleAttacks();
         broadcastMyState();
+      } else if (isShotgun && player.isReloadingShotgun) {
+        audio.playShieldLock();
+        particles.spawnComicText(player.x, player.y - 30, 'RELOADING... 🔄', '#facc15');
       }
     }
   }
@@ -1221,6 +1309,20 @@ function gameLoop(now) {
             'RUNE PULSE!',
             '#a855f7'
           );
+        } else if (offhandVisual === 'david_gorilla_arms') {
+          if (audio.playGorillaPunch) audio.playGorillaPunch();
+          else audio.playHeavyGreatswordSwing();
+          if (player.startLunge) {
+            player.startLunge(player.angle, 620, 0.16); // rapid forward punch lunge
+          }
+          cinematics.addScreenShake(8);
+          particles.spawnComicText(
+            player.x + Math.cos(player.angle) * 36,
+            player.y + Math.sin(player.angle) * 36,
+            'GORILLA SMASH! 🦾',
+            '#00ff88'
+          );
+          particles.spawnDashBurst(player.x, player.y, player.angle, '#00ff88');
         } else {
           audio.playBonk();
           particles.spawnComicText(

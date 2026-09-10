@@ -245,6 +245,7 @@ export class Renderer {
     const offhand = equipment.offhand;
     const helmet = equipment.helmet;
     const chest = equipment.chest;
+    const pants = equipment.pants;
     const boots = equipment.boots;
     const is2H = weapon && weapon.hands === 2;
 
@@ -432,6 +433,53 @@ export class Renderer {
         ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - p) * 0.9})`;
         ctx.lineWidth = 2.5;
         ctx.stroke();
+      } else if (weapon?.visual === 'david_shotgun') {
+        // Carnage Shotgun blast cone: 6 distinct glowing pellet streaks with muzzle fire
+        const muzzleDist = radius + 18;
+        const spreadAngle = 0.38;
+        const pelletReach = 120 + p * 60;
+
+        // Orange/yellow muzzle flash burst
+        if (p < 0.35) {
+          const flashAlpha = (0.35 - p) * 2.8;
+          ctx.fillStyle = `rgba(255, 160, 40, ${flashAlpha})`;
+          ctx.shadowColor = '#ff8c00';
+          ctx.shadowBlur = 22;
+          ctx.beginPath();
+          ctx.arc(muzzleDist + 8, 0, 18 - p * 30, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // 6 pellet streaks in conical spread
+        for (let i = 0; i < 6; i++) {
+          const pelletAngle = -spreadAngle / 2 + (spreadAngle / 5) * i;
+          const trailLen = pelletReach * (1 - p * 0.6);
+          const startX = muzzleDist;
+          const endX = startX + Math.cos(pelletAngle) * trailLen;
+          const endY = Math.sin(pelletAngle) * trailLen;
+          const pelletAlpha = Math.max(0, 1 - p * 1.2);
+
+          ctx.strokeStyle = `rgba(255, 200, 60, ${pelletAlpha})`;
+          ctx.shadowColor = '#fbbf24';
+          ctx.shadowBlur = 8;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(startX, 0);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+
+        // Smoke ring
+        if (p > 0.15 && p < 0.7) {
+          const smokeAlpha = Math.max(0, 0.35 - (p - 0.15) * 0.65);
+          ctx.strokeStyle = `rgba(200, 200, 200, ${smokeAlpha})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(muzzleDist + 4, 0, 12 + p * 18, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.stroke();
+        }
       } else {
         // Default sword/blade cleave arc
         const slashReach = is2H ? radius + 46 : radius + 30;
@@ -456,6 +504,7 @@ export class Renderer {
     else if (boots?.visual === 'sukuna_zori') bootColor = '#d97706';
     else if (boots?.visual === 'toji_slippers') bootColor = '#1e293b';
     else if (boots?.visual === 'guts_sollerets') bootColor = '#0f172a';
+    else if (boots?.visual === 'david_sneakers') bootColor = '#94a3b8';
 
     ctx.fillStyle = bootColor;
     ctx.beginPath();
@@ -473,6 +522,17 @@ export class Renderer {
       ctx.moveTo(-12, radius * 0.7);
       ctx.lineTo(-18, radius * 0.9);
       ctx.stroke();
+    } else if (boots?.visual === 'david_sneakers') {
+      // Chrome Cyber-Sneakers: Neon green glowing soles
+      ctx.strokeStyle = '#00ff88';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(-10, -radius * 0.6, 7, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(-10, radius * 0.6, 7, 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     // --- HANDS & WEAPONS ---
@@ -579,6 +639,54 @@ export class Renderer {
             ctx.shadowBlur = 18;
             ctx.beginPath();
             ctx.arc(20 * slapProgress, 0, 16 + slapProgress * 22, -Math.PI * 0.45, Math.PI * 0.45);
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (offhand.visual === 'david_gorilla_arms') {
+          // David's Gorilla Arms: Reinforced cybernetic knuckles with brass pistons
+          const punchPulse = (isSlapping && slapProgress > 0 && slapProgress < 1);
+          const armScale = punchPulse ? 1.0 + Math.sin(slapProgress * Math.PI) * 0.35 : 1.0;
+
+          ctx.save();
+          ctx.scale(armScale, armScale);
+
+          // Heavy chrome knuckle housing
+          ctx.fillStyle = '#475569';
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(-4, -8, 16, 16, [3]);
+          ctx.fill();
+          ctx.stroke();
+
+          // Brass hydraulic piston rods
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(-2, -6, 3, 4);
+          ctx.fillRect(-2, 2, 3, 4);
+
+          // Red knuckle plating
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(8, -5, 4, 10);
+
+          ctx.restore();
+
+          // Hydraulic punch impact shockwave during slap
+          if (punchPulse) {
+            ctx.save();
+            const shockAlpha = Math.max(0, 1 - slapProgress * 1.5);
+            ctx.strokeStyle = `rgba(0, 255, 136, ${shockAlpha})`;
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 16;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.arc(16 * slapProgress, 0, 14 + slapProgress * 28, -Math.PI * 0.5, Math.PI * 0.5);
+            ctx.stroke();
+
+            // Inner cyan shockwave
+            ctx.strokeStyle = `rgba(0, 240, 255, ${shockAlpha * 0.8})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(12 * slapProgress, 0, 8 + slapProgress * 16, -Math.PI * 0.4, Math.PI * 0.4);
             ctx.stroke();
             ctx.restore();
           }
@@ -706,6 +814,12 @@ export class Renderer {
         rightHandX = Math.cos(cleaveArc) * (handDistance + 6);
         rightHandY = Math.sin(cleaveArc) * (handDistance + 6);
         swordAngle = cleaveArc + Math.PI * 0.38;
+      } else if (weapon?.visual === 'david_shotgun') {
+        // Carnage Shotgun: Heavy recoil kick backwards then snap forward
+        const recoil = Math.sin(p * Math.PI) * -12; // kick backwards
+        rightHandX = 14 + recoil;
+        rightHandY = handDistance * 0.5;
+        swordAngle = p * 0.08; // slight upward lift during recoil
       } else {
         // Standard sword swing
         const swingArc = -Math.PI * 0.45 + p * Math.PI * (is2H ? 1.4 : 1.1);
@@ -929,6 +1043,48 @@ export class Renderer {
       ctx.fillRect(-6, -3, 6, 6);
       ctx.strokeStyle = '#475569';
       ctx.strokeRect(-6, -3, 6, 6);
+    } else if (weapon?.visual === 'david_shotgun') {
+      // David's Carnage Shotgun: Bulky chrome & matte-black pump-action with muzzle brake
+      // Barrel body
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(0, -5, 40, 10, [1, 3, 3, 1]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Chrome upper receiver
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(4, -6, 28, 3);
+
+      // Muzzle brake at tip
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(36, -7, 8, 14);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(36, -7, 8, 14);
+
+      // Muzzle brake vents (3 horizontal slots)
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let v = -4; v <= 4; v += 4) {
+        ctx.beginPath();
+        ctx.moveTo(38, v);
+        ctx.lineTo(42, v);
+        ctx.stroke();
+      }
+
+      // Pump grip (fore-end)
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(14, 5, 14, 4);
+
+      // Trigger guard
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(8, 6, 4, 0, Math.PI);
+      ctx.stroke();
     } else {
       // Default Rusty Shortsword
       ctx.fillStyle = '#f7fafc';
@@ -958,6 +1114,44 @@ export class Renderer {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2.5;
     ctx.stroke();
+
+    // --- PANTS / LEGS VISUAL ---
+    if (pants) {
+      if (pants.visual === 'david_pants') {
+        // Streetkid Cargo Pants: Baggy charcoal with dangling neon straps
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.9, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.fill();
+
+        // Neon cyber dangling straps
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-radius * 0.6, -radius * 0.4);
+        ctx.lineTo(-radius * 0.95, -radius * 0.2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(-radius * 0.6, radius * 0.4);
+        ctx.lineTo(-radius * 0.95, radius * 0.2);
+        ctx.stroke();
+      } else if (pants.visual === 'scout_trousers') {
+        // Scout Trousers: Crisp white trousers with dark brown harness straps
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.88, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.fill();
+
+        // Leather harness straps wrapped around thighs
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.65, Math.PI * 0.6, Math.PI * 1.4);
+        ctx.stroke();
+      }
+    }
 
     // --- CHESTPIECE VISUAL ---
     if (chest) {
@@ -1013,6 +1207,36 @@ export class Renderer {
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(-8, -radius * 0.85, 8, 6);
         ctx.fillRect(-8, radius * 0.65, 8, 6);
+      } else if (chest.visual === 'david_jacket') {
+        // David's Gloria EMT Jacket: Oversized fluorescent neon-yellow with teal/cyan safety stripes
+        ctx.fillStyle = '#eab308';
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.75, -Math.PI / 2, Math.PI / 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Reflective teal safety stripes
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.58, -Math.PI * 0.35, Math.PI * 0.35);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.42, -Math.PI * 0.25, Math.PI * 0.25);
+        ctx.stroke();
+
+        // Spinal Sandevistan chrome chassis visible along the back
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-radius * 0.6, -3, 8, 6);
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-radius * 0.6, -3, 8, 6);
+
+        // High collar flap
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(radius * 0.15, -6, 6, 12);
       } else if (chest.visual === 'odm_harness') {
         // Levi's 3D Maneuver Gear: cropped caramel jacket, leather harnesses & dual silver gas tanks
         // 1. Cropped caramel tan Scout jacket
@@ -1156,6 +1380,55 @@ export class Renderer {
       ctx.shadowBlur = 10;
       ctx.fillRect(radius * 0.45, -3, 3, 6);
       ctx.shadowBlur = 0;
+    } else if (helmet?.visual === 'david_kiroshi') {
+      // David's Kiroshi Optics Mk. 4: Cybernetic eye optic lens with glowing cyan crosshair
+      // Face visor base
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.roundRect(radius * 0.2, -8, radius * 0.55, 16, [4]);
+      ctx.fill();
+
+      // Cybernetic optic lens on right eye (upper side)
+      ctx.save();
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(radius * 0.48, -4, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing cyan crosshair inside lens
+      ctx.strokeStyle = '#00ff88';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1;
+      // Horizontal crosshair
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.48 - 4, -4);
+      ctx.lineTo(radius * 0.48 + 4, -4);
+      ctx.stroke();
+      // Vertical crosshair
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.48, -8);
+      ctx.lineTo(radius * 0.48, 0);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Tactical scanline ring around optic
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(radius * 0.48, -4, 7, Date.now() * 0.005, Date.now() * 0.005 + Math.PI * 1.2);
+      ctx.stroke();
+
+      // Normal eye (left/lower side) with cyan glow slit
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 6;
+      ctx.fillRect(radius * 0.43, 2, 4, 4);
+      ctx.shadowBlur = 0;
     } else if (helmet?.visual === 'scout_hood') {
       // Levi's Survey Corps Hooded Cloak & White Silk Cravat
       // 1. Forest green hooded cowl draped around head
@@ -1293,6 +1566,46 @@ export class Renderer {
       ctx.font = '800 7px "JetBrains Mono", monospace';
       ctx.fillStyle = entity.isOdmMode ? '#10b981' : '#94a3b8';
       ctx.fillText(entity.isOdmMode ? `ODM ${Math.round(gas)}% (${charges}/10)` : `GAS ${Math.round(gas)}%`, 0, barHeight + 11);
+    }
+
+    // In-world Mini Shotgun Ammo Bar (for David Martinez Carnage Shotgun)
+    const isDavidShotgun = entity.equipment?.weapon?.visual === 'david_shotgun';
+    if (isDavidShotgun) {
+      const ammo = entity.shotgunAmmo !== undefined ? entity.shotgunAmmo : 4;
+      const maxAmmo = entity.maxShotgunAmmo || 4;
+      const ammoPct = Math.max(0, Math.min(1, ammo / maxAmmo));
+      const isReloading = entity.isReloadingShotgun;
+      const barY = isLeviActive ? barHeight + 14 : barHeight + 2;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(-barWidth / 2, barY, barWidth, 3);
+      ctx.fillStyle = isReloading ? '#f59e0b' : '#ef4444';
+      ctx.shadowColor = isReloading ? '#f59e0b' : '#ef4444';
+      ctx.shadowBlur = isReloading ? 6 : 0;
+      ctx.fillRect(-barWidth / 2, barY, barWidth * (isReloading ? (1 - entity.shotgunReloadTimer / 1.4) : ammoPct), 3);
+      ctx.shadowBlur = 0;
+
+      ctx.font = '800 7px "JetBrains Mono", monospace';
+      ctx.fillStyle = isReloading ? '#f59e0b' : '#94a3b8';
+      ctx.fillText(isReloading ? 'RELOADING...' : `AMMO ${ammo}/${maxAmmo}`, 0, barY + 9);
+    }
+
+    // In-world Mini Sandevistan Timer Bar (when active)
+    if (entity.isSandevistan && entity.sandevistanTimer > 0) {
+      const sandvBarY = isDavidShotgun ? barHeight + 26 : (isLeviActive ? barHeight + 14 : barHeight + 2);
+      const sandPct = Math.max(0, Math.min(1, entity.sandevistanTimer / 4.0));
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(-barWidth / 2, sandvBarY, barWidth, 3);
+      ctx.fillStyle = '#00ff88';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 8;
+      ctx.fillRect(-barWidth / 2, sandvBarY, barWidth * sandPct, 3);
+      ctx.shadowBlur = 0;
+
+      ctx.font = '800 7px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#00ff88';
+      ctx.fillText(`⚡ ${entity.sandevistanTimer.toFixed(1)}s`, 0, sandvBarY + 9);
     }
     ctx.restore();
   }

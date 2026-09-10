@@ -240,6 +240,31 @@ export class CinematicManager {
         hitMap: new Map()
       });
       this.addScreenShake(14);
+    } else if (type === 'sandevistan') {
+      // David Martinez: Military-Grade Sandevistan Overclock!
+      // Full-screen cyberpunk matrix post-processing for 4.0s
+      this.activeCinematics.push({
+        type: 'sandevistan',
+        timer: 4.0,
+        duration: 4.0,
+        caster: player,
+        isRemote: !!isRemote,
+        x: player.x,
+        y: player.y
+      });
+      this.addScreenShake(12);
+    } else if (type === 'overcharge_boost') {
+      // David Martinez Base Q: Overcharge Boost speed burst
+      this.activeCinematics.push({
+        type: 'overcharge_boost',
+        timer: 0.6,
+        duration: 0.6,
+        caster: player,
+        isRemote: !!isRemote,
+        x: player.x,
+        y: player.y
+      });
+      this.addScreenShake(6);
     }
   }
 
@@ -894,6 +919,93 @@ export class CinematicManager {
         const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.35, width / 2, height / 2, width * 0.75);
         grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
         grad.addColorStop(1, `rgba(16, 185, 129, ${pulse})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      } else if (c.type === 'sandevistan') {
+        // David Martinez Sandevistan: Cyberpunk matrix grid overlay with scanlines & chromatic aberration
+        const pulse = 0.3 + Math.sin(Date.now() * 0.012) * 0.12;
+        ctx.save();
+
+        // 1. Neon green/cyan vignette border
+        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.25, width / 2, height / 2, width * 0.72);
+        grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        grad.addColorStop(0.7, 'rgba(0, 20, 10, 0.15)');
+        grad.addColorStop(1, `rgba(0, 255, 136, ${pulse * 0.45})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Horizontal scanlines (subtle CRT effect)
+        ctx.fillStyle = 'rgba(0, 255, 136, 0.04)';
+        const scanSpacing = 4;
+        const scanOffset = (Date.now() * 0.15) % scanSpacing;
+        for (let y = scanOffset; y < height; y += scanSpacing) {
+          ctx.fillRect(0, y, width, 1);
+        }
+
+        // 3. Matrix grid overlay (very subtle)
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.035)';
+        ctx.lineWidth = 0.5;
+        const gridSize = 48;
+        const gridScrollX = (Date.now() * 0.02) % gridSize;
+        const gridScrollY = (Date.now() * 0.015) % gridSize;
+        for (let gx = -gridScrollX; gx < width; gx += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, height);
+          ctx.stroke();
+        }
+        for (let gy = -gridScrollY; gy < height; gy += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, gy);
+          ctx.lineTo(width, gy);
+          ctx.stroke();
+        }
+
+        // 4. Chromatic aberration color fringe along screen borders
+        const fringeWidth = 4 + Math.sin(Date.now() * 0.02) * 2;
+        // Left edge: Red fringe
+        ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.25})`;
+        ctx.fillRect(0, 0, fringeWidth, height);
+        // Right edge: Cyan fringe
+        ctx.fillStyle = `rgba(0, 240, 255, ${pulse * 0.25})`;
+        ctx.fillRect(width - fringeWidth, 0, fringeWidth, height);
+        // Top edge: Green fringe
+        ctx.fillStyle = `rgba(0, 255, 136, ${pulse * 0.2})`;
+        ctx.fillRect(0, 0, width, fringeWidth * 0.7);
+        // Bottom edge: Magenta fringe
+        ctx.fillStyle = `rgba(200, 0, 255, ${pulse * 0.18})`;
+        ctx.fillRect(0, height - fringeWidth * 0.7, width, fringeWidth * 0.7);
+
+        // 5. Digital timer HUD overlay
+        const timeRemaining = c.timer.toFixed(1);
+        ctx.font = '900 18px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 14;
+        ctx.fillText(`\u26a1 SANDEVISTAN OVERCLOCK [${timeRemaining}s]`, width / 2, 42);
+        ctx.shadowBlur = 0;
+
+        // Subtle pulsing border frame
+        ctx.strokeStyle = `rgba(0, 255, 136, ${0.3 + Math.sin(Date.now() * 0.008) * 0.15})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(8, 8, width - 16, height - 16);
+
+        // Initial activation flash
+        if (progress < 0.08) {
+          ctx.fillStyle = `rgba(0, 255, 136, ${(0.08 - progress) * 6})`;
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.restore();
+      } else if (c.type === 'overcharge_boost') {
+        // David Martinez Overcharge: Brief neon green electric flash
+        const flashAlpha = Math.sin(progress * Math.PI) * 0.35;
+        ctx.save();
+        const grad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.6);
+        grad.addColorStop(0, `rgba(0, 255, 136, ${flashAlpha})`);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, width, height);
         ctx.restore();

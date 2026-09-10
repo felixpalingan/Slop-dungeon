@@ -1018,4 +1018,231 @@ export class AudioManager {
       console.warn('Audio error in Blade Whirlwind:', e);
     }
   }
+
+  // --- DAVID MARTINEZ (CYBERPUNK: EDGERUNNERS) AUDIO ---
+
+  /**
+   * Carnage Shotgun: Heavy punchy explosive blast with metallic pump rack
+   */
+  playCarnageShotgun() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // Heavy explosive blast (noise-based)
+      const bufferSize = this.ctx.sampleRate * 0.15;
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.12));
+      }
+
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.45, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      noise.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.18);
+
+      // Sub-bass boom
+      const bass = this.ctx.createOscillator();
+      bass.type = 'sine';
+      bass.frequency.setValueAtTime(65, now);
+      bass.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+      const bassGain = this.ctx.createGain();
+      bassGain.gain.setValueAtTime(0.5, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      bass.connect(bassGain);
+      bassGain.connect(this.ctx.destination);
+      bass.start(now);
+      bass.stop(now + 0.2);
+
+      // Metallic pump rack click
+      const pump = this.ctx.createOscillator();
+      pump.type = 'square';
+      pump.frequency.setValueAtTime(2200, now + 0.22);
+      pump.frequency.exponentialRampToValueAtTime(800, now + 0.28);
+      const pumpGain = this.ctx.createGain();
+      pumpGain.gain.setValueAtTime(0, now);
+      pumpGain.gain.setValueAtTime(0.2, now + 0.22);
+      pumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      pump.connect(pumpGain);
+      pumpGain.connect(this.ctx.destination);
+      pump.start(now + 0.22);
+      pump.stop(now + 0.3);
+    } catch (e) {
+      console.warn('Audio error in Carnage Shotgun:', e);
+    }
+  }
+
+  /**
+   * Gorilla Punch: Heavy hydraulic piston pressure release + thud impact
+   */
+  playGorillaPunch() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // Hydraulic piston hiss
+      const hiss = this.ctx.createOscillator();
+      hiss.type = 'sawtooth';
+      hiss.frequency.setValueAtTime(3500, now);
+      hiss.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+      const hissGain = this.ctx.createGain();
+      hissGain.gain.setValueAtTime(0.25, now);
+      hissGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      hiss.connect(hissGain);
+      hissGain.connect(this.ctx.destination);
+      hiss.start(now);
+      hiss.stop(now + 0.1);
+
+      // Heavy thud impact
+      const thud = this.ctx.createOscillator();
+      thud.type = 'sine';
+      thud.frequency.setValueAtTime(95, now + 0.04);
+      thud.frequency.exponentialRampToValueAtTime(35, now + 0.2);
+      const thudGain = this.ctx.createGain();
+      thudGain.gain.setValueAtTime(0.5, now + 0.04);
+      thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      thud.connect(thudGain);
+      thudGain.connect(this.ctx.destination);
+      thud.start(now + 0.04);
+      thud.stop(now + 0.22);
+    } catch (e) {
+      console.warn('Audio error in Gorilla Punch:', e);
+    }
+  }
+
+  /**
+   * Sandevistan Boot: Iconic high-pitch rising digital chirp (BWEEEEE-SHOOOM)
+   */
+  playSandevistanBoot() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // Rising digital chirp (BWEEEEE)
+      const chirp = this.ctx.createOscillator();
+      chirp.type = 'sawtooth';
+      chirp.frequency.setValueAtTime(220, now);
+      chirp.frequency.exponentialRampToValueAtTime(3200, now + 0.35);
+      chirp.frequency.exponentialRampToValueAtTime(1600, now + 0.5);
+      const chirpGain = this.ctx.createGain();
+      chirpGain.gain.setValueAtTime(0.15, now);
+      chirpGain.gain.linearRampToValueAtTime(0.35, now + 0.3);
+      chirpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      chirp.connect(chirpGain);
+      chirpGain.connect(this.ctx.destination);
+      chirp.start(now);
+      chirp.stop(now + 0.55);
+
+      // SHOOOM bass drop
+      const boom = this.ctx.createOscillator();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(180, now + 0.35);
+      boom.frequency.exponentialRampToValueAtTime(40, now + 0.7);
+      const boomGain = this.ctx.createGain();
+      boomGain.gain.setValueAtTime(0.45, now + 0.35);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+      boom.connect(boomGain);
+      boomGain.connect(this.ctx.destination);
+      boom.start(now + 0.35);
+      boom.stop(now + 0.75);
+
+      // Digital glitch accents
+      for (let i = 0; i < 3; i++) {
+        const t = now + 0.08 + i * 0.1;
+        const glitch = this.ctx.createOscillator();
+        glitch.type = 'square';
+        glitch.frequency.setValueAtTime(1400 + i * 600, t);
+        glitch.frequency.exponentialRampToValueAtTime(800, t + 0.04);
+        const glitchGain = this.ctx.createGain();
+        glitchGain.gain.setValueAtTime(0.1, t);
+        glitchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        glitch.connect(glitchGain);
+        glitchGain.connect(this.ctx.destination);
+        glitch.start(t);
+        glitch.stop(t + 0.05);
+      }
+    } catch (e) {
+      console.warn('Audio error in Sandevistan Boot:', e);
+    }
+  }
+
+  /**
+   * Slow-Mo Ticking: Sub-bass ticking heartbeat pulse during slow motion
+   */
+  playSlowMoTick() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const tick = this.ctx.createOscillator();
+      tick.type = 'sine';
+      tick.frequency.setValueAtTime(50, now);
+      tick.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+      const tickGain = this.ctx.createGain();
+      tickGain.gain.setValueAtTime(0.3, now);
+      tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      tick.connect(tickGain);
+      tickGain.connect(this.ctx.destination);
+      tick.start(now);
+      tick.stop(now + 0.15);
+    } catch (e) {
+      console.warn('Audio error in Slow Mo Tick:', e);
+    }
+  }
+
+  /**
+   * Sandevistan End: Power down deceleration whine
+   */
+  playSandevistanEnd() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const whine = this.ctx.createOscillator();
+      whine.type = 'sawtooth';
+      whine.frequency.setValueAtTime(2400, now);
+      whine.frequency.exponentialRampToValueAtTime(120, now + 0.6);
+      const whineGain = this.ctx.createGain();
+      whineGain.gain.setValueAtTime(0.25, now);
+      whineGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      whine.connect(whineGain);
+      whineGain.connect(this.ctx.destination);
+      whine.start(now);
+      whine.stop(now + 0.65);
+
+      // Sub-bass power down thud
+      const thud = this.ctx.createOscillator();
+      thud.type = 'sine';
+      thud.frequency.setValueAtTime(100, now + 0.15);
+      thud.frequency.exponentialRampToValueAtTime(25, now + 0.5);
+      const thudGain = this.ctx.createGain();
+      thudGain.gain.setValueAtTime(0.35, now + 0.15);
+      thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      thud.connect(thudGain);
+      thudGain.connect(this.ctx.destination);
+      thud.start(now + 0.15);
+      thud.stop(now + 0.55);
+    } catch (e) {
+      console.warn('Audio error in Sandevistan End:', e);
+    }
+  }
 }

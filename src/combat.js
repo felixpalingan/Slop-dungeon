@@ -56,6 +56,9 @@ export class CombatSystem {
     } else if (weapon.visual === 'dual_snap_blades') {
       reach = Math.max(reach, 70);
       arcHalfAngle = Math.PI * 0.48;
+    } else if (weapon.visual === 'david_shotgun') {
+      reach = Math.max(reach, 175);
+      arcHalfAngle = Math.PI * 0.38; // ~44° shotgun spread cone
     }
 
     let hits = [];
@@ -156,6 +159,12 @@ export class CombatSystem {
       baseDamage = 20;
       knockback = 580; // Shield bash push
       attackType = 'shield_bash';
+    } else if (offhandVisual === 'david_gorilla_arms') {
+      reach = 78;
+      arcHalfAngle = Math.PI * 0.38;
+      baseDamage = 52;
+      knockback = 760; // Powerful hydraulic cybernetic punch!
+      attackType = 'gorilla_punch';
     }
 
     if (attacker.isBerserk) {
@@ -292,6 +301,20 @@ export class CombatSystem {
           triggerCinematicCallback('berserker_rage', player);
         }
         return true;
+      } else if (setBonus.ultimateQ === 'sandevistan_time_dilation') {
+        // David Martinez: Military-Grade Sandevistan Overclock!
+        player.isSandevistan = true;
+        player.sandevistanTimer = 4.0;
+        player.currentSpeed = player.baseSpeed * 1.35; // David moves rapidly while world is slowed!
+        if (this.audio.playSandevistanBoot) this.audio.playSandevistanBoot();
+        else if (this.audio.playBarrierHum) this.audio.playBarrierHum();
+
+        this.particles.spawnComicText(player.x, player.y - 36, 'SANDEVISTAN OVERCLOCK! ⚡ TIME DILATION', '#00ff88');
+        this.particles.spawnDashBurst(player.x, player.y, 0, '#00ff88');
+        if (triggerCinematicCallback) {
+          triggerCinematicCallback('sandevistan', player);
+        }
+        return true;
       }
     }
 
@@ -299,7 +322,18 @@ export class CombatSystem {
     const chest = player.equipment?.chest;
     if (!chest) return false;
 
-    if (chest.baseQ === 'limitless_barrier' || chest.visual === 'gojo_tunic') {
+    if (chest.baseQ === 'overcharge_boost' || chest.visual === 'david_jacket') {
+      // David Martinez Base Q: Overcharge Boost (Speed surge +35% for 3.0s)
+      player.isOvercharged = true;
+      player.overchargeTimer = 3.0;
+      player.currentSpeed = player.baseSpeed * 1.35;
+      if (this.audio.playGravitationalSurge) this.audio.playGravitationalSurge();
+      this.particles.spawnComicText(player.x, player.y - 32, 'OVERCHARGE BOOST! ⚡ +35% SPEED', '#00ff88');
+      this.particles.spawnDashBurst(player.x, player.y, player.angle + Math.PI, '#00ff88');
+      if (triggerCinematicCallback) {
+        triggerCinematicCallback('overcharge_boost', player);
+      }
+    } else if (chest.baseQ === 'limitless_barrier' || chest.visual === 'gojo_tunic') {
       // Limitless Barrier (Mugen): 3.5s infinity field that traps projectiles and violently deflects them
       player.isInvulnerable = true;
       player.isLimitlessBarrier = true;
