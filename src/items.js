@@ -455,11 +455,11 @@ export const ITEM_CATALOG = {
     hands: 2, // TWO-HANDED (dual-wielded)
     rarity: 'MYTHIC',
     damage: 48,
-    speed: 1.55,
+    speed: 1.25,
     reach: 65,
     critChance: 0.25,
     visual: 'dual_snap_blades',
-    desc: 'Twin segmented ultrahard steel blades with brake-lever trigger hilts. Slices with rapid dual cross-slashes.'
+    desc: 'Twin segmented ultrahard steel blades with brake-lever trigger hilts. Slices with unified dual cross-slashes.'
   },
 
   // =========================================================================

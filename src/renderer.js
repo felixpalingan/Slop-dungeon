@@ -433,6 +433,49 @@ export class Renderer {
         ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - p) * 0.9})`;
         ctx.lineWidth = 2.5;
         ctx.stroke();
+      } else if (weapon?.visual === 'dual_snap_blades') {
+        // Levi's Dual Snap Blades: Twin intersecting emerald & steel cross-slash scissor arcs!
+        const slashReach = radius + 40;
+        const leftStart = -Math.PI * 0.45 + p * (Math.PI * 0.85);
+        const rightStart = Math.PI * 0.45 - p * (Math.PI * 0.85);
+
+        // Left blade slash arc (emerald trail)
+        ctx.beginPath();
+        ctx.arc(0, 0, slashReach, leftStart - Math.PI * 0.5, leftStart);
+        ctx.strokeStyle = `rgba(16, 185, 129, ${1 - p})`;
+        ctx.lineWidth = 5;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 18;
+        ctx.stroke();
+
+        // Right blade slash arc (crossing steel/emerald trail)
+        ctx.beginPath();
+        ctx.arc(0, 0, slashReach, rightStart, rightStart + Math.PI * 0.5);
+        ctx.strokeStyle = `rgba(52, 211, 153, ${1 - p})`;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        // White razor sharp cutting edges
+        ctx.beginPath();
+        ctx.arc(0, 0, slashReach, leftStart - Math.PI * 0.35, leftStart);
+        ctx.arc(0, 0, slashReach, rightStart, rightStart + Math.PI * 0.35);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - p) * 0.9})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Crossing spark flash at intersection (around mid swing)
+        if (p > 0.3 && p < 0.75) {
+          const sparkAlpha = Math.sin((p - 0.3) / 0.45 * Math.PI);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${sparkAlpha})`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(slashReach - 14, -12);
+          ctx.lineTo(slashReach + 14, 12);
+          ctx.moveTo(slashReach - 14, 12);
+          ctx.lineTo(slashReach + 14, -12);
+          ctx.stroke();
+        }
       } else if (weapon?.visual === 'david_shotgun') {
         // Carnage Shotgun blast cone: 6 distinct glowing pellet streaks with muzzle fire
         const muzzleDist = radius + 18;
@@ -546,16 +589,15 @@ export class Renderer {
     let leftBladeAngle = 0;
 
     if (isDualWield) {
-      // True Dual Wielding: Left hand holds Left Snap Blade on the left side
+      // True Dual Wielding: Left hand holds Left Snap Blade
       leftHandX = 10;
       leftHandY = -handDistance;
       leftBladeAngle = 0;
 
-      const isLAttacking = entity.isLeftAttacking;
-      const pL = entity.leftAttackProgress || 0;
-      if (isLAttacking && pL > 0 && pL < 1) {
-        // Left hand slashes inward across from left to right!
-        const leftArc = -Math.PI * 0.45 + pL * (Math.PI * 0.65);
+      if (isAttacking && attackProgress > 0 && attackProgress < 1) {
+        // Left hand slashes inward across from upper-left to lower-right!
+        const p = attackProgress;
+        const leftArc = -Math.PI * 0.45 + p * (Math.PI * 0.85);
         leftHandX = Math.cos(leftArc) * (handDistance + 6);
         leftHandY = Math.sin(leftArc) * (handDistance + 6);
         leftBladeAngle = leftArc + Math.PI * 0.35;
@@ -754,19 +796,15 @@ export class Renderer {
     let rightHandY = handDistance;
     let swordAngle = 0;
 
-    if (weapon?.visual === 'dual_snap_blades') {
-      const isRAttacking = entity.isRightAttacking;
-      const pR = entity.rightAttackProgress || 0;
-      if (isRAttacking && pR > 0 && pR < 1) {
-        // Right hand slashes inward across from right to left!
-        const rightArc = Math.PI * 0.45 - pR * (Math.PI * 0.65);
+    if (isAttacking && attackProgress > 0 && attackProgress < 1) {
+      const p = attackProgress;
+      if (weapon?.visual === 'dual_snap_blades') {
+        // Right hand slashes inward across from lower-right to upper-left (twin cross-cut)!
+        const rightArc = Math.PI * 0.45 - p * (Math.PI * 0.85);
         rightHandX = Math.cos(rightArc) * (handDistance + 6);
         rightHandY = Math.sin(rightArc) * (handDistance + 6);
         swordAngle = rightArc - Math.PI * 0.35;
-      }
-    } else if (isAttacking && attackProgress > 0 && attackProgress < 1) {
-      const p = attackProgress;
-      if (weapon?.visual === 'lapse_blue') {
+      } else if (weapon?.visual === 'lapse_blue') {
         // Gojo: Forward gravitational thrust
         const lunge = Math.sin(p * Math.PI) * 36;
         rightHandX = 14 + lunge;

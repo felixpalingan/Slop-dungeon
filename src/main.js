@@ -718,6 +718,7 @@ function handleAttacks() {
       } else if (weaponVisual === 'dual_snap_blades') {
         audio.playSnapBladesSlash();
         cinematics.addScreenShake(7);
+        particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#10b981');
       } else if (weaponVisual === 'david_shotgun') {
         if (audio.playCarnageShotgun) audio.playCarnageShotgun();
         else audio.playExplosion();
@@ -726,8 +727,13 @@ function handleAttacks() {
         audio.playBonk();
       }
 
-      const popupText = hit.isCrit ? `CRIT! -${hit.damage}` : (hit.isPull ? `PULL! -${hit.damage}` : `HIT! -${hit.damage}`);
-      particles.spawnComicText(dummy.x, dummy.y - 24, popupText, hit.isCrit ? '#ff0055' : (hit.isPull ? '#00f0ff' : '#fbbf24'));
+      let popupText = hit.isCrit ? `CRIT! -${hit.damage}` : (hit.isPull ? `PULL! -${hit.damage}` : `HIT! -${hit.damage}`);
+      let popupColor = hit.isCrit ? '#ff0055' : (hit.isPull ? '#00f0ff' : '#fbbf24');
+      if (weaponVisual === 'dual_snap_blades') {
+        popupText = hit.isCrit ? `CRIT DUAL SLICE! -${hit.damage} ⚔️` : `DUAL SLICE! -${hit.damage} ⚔️`;
+        popupColor = hit.isCrit ? '#ff0055' : '#10b981';
+      }
+      particles.spawnComicText(dummy.x, dummy.y - 24, popupText, popupColor);
 
       const hitMsg = {
         type: 'DUMMY_HIT',
@@ -750,9 +756,14 @@ function handleAttacks() {
           if (network.isHost) network.broadcast(slapMsg);
           else network.sendToHost(slapMsg);
 
-          audio.playBonk();
-          const effectLabel = hit.isBlocked ? 'BLOCKED!' : (hit.isPull ? 'PULLED! 🌀' : 'WHACK!');
-          particles.spawnComicText(remote.x, remote.y - 20, effectLabel, hit.isPull ? '#00f0ff' : '#ff3366');
+          const weaponVisual = player.equipment?.weapon?.visual;
+          if (weaponVisual === 'dual_snap_blades') {
+            audio.playSnapBladesSlash();
+          } else {
+            audio.playBonk();
+          }
+          const effectLabel = hit.isBlocked ? 'BLOCKED!' : (weaponVisual === 'dual_snap_blades' ? 'DUAL SLICE! ⚔️' : (hit.isPull ? 'PULLED! 🌀' : 'WHACK!'));
+          particles.spawnComicText(remote.x, remote.y - 20, effectLabel, weaponVisual === 'dual_snap_blades' ? '#10b981' : (hit.isPull ? '#00f0ff' : '#ff3366'));
         }
       }
     }
@@ -772,48 +783,6 @@ function handleAttacks() {
       broadcastMyState();
     } else {
       particles.spawnComicText(player.x, player.y - 44, `MAX HP 🩸 LIFE STEAL`, '#22c55e');
-    }
-  }
-}
-
-function handleBladeAttack(side = 'left') {
-  const angleOffset = side === 'left' ? -0.32 : 0.32;
-  const targets = [dummy, ...network.remotePlayers.values()];
-  const hits = combat.performWeaponAttack(player, targets, { angleOffset });
-
-  for (const hit of hits) {
-    if (hit.target === dummy) {
-      dummy.takeHit(hit.damage, hit.angle, hit.knockback || 0);
-      audio.playSnapBladesSlash();
-      cinematics.addScreenShake(6);
-
-      const label = hit.isCrit ? `CRIT ${side.toUpperCase()}! -${hit.damage} ⚔️` : `BLADE ${side.toUpperCase()}! -${hit.damage}`;
-      particles.spawnComicText(dummy.x, dummy.y - 24, label, hit.isCrit ? '#ff0055' : '#10b981');
-      particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#10b981');
-
-      const hitMsg = {
-        type: 'DUMMY_HIT',
-        damage: hit.damage,
-        angle: hit.angle,
-        isCrit: hit.isCrit
-      };
-      if (network.isHost) network.broadcast(hitMsg);
-      else network.sendToHost(hitMsg);
-    } else {
-      for (const [peerId, remote] of network.remotePlayers.entries()) {
-        if (remote === hit.target) {
-          const kx = Math.cos(hit.angle) * hit.knockback;
-          const ky = Math.sin(hit.angle) * hit.knockback;
-
-          const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
-          if (network.isHost) network.broadcast(slapMsg);
-          else network.sendToHost(slapMsg);
-
-          audio.playSnapBladesSlash();
-          const effectLabel = hit.isBlocked ? 'BLOCKED!' : `BLADE ${side.toUpperCase()}!`;
-          particles.spawnComicText(remote.x, remote.y - 20, effectLabel, '#10b981');
-        }
-      }
     }
   }
 }
@@ -1214,10 +1183,10 @@ function gameLoop(now) {
     broadcastMyState();
   }
 
-  // Left Click & Right Click Attacks (Left Blade & Right Blade for Levi)
-  const isDualSnapBlades = player.equipment?.weapon?.visual === 'dual_snap_blades';
+  // Left Click & Right Click Attacks
+  const weaponVisual = player.equipment?.weapon?.visual;
 
-  // Left Click: ODM Cable Launch (if in ODM Mode) OR Left Blade Attack OR Standard Weapon Attack
+  // Left Click: ODM Cable Launch (if in ODM Mode) OR Standard Weapon Attack (Dual Blades, Shotgun, Swords, etc.)
   if (input.justPressedLeft && !modalsOpen && !player.isStunned) {
     if (player.isOdmMode && isLeviGearEquipped) {
       // Launch high-tension ODM cable towards cursor in world coordinates
@@ -1233,20 +1202,16 @@ function gameLoop(now) {
         audio.playShieldLock();
         particles.spawnComicText(player.x, player.y - 32, 'OUT OF GAS! 💨', '#ef4444');
       }
-    } else if (isDualSnapBlades) {
-      // Basic Attack: Left Blade Slice (Left Click)!
-      if (player.triggerLeftAttack()) {
-        audio.playSnapBladesSlash();
-        handleBladeAttack('left');
-        broadcastMyState();
-      }
     } else {
-      const isShotgun = player.equipment?.weapon?.visual === 'david_shotgun';
+      const isShotgun = weaponVisual === 'david_shotgun';
+      const isDualBlades = weaponVisual === 'dual_snap_blades';
       if (player.triggerAttack()) {
         playWeaponAttackSound(player.equipment?.weapon);
         if (isShotgun) {
           particles.spawnComicText(player.x, player.y - 28, `SHELLS: ${player.shotgunAmmo}/4`, '#00ff88');
           cinematics.addScreenShake(6);
+        } else if (isDualBlades) {
+          cinematics.addScreenShake(5);
         }
         handleAttacks();
         broadcastMyState();
@@ -1257,7 +1222,7 @@ function gameLoop(now) {
     }
   }
 
-  // Right Click: ODM Cable Launch (if in ODM Mode) OR Right Blade Attack OR Standard Off-hand Slap
+  // Right Click: ODM Cable Launch (if in ODM Mode) OR Standard Off-hand Slap / Ability
   if (input.justPressedRight && !modalsOpen && !player.isBlocking && !player.isStunned) {
     if (player.isOdmMode && isLeviGearEquipped) {
       // In ODM Mode, Right Click ALSO launches an ODM cable (enables rapid dual cable maneuvering!)
@@ -1272,13 +1237,6 @@ function gameLoop(now) {
       } else {
         audio.playShieldLock();
         particles.spawnComicText(player.x, player.y - 32, 'OUT OF GAS! 💨', '#ef4444');
-      }
-    } else if (isDualSnapBlades) {
-      // Basic Attack: Right Blade Slice (Right Click)!
-      if (player.triggerRightAttack()) {
-        audio.playSnapBladesSlash();
-        handleBladeAttack('right');
-        broadcastMyState();
       }
     } else {
       if (player.triggerSlap()) {
