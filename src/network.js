@@ -47,7 +47,18 @@ export class NetworkManager {
       });
 
       this.peer.on('connection', (conn) => {
-        this.setupConnection(conn);
+        conn.on('error', (err) => {
+          console.warn('[Host] Connection error with peer:', conn.peer, err);
+        });
+
+        const handleOpen = () => {
+          this.setupConnection(conn);
+        };
+        if (conn.open) {
+          handleOpen();
+        } else {
+          conn.on('open', handleOpen);
+        }
       });
 
       this.peer.on('error', (err) => {
@@ -167,5 +178,17 @@ export class NetworkManager {
         break;
       }
     }
+  }
+
+  /**
+   * Send data directly to a specific connected peer
+   */
+  sendTo(peerId, data) {
+    const conn = this.connections.get(peerId);
+    if (conn && conn.open) {
+      conn.send(data);
+      return true;
+    }
+    return false;
   }
 }

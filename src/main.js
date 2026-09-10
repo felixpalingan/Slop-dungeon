@@ -408,6 +408,20 @@ btnJoinRoom.addEventListener('click', async () => {
     hudNetworkStatus.textContent = `CO-OP [${code}]`;
     updatePartyRoster();
     broadcastMyState();
+
+    // Immediately request authoritative room loot & state sync from host
+    network.sendToHost({
+      type: 'REQUEST_ROOM_SYNC',
+      peerId: network.myPeerId
+    });
+    setTimeout(() => {
+      if (!network.isHost && network.connections.size > 0) {
+        network.sendToHost({
+          type: 'REQUEST_ROOM_SYNC',
+          peerId: network.myPeerId
+        });
+      }
+    }, 350);
   } catch (err) {
     alert('Could not join room. Make sure the host has created it!');
   } finally {
@@ -509,29 +523,44 @@ dummy.onMeleeHit = (target, dmg, angle) => {
   }
 };
 
-network.onPlayerJoined = () => {
+function sendFullLootSync(targetPeerId = null) {
+  const lootList = [];
+  for (const [id, loot] of groundItems.entries()) {
+    lootList.push({
+      id: loot.id,
+      item: loot.item,
+      x: loot.x,
+      y: loot.y
+    });
+  }
+  const syncMsg = {
+    type: 'FULL_LOOT_SYNC',
+    items: lootList
+  };
+  const modeMsg = {
+    type: 'BOT_MODE_CHANGED',
+    mode: dummy.mode
+  };
+
+  if (targetPeerId) {
+    network.sendTo(targetPeerId, syncMsg);
+    network.sendTo(targetPeerId, modeMsg);
+  } else {
+    network.broadcast(syncMsg);
+    network.broadcast(modeMsg);
+  }
+}
+
+network.onPlayerJoined = (joinedPeerId) => {
   updatePartyRoster();
   broadcastMyState();
 
   // If host, sync all ground loot and bot mode to newly joined player
   if (network.isHost) {
-    const lootList = [];
-    for (const [id, loot] of groundItems.entries()) {
-      lootList.push({
-        id: loot.id,
-        item: loot.item,
-        x: loot.x,
-        y: loot.y
-      });
-    }
-    network.broadcast({
-      type: 'FULL_LOOT_SYNC',
-      items: lootList
-    });
-    network.broadcast({
-      type: 'BOT_MODE_CHANGED',
-      mode: dummy.mode
-    });
+    sendFullLootSync(joinedPeerId);
+    setTimeout(() => {
+      sendFullLootSync(joinedPeerId);
+    }, 250);
   }
 };
 
@@ -621,6 +650,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
     for (const lootData of msg.items) {
       const dropped = new GroundLoot(lootData.item, lootData.x, lootData.y, lootData.id);
       groundItems.set(dropped.id, dropped);
+    }
+    console.log(`[Client] Synced ${groundItems.size} ground items from host.`);
+  } else if (msg.type === 'REQUEST_ROOM_SYNC') {
+    if (network.isHost) {
+      sendFullLootSync(fromPeerId);
     }
   } else if (msg.type === 'COMIC_TEXT') {
     particles.spawnComicText(msg.x, msg.y, msg.text, msg.color, false);
