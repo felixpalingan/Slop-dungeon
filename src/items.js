@@ -274,6 +274,18 @@ export const ITEM_CATALOG = {
     visual: 'sukuna_cleaver',
     desc: 'Heavy two-handed butcher blade infused with endless slicing cursed energy.'
   },
+  'sukuna_finger': {
+    id: 'sukuna_finger',
+    name: "Sukuna's Sealed Finger",
+    set: 'sukuna',
+    slot: 'offhand',
+    rarity: 'MYTHIC',
+    damageBuff: 35,
+    hp: 50,
+    armor: 18,
+    visual: 'reversal_red',
+    desc: "A wax-mummified talisman finger radiating unspeakable cursed energy. Boosts Max HP +50 and Damage +35."
+  },
 
   // --- TOJI FUSHIGURO SET ---
   'toji_worm': {

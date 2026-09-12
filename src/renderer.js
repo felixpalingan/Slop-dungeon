@@ -1642,21 +1642,499 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawTorch(x, y, time = 0) {
+  drawTorch(x, y, time = 0, color = '#ffaa33', glowColor = 'rgba(255, 170, 50, 0.25)') {
     const ctx = this.ctx;
     const flicker = Math.sin(time * 8 + x) * 2;
 
-    const grad = ctx.createRadialGradient(x, y, 4, x, y, 48 + flicker);
-    grad.addColorStop(0, 'rgba(255, 170, 50, 0.25)');
-    grad.addColorStop(1, 'rgba(255, 120, 20, 0)');
+    const grad = ctx.createRadialGradient(x, y, 4, x, y, 52 + flicker);
+    grad.addColorStop(0, glowColor);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(x, y, 48 + flicker, 0, Math.PI * 2);
+    ctx.arc(x, y, 52 + flicker, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#ffaa33';
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x, y, 5 + flicker * 0.5, 0, Math.PI * 2);
+    ctx.arc(x, y, 5 + flicker * 0.4, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  /**
+   * Viewport-culled Procedural Dungeon Rendering
+   * Renders themed flagstone floors, 3D beveled walls, dynamic torches,
+   * destructible containers, exit portals, and Room Discovery Fog of War!
+   */
+  drawDungeon(dungeon, cameraX, cameraY, viewWidth, viewHeight, time = 0) {
+    if (!dungeon || !dungeon.grid) return;
+    const ctx = this.ctx;
+    const size = dungeon.tileSize;
+    const theme = dungeon.theme;
+
+    const halfW = viewWidth / 2 + size * 2;
+    const halfH = viewHeight / 2 + size * 2;
+
+    const startCol = Math.max(0, Math.floor((cameraX - halfW - dungeon.originX) / size));
+    const endCol = Math.min(dungeon.cols - 1, Math.ceil((cameraX + halfW - dungeon.originX) / size));
+    const startRow = Math.max(0, Math.floor((cameraY - halfH - dungeon.originY) / size));
+    const endRow = Math.min(dungeon.rows - 1, Math.ceil((cameraY + halfH - dungeon.originY) / size));
+
+    // 1. Draw Floors and Corridors
+    for (let c = startCol; c <= endCol; c++) {
+      for (let r = startRow; r <= endRow; r++) {
+        const tile = dungeon.grid[c][r];
+        if (tile === 1 || tile === 3 || tile === 4) { // FLOOR, CORRIDOR, DOOR
+          const x = dungeon.originX + c * size;
+          const y = dungeon.originY + r * size;
+
+          const isAlt = (c + r) % 2 === 0;
+          ctx.fillStyle = isAlt ? theme.floorColor : theme.floorAltColor;
+          ctx.fillRect(x, y, size, size);
+
+          // Subtle grid border
+          ctx.strokeStyle = theme.floorGridColor;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, size, size);
+
+          // Corridor texture dash
+          if (tile === 3) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+            ctx.fillRect(x + 4, y + 4, size - 8, size - 8);
+          }
+        }
+      }
+    }
+
+    // 2. Draw Walls with 3D Depth Top Bevels
+    for (let c = startCol; c <= endCol; c++) {
+      for (let r = startRow; r <= endRow; r++) {
+        const tile = dungeon.grid[c][r];
+        if (tile === 2) { // WALL
+          const x = dungeon.originX + c * size;
+          const y = dungeon.originY + r * size;
+
+          // Front face
+          ctx.fillStyle = theme.wallColor;
+          ctx.fillRect(x, y, size, size);
+
+          // Top 3D bevel / slab
+          ctx.fillStyle = theme.wallTopColor;
+          ctx.fillRect(x, y, size, 14);
+
+          // Trim highlight
+          ctx.fillStyle = theme.wallBevelColor;
+          ctx.fillRect(x, y + 12, size, 2);
+
+          // Perimeter outline
+          ctx.strokeStyle = theme.wallStrokeColor;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, size, size);
+        }
+      }
+    }
+
+    // 3. Draw Wall Torches
+    for (const torch of dungeon.torches) {
+      if (
+        torch.x >= cameraX - halfW &&
+        torch.x <= cameraX + halfW &&
+        torch.y >= cameraY - halfH &&
+        torch.y <= cameraY + halfH
+      ) {
+        this.drawTorch(torch.x, torch.y, time, torch.color, torch.glow);
+      }
+    }
+
+    // 4. Draw Destructible Containers (Pots / Crates)
+    for (const container of dungeon.containers) {
+      if (container.isBroken) continue;
+      if (
+        container.x >= cameraX - halfW &&
+        container.x <= cameraX + halfW &&
+        container.y >= cameraY - halfH &&
+        container.y <= cameraY + halfH
+      ) {
+        ctx.save();
+        ctx.translate(container.x, container.y);
+
+        // Clay pot shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 10, 16, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pot body
+        const potColor = theme.id === 'jjk' ? '#581c87' : (theme.id === 'cyberpunk' ? '#0e7490' : '#78350f');
+        const rimColor = theme.id === 'jjk' ? '#c084fc' : (theme.id === 'cyberpunk' ? '#22d3ee' : '#f59e0b');
+
+        ctx.fillStyle = potColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = rimColor;
+        ctx.beginPath();
+        ctx.arc(0, -6, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Talisman or rune on pot
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(-3, -1, 6, 8);
+
+        ctx.restore();
+      }
+    }
+
+    // 5. Draw Exit Descent Portal in Boss Sanctum
+    if (dungeon.exitPortal) {
+      const p = dungeon.exitPortal;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+
+      // Rotating portal pulse
+      p.pulseAngle = (p.pulseAngle || 0) + 0.025;
+
+      if (p.isActive) {
+        // Active radiant vortex portal!
+        const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, p.radius * 1.6);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, theme.torchColor);
+        grad.addColorStop(0.7, theme.wallBevelColor);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rotating vortex rings
+        ctx.rotate(p.pulseAngle);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        for (let r = 0; r < 4; r++) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 12 + r * 6, r, r + Math.PI);
+          ctx.stroke();
+        }
+
+        // Floating "DESCENT PORTAL" indicator
+        ctx.rotate(-p.pulseAngle);
+        ctx.font = '900 11px "Outfit", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = theme.torchColor;
+        ctx.shadowBlur = 12;
+        ctx.fillText('▼ STEP TO DESCEND ▼', 0, -p.radius - 16);
+      } else {
+        // Inactive dormant stone portal
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.font = '800 9px "Outfit", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('🔒 DEFEAT GUARDIAN', 0, 3);
+      }
+
+      ctx.restore();
+    }
+
+    // 6. Room Discovery Fog of War (Option A)
+    for (const room of dungeon.rooms) {
+      if (!room.isDiscovered) {
+        // Completely undiscovered: dark abyssal shroud
+        ctx.fillStyle = 'rgba(6, 4, 12, 0.97)';
+        ctx.fillRect(
+          room.bounds.minX,
+          room.bounds.minY,
+          room.bounds.maxX - room.bounds.minX,
+          room.bounds.maxY - room.bounds.minY
+        );
+
+        // Subtle glowing perimeter question mark or fog icon
+        ctx.font = '900 24px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.fillText('?', room.centerX, room.centerY + 8);
+      } else if (room.discoveredAlpha < 1.0) {
+        // Fading out dark veil
+        room.discoveredAlpha = Math.min(1.0, room.discoveredAlpha + 0.03);
+        ctx.fillStyle = `rgba(6, 4, 12, ${(1.0 - room.discoveredAlpha) * 0.97})`;
+        ctx.fillRect(
+          room.bounds.minX,
+          room.bounds.minY,
+          room.bounds.maxX - room.bounds.minX,
+          room.bounds.maxY - room.bounds.minY
+        );
+      }
+    }
+  }
+
+  /**
+   * Renders active anime monsters with health bars, animations, and hit flashes
+   */
+  drawMonsters(monsters, time = 0) {
+    const ctx = this.ctx;
+
+    for (const m of monsters) {
+      if (m.isDead) continue;
+      ctx.save();
+      ctx.translate(m.x, m.y);
+
+      // Monster Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(0, m.radius * 0.75, m.radius * 0.85, m.radius * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hit Flash: White glow silhouette
+      if (m.hitFlashTimer > 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Procedural Rendering by Archetype and Theme
+      if (m.type === 'fly_head') {
+        // JJK: Fly Head Cursed Spirit (purple hovering insectoid blob)
+        const hoverY = Math.sin(m.animTime * 6) * 4;
+        ctx.translate(0, hoverY);
+
+        // Buzzing wings
+        const wingFlap = Math.sin(m.animTime * 28) * 8;
+        ctx.fillStyle = 'rgba(192, 132, 252, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(-10, -m.radius * 0.7, 7, 13 + wingFlap, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(10, -m.radius * 0.7, 7, 13 + wingFlap, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dark purple body
+        ctx.fillStyle = '#3b0764';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Bulging creepy white eye with slit pupil
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(Math.cos(m.angle) * 4, Math.sin(m.angle) * 4, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#581c87';
+        ctx.beginPath();
+        ctx.arc(Math.cos(m.angle) * 5, Math.sin(m.angle) * 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (m.type === 'masked_ino') {
+        // JJK: Masked Ino Cursed Spirit (ranged caster)
+        ctx.fillStyle = '#1e1b4b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White horned mask
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(0, -2, m.radius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing red eye slits
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-5, -3, 3, 2);
+        ctx.fillRect(2, -3, 3, 2);
+      } else if (m.type === 'cursed_brute') {
+        // JJK: Cursed Womb Brute (Heavy Tank)
+        if (m.windupTimer > 0) {
+          // Telegraphed Orange Slam Circle
+          ctx.strokeStyle = '#f97316';
+          ctx.fillStyle = 'rgba(249, 115, 22, 0.25)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#2e1065';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#7e22ce';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Muscular shoulder spikes
+        ctx.fillStyle = '#a855f7';
+        ctx.fillRect(-m.radius, -8, 6, 6);
+        ctx.fillRect(m.radius - 6, -8, 6, 6);
+      } else if (m.type === 'finger_bearer') {
+        // JJK Boss: Special Grade Finger Bearer
+        const pulse = Math.sin(m.animTime * 4) * 4;
+
+        // Cursed energy aura
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + 12 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pale demonic body
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#7e22ce';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Wide Jagged Grin
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 6, 18, 0, Math.PI);
+        ctx.stroke();
+
+        // 4 Glowing Red Eyes
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(-12, -8, 4, 0, Math.PI * 2);
+        ctx.arc(-4, -14, 4, 0, Math.PI * 2);
+        ctx.arc(4, -14, 4, 0, Math.PI * 2);
+        ctx.arc(12, -8, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Generic / Fallback Monster
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Health Bar above monster
+      const barW = Math.max(28, m.radius * 1.4);
+      const barH = 4;
+      const barY = -m.radius - 10;
+      const hpPct = Math.max(0, m.hp / m.maxHp);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(-barW / 2, barY, barW, barH);
+
+      ctx.fillStyle = hpPct > 0.3 ? '#ef4444' : '#dc2626';
+      ctx.fillRect(-barW / 2, barY, barW * hpPct, barH);
+
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Draws Room Discovery Banner notification in screen coordinates
+   */
+  drawRoomBanner(dungeon, screenWidth, screenHeight) {
+    if (!dungeon || !dungeon.activeBanner) return;
+    const b = dungeon.activeBanner;
+    if (b.timer <= 0) return;
+
+    const ctx = this.ctx;
+    const alpha = Math.min(1.0, b.timer / 0.5, (b.maxTimer - b.timer) / 0.5 + 0.2);
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    const bannerW = 480;
+    const bannerH = 44;
+    const x = screenWidth / 2 - bannerW / 2;
+    const y = 52;
+
+    // Dark backdrop with gradient
+    ctx.fillStyle = 'rgba(10, 8, 18, 0.88)';
+    ctx.strokeStyle = b.color || '#a855f7';
+    ctx.lineWidth = 2;
+    ctx.fillRect(x, y, bannerW, bannerH);
+    ctx.strokeRect(x, y, bannerW, bannerH);
+
+    // Title
+    ctx.font = '900 16px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = b.color || '#a855f7';
+    ctx.shadowBlur = 10;
+    ctx.fillText(`⚔ ${b.title} ⚔`, screenWidth / 2, y + 20);
+
+    // Subtitle
+    ctx.font = '800 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = b.color || '#c084fc';
+    ctx.shadowBlur = 0;
+    ctx.fillText(b.subtitle || 'ANIME DUNGEON DEPTHS', screenWidth / 2, y + 36);
+
+    ctx.restore();
+  }
+
+  /**
+   * Draws Full-Screen Top Boss Health Bar
+   */
+  drawBossHUD(boss, screenWidth) {
+    if (!boss || boss.isDead) return;
+    const ctx = this.ctx;
+    ctx.save();
+
+    const barW = Math.min(540, screenWidth - 40);
+    const barH = 18;
+    const x = screenWidth / 2 - barW / 2;
+    const y = 20;
+    const hpPct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+
+    // Outer dark gothic frame
+    ctx.fillStyle = 'rgba(10, 8, 18, 0.92)';
+    ctx.fillRect(x - 4, y - 18, barW + 8, barH + 26);
+
+    ctx.strokeStyle = '#7e22ce';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 4, y - 18, barW + 8, barH + 26);
+
+    // Boss Name Header
+    ctx.font = '900 12px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowColor = '#a855f7';
+    ctx.shadowBlur = 8;
+    ctx.fillText(`💀 ${boss.name.toUpperCase()} 💀`, screenWidth / 2, y - 4);
+    ctx.shadowBlur = 0;
+
+    // Health Bar Background
+    ctx.fillStyle = 'rgba(30, 20, 45, 0.9)';
+    ctx.fillRect(x, y, barW, barH);
+
+    // Health Bar Fill
+    const grad = ctx.createLinearGradient(x, y, x + barW, y);
+    grad.addColorStop(0, '#9333ea');
+    grad.addColorStop(0.5, '#c084fc');
+    grad.addColorStop(1, '#ef4444');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, barW * hpPct, barH);
+
+    // HP Text
+    ctx.font = '800 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${Math.round(boss.hp)} / ${boss.maxHp} HP (${Math.round(hpPct * 100)}%)`, screenWidth / 2, y + 13);
+
+    ctx.restore();
+  }
 }
+

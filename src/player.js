@@ -7,6 +7,13 @@
  * Projects ray from start point along direction vector to dungeon perimeter walls
  */
 export function projectRayToDungeonWall(startX, startY, dirX, dirY, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }) {
+  if (bounds && typeof bounds.raycastWall === 'function') {
+    const rayHit = bounds.raycastWall(startX, startY, dirX, dirY);
+    if (rayHit && rayHit.hit) {
+      return { x: rayHit.x, y: rayHit.y };
+    }
+  }
+
   const len = Math.hypot(dirX, dirY);
   if (len < 0.001) return { x: startX, y: startY };
   const uX = dirX / len;
@@ -748,23 +755,37 @@ export class Player {
     this.knockbackVx *= Math.pow(0.001, dt);
     this.knockbackVy *= Math.pow(0.001, dt);
 
-    // 7. Constrain to room bounds
+    // 7. Constrain to room bounds or resolve tile collisions
     const radius = this.radius;
-    if (this.x - radius < bounds.minX) {
-      this.x = bounds.minX + radius;
-      this.vx = 0;
-    }
-    if (this.x + radius > bounds.maxX) {
-      this.x = bounds.maxX - radius;
-      this.vx = 0;
-    }
-    if (this.y - radius < bounds.minY) {
-      this.y = bounds.minY + radius;
-      this.vy = 0;
-    }
-    if (this.y + radius > bounds.maxY) {
-      this.y = bounds.maxY - radius;
-      this.vy = 0;
+    if (bounds && typeof bounds.resolveCircleCollision === 'function') {
+      const col = bounds.resolveCircleCollision(this.x, this.y, radius);
+      this.x = col.x;
+      this.y = col.y;
+      if (col.hitWall) {
+        // Slide smoothly along wall normal
+        const dot = this.vx * col.normalX + this.vy * col.normalY;
+        if (dot < 0) {
+          this.vx -= dot * col.normalX;
+          this.vy -= dot * col.normalY;
+        }
+      }
+    } else if (bounds) {
+      if (this.x - radius < bounds.minX) {
+        this.x = bounds.minX + radius;
+        this.vx = 0;
+      }
+      if (this.x + radius > bounds.maxX) {
+        this.x = bounds.maxX - radius;
+        this.vx = 0;
+      }
+      if (this.y - radius < bounds.minY) {
+        this.y = bounds.minY + radius;
+        this.vy = 0;
+      }
+      if (this.y + radius > bounds.maxY) {
+        this.y = bounds.maxY - radius;
+        this.vy = 0;
+      }
     }
 
     // 8. Decay after-image trails

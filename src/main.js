@@ -11,6 +11,8 @@ import { ITEM_CATALOG, ItemRarity, checkSetBonus } from './items.js';
 import { CombatSystem } from './combat.js';
 import { GroundLoot } from './groundLoot.js';
 import { CinematicManager } from './cinematics.js';
+import { Dungeon, DUNGEON_THEMES } from './dungeon.js';
+import { Monster, MonsterManager } from './monster.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -110,16 +112,259 @@ window.addEventListener('keydown', unlockAudio, { passive: true });
 window.addEventListener('touchstart', unlockAudio, { passive: true });
 window.addEventListener('click', unlockAudio, { passive: true });
 
-readyCircle.onDescentTriggered = () => {
-  audio.playDescentFanfare();
-  particles.spawnComicText(readyCircle.x, readyCircle.y - 30, 'DESCENDING!', '#00ff88');
+// Floor Progression & Monster Management
+let currentFloor = 0; // 0 = Safe Lobby Base Camp, 1+ = Procedural Dungeon Floors
+let currentDungeon = null;
+const monsterManager = new MonsterManager();
 
+// Monster Death Callbacks
+monsterManager.onMonsterKilled = (monster) => {
+  particles.spawnComicText(monster.x, monster.y - 20, 'EXORCISED! 💥', '#c084fc');
+  particles.spawnDashBurst(monster.x, monster.y, 0, '#a855f7');
+  cinematics.addScreenShake(3);
+
+  // 35% chance to drop a minor heal orb
+  if (Math.random() < 0.35) {
+    player.hp = Math.min(player.maxHp, player.hp + 15);
+    particles.spawnComicText(player.x, player.y - 32, '+15 HP 💚', '#22c55e');
+    player.syncHUD();
+  }
+};
+
+monsterManager.onBossKilled = (boss) => {
+  audio.playBossVictoryFanfare();
+  cinematics.addScreenShake(18);
+  particles.spawnComicText(boss.x, boss.y - 40, 'SPECIAL GRADE EXORCISED! 🏆', '#c084fc');
+
+  if (currentDungeon) {
+    currentDungeon.exitPortal.isActive = true;
+
+    // Drop fountain of Mythic JJK loot!
+    const bossLoot = [
+      ITEM_CATALOG['sukuna_finger'],
+      ITEM_CATALOG['sukuna_cleaver'],
+      ITEM_CATALOG['reversal_red']
+    ];
+    bossLoot.forEach((item, idx) => {
+      if (!item) return;
+      const dropAngle = (idx / bossLoot.length) * Math.PI * 2;
+      const lx = boss.x + Math.cos(dropAngle) * 55;
+      const ly = boss.y + Math.sin(dropAngle) * 55;
+      const lootObj = new GroundLoot(item, lx, ly, `boss_drop_${idx}_${Date.now()}`);
+      groundItems.set(lootObj.id, lootObj);
+    });
+
+    currentDungeon.activeBanner = {
+      title: 'SPECIAL GRADE EXORCISED!',
+      subtitle: 'DESCENT PORTAL UNLOCKED • PROCEED TO NEXT FLOOR',
+      color: '#00ff88',
+      timer: 4.5,
+      maxTimer: 4.5
+    };
+  }
+};
+
+function populateFloorMonsters(dungeon) {
+  monsterManager.clear();
+  const theme = dungeon.themeKey;
+
+  // In each combat chamber, spawn a squad of theme-specific anime mobs!
+  for (let i = 0; i < dungeon.combatRooms.length; i++) {
+    const room = dungeon.combatRooms[i];
+    const mobCount = 3 + Math.floor(Math.random() * 2);
+
+    for (let m = 0; m < mobCount; m++) {
+      const offsetX = (Math.random() - 0.5) * (room.width - 3) * dungeon.tileSize;
+      const offsetY = (Math.random() - 0.5) * (room.height - 3) * dungeon.tileSize;
+      const spawnX = room.centerX + offsetX;
+      const spawnY = room.centerY + offsetY;
+
+      let monsterType = 'fly_head';
+      let archetype = 'swarmer';
+      let hp = 45;
+      let radius = 18;
+      let speed = 160;
+      let name = 'Fly Head Cursed Spirit';
+
+      if (m === 0) {
+        monsterType = 'masked_ino';
+        archetype = 'ranged';
+        hp = 65;
+        radius = 20;
+        speed = 115;
+        name = 'Masked Ino Cursed Spirit';
+      } else if (i === 1 && m === 1) {
+        monsterType = 'cursed_brute';
+        archetype = 'brute';
+        hp = 220;
+        radius = 26;
+        speed = 75;
+        name = 'Cursed Womb Brute';
+      }
+
+      const monster = new Monster({
+        id: `mob_${room.id}_${m}_${Date.now()}`,
+        type: monsterType,
+        name,
+        theme,
+        archetype,
+        x: spawnX,
+        y: spawnY,
+        hp,
+        radius,
+        speed,
+        roomId: room.id,
+        isActive: room.isDiscovered
+      });
+
+      if (archetype === 'swarmer') {
+        monster.onAttack = (target) => {
+          audio.playFlyHeadBuzz();
+          target.takeDamage(12, monster.angle, 160);
+          particles.spawnComicText(target.x, target.y - 20, '-12 (CURSE BITE)', '#c084fc');
+        };
+      } else if (archetype === 'ranged') {
+        monster.onRangedAttack = (target) => {
+          audio.playFlyHeadBuzz();
+          cinematics.spawnProjectile({
+            type: 'bot_energy_orb',
+            x: monster.x,
+            y: monster.y,
+            vx: Math.cos(monster.angle) * 220,
+            vy: Math.sin(monster.angle) * 220,
+            damage: 18,
+            caster: monster,
+            color: '#a855f7',
+            radius: 9,
+            maxDist: 400
+          });
+          particles.spawnComicText(monster.x, monster.y - 24, 'CURSE ORB!', '#c084fc');
+        };
+      } else if (archetype === 'brute') {
+        monster.onBruteSlam = (target) => {
+          audio.playHammerSmash();
+          cinematics.addScreenShake(9);
+          particles.spawnDashBurst(monster.x, monster.y, 0, '#f97316');
+          particles.spawnComicText(monster.x, monster.y - 30, 'EARTH SLAM! 💥', '#f97316');
+          const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+          if (dist <= monster.radius * 2.2 + target.radius) {
+            target.takeDamage(38, monster.angle, 520);
+            particles.spawnComicText(target.x, target.y - 20, '-38 SLAM!', '#f97316');
+          }
+        };
+      }
+
+      monsterManager.addMonster(monster);
+    }
+  }
+
+  // In Boss Sanctum, spawn the Floor Guardian Boss!
+  if (dungeon.bossRoom) {
+    const boss = new Monster({
+      id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+      type: 'finger_bearer',
+      name: 'Special Grade: Finger Bearer',
+      theme,
+      archetype: 'boss',
+      x: dungeon.bossRoom.centerX,
+      y: dungeon.bossRoom.centerY - 60,
+      hp: 850,
+      radius: 46,
+      speed: 90,
+      roomId: dungeon.bossRoom.id,
+      isActive: false
+    });
+
+    boss.onBossAttack = (target) => {
+      audio.playCleaverSlash();
+      cinematics.addScreenShake(6);
+      target.takeDamage(28, boss.angle, 420);
+      particles.spawnComicText(target.x, target.y - 24, '-28 CURSE CLAW!', '#ef4444');
+    };
+
+    boss.onBossSpecial = (target) => {
+      audio.playCursedEnergyBeam();
+      cinematics.addScreenShake(12);
+      particles.spawnComicText(boss.x, boss.y - 50, 'CURSED ENERGY BEAM! ⚡', '#a855f7');
+      cinematics.spawnProjectile({
+        type: 'bot_energy_orb',
+        x: boss.x,
+        y: boss.y,
+        vx: Math.cos(boss.angle) * 360,
+        vy: Math.sin(boss.angle) * 360,
+        damage: 48,
+        caster: boss,
+        color: '#c084fc',
+        radius: 18,
+        maxDist: 800
+      });
+    };
+
+    monsterManager.addMonster(boss);
+  }
+
+  // In Treasure Vault, spawn JJK theme-locked loot!
+  if (dungeon.treasureRoom) {
+    const jjkVaultLoot = [
+      ITEM_CATALOG['sukuna_cleaver'],
+      ITEM_CATALOG['sukuna_kamutoke'],
+      ITEM_CATALOG['sukuna_hiten'],
+      ITEM_CATALOG['sukuna_finger']
+    ];
+    jjkVaultLoot.forEach((item, idx) => {
+      if (!item) return;
+      const lx = dungeon.treasureRoom.centerX + (idx - 1.5) * 44;
+      const ly = dungeon.treasureRoom.centerY;
+      const lootObj = new GroundLoot(item, lx, ly, `vault_loot_${idx}_${Date.now()}`);
+      groundItems.set(lootObj.id, lootObj);
+    });
+  }
+}
+
+function startFloorDescent(floorNumber, broadcast = true) {
+  currentFloor = floorNumber;
+  audio.playDescentFanfare();
+  cinematics.addScreenShake(10);
+
+  // Theme 1: Jujutsu Kaisen
+  const themeKey = 'jjk';
+  currentDungeon = new Dungeon({ floorNumber, theme: themeKey }).generate();
+
+  // Teleport player to Spawn Room Center
+  player.x = currentDungeon.spawnRoom.centerX;
+  player.y = currentDungeon.spawnRoom.centerY;
+  player.vx = 0;
+  player.vy = 0;
+
+  // Clear previous floor ground loot and spawn new floor content
+  groundItems.clear();
+
+  if (network.isHost || !network.isConnected) {
+    populateFloorMonsters(currentDungeon);
+  }
+
+  // Update HUD Floor Text
   const hudFloor = document.getElementById('hud-floor');
   if (hudFloor) {
-    hudFloor.textContent = '1 (READY)';
-    hudFloor.style.color = '#00ff88';
-    hudFloor.style.textShadow = '0 0 15px #00ff88';
+    hudFloor.textContent = `FLOOR ${currentFloor}: ${currentDungeon.theme.shortName}`;
+    hudFloor.style.color = currentDungeon.theme.torchColor;
+    hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
   }
+
+  // Broadcast floor generation to connected peers if host
+  if (broadcast && network.isHost) {
+    network.broadcast({
+      type: 'DUNGEON_FLOOR_SYNC',
+      floorNumber: currentFloor,
+      dungeonData: currentDungeon.getSyncData()
+    });
+  }
+
+  particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
+}
+
+readyCircle.onDescentTriggered = () => {
+  startFloorDescent(1);
 };
 
 // --- INVENTORY UI & GROUND LOOT TRADING ---
@@ -655,6 +900,48 @@ network.onMessageReceived = (fromPeerId, msg) => {
   } else if (msg.type === 'REQUEST_ROOM_SYNC') {
     if (network.isHost) {
       sendFullLootSync(fromPeerId);
+      if (currentFloor >= 1 && currentDungeon) {
+        network.sendTo(fromPeerId, {
+          type: 'DUNGEON_FLOOR_SYNC',
+          floorNumber: currentFloor,
+          dungeonData: currentDungeon.getSyncData()
+        });
+      }
+    }
+  } else if (msg.type === 'DUNGEON_FLOOR_SYNC') {
+    currentFloor = msg.floorNumber;
+    if (!currentDungeon) {
+      currentDungeon = new Dungeon({ floorNumber: msg.floorNumber, theme: msg.dungeonData.themeKey });
+    }
+    currentDungeon.applySyncData(msg.dungeonData);
+    player.x = currentDungeon.spawnRoom.centerX;
+    player.y = currentDungeon.spawnRoom.centerY;
+    player.vx = 0;
+    player.vy = 0;
+    groundItems.clear();
+    monsterManager.clear();
+
+    const hudFloor = document.getElementById('hud-floor');
+    if (hudFloor) {
+      hudFloor.textContent = `FLOOR ${currentFloor}: ${currentDungeon.theme.shortName}`;
+      hudFloor.style.color = currentDungeon.theme.torchColor;
+      hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
+    }
+    particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
+  } else if (msg.type === 'ROOM_DISCOVERED') {
+    if (currentDungeon) {
+      currentDungeon.discoverRoom(msg.roomId);
+      monsterManager.activateRoom(msg.roomId);
+    }
+  } else if (msg.type === 'MONSTER_UPDATE_BATCH') {
+    if (!network.isHost) {
+      monsterManager.applyBatchNetworkState(msg.batch);
+    }
+  } else if (msg.type === 'MONSTER_HIT') {
+    const monster = monsterManager.getMonsterById(msg.monsterId);
+    if (monster) {
+      monster.takeHit(msg.damage, msg.angle, msg.knockback || 0, msg.isCrit);
+      particles.spawnComicText(monster.x, monster.y - 20, msg.isCrit ? `CRIT! -${msg.damage}` : `-${msg.damage}`, msg.isCrit ? '#ff0055' : '#fbbf24');
     }
   } else if (msg.type === 'COMIC_TEXT') {
     particles.spawnComicText(msg.x, msg.y, msg.text, msg.color, false);
@@ -680,6 +967,12 @@ network.onMessageReceived = (fromPeerId, msg) => {
 setInterval(() => {
   if (network.connections.size > 0) {
     broadcastMyState();
+    if (network.isHost && currentFloor >= 1 && currentDungeon) {
+      network.broadcast({
+        type: 'MONSTER_UPDATE_BATCH',
+        batch: monsterManager.getBatchNetworkState()
+      });
+    }
   }
 }, 50);
 
@@ -765,8 +1058,29 @@ function spawnShotgunPellets(caster, isRemote = false) {
 }
 
 function handleAttacks() {
-  const targets = [dummy, ...network.remotePlayers.values()];
+  const targets = currentFloor === 0
+    ? [dummy, ...network.remotePlayers.values()]
+    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...network.remotePlayers.values()];
   const hits = combat.performWeaponAttack(player, targets);
+
+  // Destructible containers in dungeon
+  if (currentFloor >= 1 && currentDungeon) {
+    for (const container of currentDungeon.containers) {
+      if (container.isBroken) continue;
+      const dist = Math.hypot(player.x - container.x, player.y - container.y);
+      if (dist <= (player.radius || 22) + container.radius + 35) {
+        container.isBroken = true;
+        audio.playContainerShatter();
+        particles.spawnDashBurst(container.x, container.y, 0, '#c084fc');
+        particles.spawnComicText(container.x, container.y - 18, 'SMASH! 🏺', '#e2e8f0');
+        if (Math.random() < 0.5) {
+          player.hp = Math.min(player.maxHp, player.hp + 20);
+          particles.spawnComicText(player.x, player.y - 32, '+20 HP 💚', '#22c55e');
+          player.syncHUD();
+        }
+      }
+    }
+  }
 
   for (const hit of hits) {
     if (hit.target === dummy) {
@@ -830,6 +1144,59 @@ function handleAttacks() {
       };
       if (network.isHost) network.broadcast(hitMsg);
       else network.sendToHost(hitMsg);
+    } else if (hit.target instanceof Monster) {
+      hit.target.takeHit(hit.damage, hit.angle, hit.knockback || 0, hit.isCrit, player);
+      if (hit.isPull) {
+        hit.target.pullTowards(player.x, player.y, 45);
+      }
+
+      const weaponVisual = player.equipment?.weapon?.visual;
+      if (weaponVisual === 'dragon_slayer') {
+        audio.playClang();
+        cinematics.addScreenShake(12);
+      } else if (weaponVisual === 'warhammer_2h') {
+        audio.playHammerSmash();
+        cinematics.addScreenShake(10);
+      } else if (weaponVisual === 'sukuna_kamutoke') {
+        audio.playLightningDagger();
+      } else if (weaponVisual === 'sukuna_cleaver') {
+        audio.playCleaverSlash();
+        cinematics.addScreenShake(6);
+      } else if (weaponVisual === 'dual_snap_blades') {
+        audio.playSnapBladesSlash();
+        cinematics.addScreenShake(7);
+        particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#10b981');
+      } else if (weaponVisual === 'david_shotgun') {
+        audio.playBonk();
+        const shake = Math.min(14, 6 + (hit.pelletsHit || 1) * 1.4);
+        cinematics.addScreenShake(shake);
+        particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#f59e0b');
+      } else {
+        audio.playBonk();
+      }
+
+      let popupText = hit.isCrit ? `CRIT! -${hit.damage}` : `-${hit.damage}`;
+      let popupColor = hit.isCrit ? '#ff0055' : '#fbbf24';
+      if (weaponVisual === 'dual_snap_blades') {
+        popupText = hit.isCrit ? `CRIT DUAL SLICE! -${hit.damage} ⚔️` : `DUAL SLICE! -${hit.damage} ⚔️`;
+        popupColor = hit.isCrit ? '#ff0055' : '#10b981';
+      } else if (weaponVisual === 'david_shotgun') {
+        const pellets = hit.pelletsHit || 6;
+        popupText = hit.isCrit ? `CRIT [${pellets}/6]! -${hit.damage} 💥` : `BLAST [${pellets}/6]! -${hit.damage} 💥`;
+        popupColor = hit.isCrit ? '#ff0055' : (pellets >= 5 ? '#00ff88' : '#fbbf24');
+      }
+      particles.spawnComicText(hit.target.x, hit.target.y - 24, popupText, popupColor);
+
+      const hitMsg = {
+        type: 'MONSTER_HIT',
+        monsterId: hit.target.id,
+        damage: hit.damage,
+        angle: hit.angle,
+        knockback: hit.knockback || 0,
+        isCrit: hit.isCrit
+      };
+      if (network.isHost) network.broadcast(hitMsg);
+      else network.sendToHost(hitMsg);
     } else {
       for (const [peerId, remote] of network.remotePlayers.entries()) {
         if (remote === hit.target) {
@@ -878,7 +1245,9 @@ function handleAttacks() {
 }
 
 function handleOffhandAttack() {
-  const targets = [dummy, ...network.remotePlayers.values()];
+  const targets = currentFloor === 0
+    ? [dummy, ...network.remotePlayers.values()]
+    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...network.remotePlayers.values()];
   const hits = combat.performOffhandAttack(player, targets);
 
   for (const hit of hits) {
@@ -908,6 +1277,35 @@ function handleOffhandAttack() {
         isCrit: hit.isCrit,
         knockback: hit.knockback,
         isPull: false
+      };
+      if (network.isHost) network.broadcast(hitMsg);
+      else network.sendToHost(hitMsg);
+    } else if (hit.target instanceof Monster) {
+      hit.target.takeHit(hit.damage, hit.angle, hit.knockback, hit.isCrit, player);
+
+      if (hit.attackType === 'reversal_red') {
+        audio.playRepulsionBurst();
+        cinematics.addScreenShake(12);
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `REVERSAL RED! -${hit.damage}`, '#ff2a5f');
+        particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#ff2a5f');
+      } else if (hit.attackType === 'sukuna_hiten') {
+        audio.playFireSpear();
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `FIRE HITEN! -${hit.damage}`, '#f97316');
+      } else if (hit.attackType === 'shield_bash') {
+        audio.playHammerSmash();
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `SHIELD BASH! -${hit.damage}`, '#38bdf8');
+      } else {
+        audio.playBonk();
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `WHACK! -${hit.damage}`, '#ff3366');
+      }
+
+      const hitMsg = {
+        type: 'MONSTER_HIT',
+        monsterId: hit.target.id,
+        damage: hit.damage,
+        angle: hit.angle,
+        knockback: hit.knockback || 0,
+        isCrit: hit.isCrit
       };
       if (network.isHost) network.broadcast(hitMsg);
       else network.sendToHost(hitMsg);
@@ -1044,10 +1442,36 @@ function gameLoop(now) {
   // 1. Update entities
   // David (the caster) moves at normal/boosted dt; all others update at worldDt!
   const playerDt = player.isSandevistan ? dt : worldDt;
-  player.update(playerDt, input, dungeonBounds);
-  dummy.update(worldDt, [player, ...network.remotePlayers.values()]);
-  readyCircle.update(worldDt, player, network.remotePlayers);
-  wardrobeStation.update(worldDt);
+  const activeBounds = (currentFloor >= 1 && currentDungeon) ? currentDungeon : dungeonBounds;
+  player.update(playerDt, input, activeBounds);
+
+  if (currentFloor === 0) {
+    dummy.update(worldDt, [player, ...network.remotePlayers.values()]);
+    readyCircle.update(worldDt, player, network.remotePlayers);
+    wardrobeStation.update(worldDt);
+  } else if (currentFloor >= 1 && currentDungeon) {
+    const discoveryRes = currentDungeon.checkRoomDiscovery(player.x, player.y);
+    if (discoveryRes && discoveryRes.discovered) {
+      monsterManager.activateRoom(discoveryRes.room.id);
+      audio.playDescentFanfare();
+      if (network.isHost) {
+        network.broadcast({
+          type: 'ROOM_DISCOVERED',
+          roomId: discoveryRes.room.id
+        });
+      }
+    }
+    currentDungeon.update(worldDt);
+    monsterManager.update(worldDt, [player, ...network.remotePlayers.values()], currentDungeon, network.isHost || !network.isConnected);
+
+    // Check Exit Portal trigger
+    if (currentDungeon.exitPortal && currentDungeon.exitPortal.isActive) {
+      const distToPortal = Math.hypot(player.x - currentDungeon.exitPortal.x, player.y - currentDungeon.exitPortal.y);
+      if (distToPortal <= (player.radius || 22) + currentDungeon.exitPortal.radius) {
+        startFloorDescent(currentFloor + 1);
+      }
+    }
+  }
   player.syncHUD();
 
   // Update ground loot bobbing
@@ -1075,7 +1499,9 @@ function gameLoop(now) {
   // --- LEVI ODM AIRBORNE PASS-THROUGH SLICING (HE ONLY SPINS ONCE HE HITS AN ENEMY!) ---
   if (player.isAirborne && (player.activeCables.length > 0 || Math.hypot(player.vx, player.vy) > 180)) {
     const nowTime = performance.now();
-    const sliceTargets = [dummy, ...network.remotePlayers.values()];
+    const sliceTargets = currentFloor === 0
+      ? [dummy, ...network.remotePlayers.values()]
+      : [...monsterManager.getNearbyMonsters(player.x, player.y, 250), ...network.remotePlayers.values()];
     for (const target of sliceTargets) {
       if (!target) continue;
       const dist = Math.hypot(target.x - player.x, target.y - player.y);
@@ -1104,6 +1530,13 @@ function gameLoop(now) {
             const hitMsg = { type: 'DUMMY_HIT', damage: sliceDamage, angle: player.angle, isCrit };
             if (network.isHost) network.broadcast(hitMsg);
             else network.sendToHost(hitMsg);
+          } else if (target instanceof Monster) {
+            target.takeHit(sliceDamage, player.angle, 0, isCrit, player);
+            const sliceMsg = isCrit ? `CRIT SLICE! -${sliceDamage} 🌀` : `BLADE SLICE! -${sliceDamage} 🌀`;
+            particles.spawnComicText(target.x, target.y - 30, sliceMsg, isCrit ? '#ff0055' : '#10b981');
+            const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: sliceDamage, angle: player.angle, knockback: 0, isCrit };
+            if (network.isHost) network.broadcast(hitMsg);
+            else network.sendToHost(hitMsg);
           } else {
             for (const [peerId, remote] of network.remotePlayers.entries()) {
               if (remote === target) {
@@ -1122,8 +1555,10 @@ function gameLoop(now) {
     }
   }
 
-  // Update Cinematics & Projectiles (collision with training dummy, player, and remote peers)
-  const cinematicTargets = [dummy, player, ...network.remotePlayers.values()];
+  // Update Cinematics & Projectiles (collision with training dummy, monsters, player, and remote peers)
+  const cinematicTargets = currentFloor === 0
+    ? [dummy, player, ...network.remotePlayers.values()]
+    : [player, ...monsterManager.getAliveMonsters(), ...network.remotePlayers.values()];
   cinematics.update(worldDt, cinematicTargets, (target, proj) => {
     if (target === player) {
       if (proj.type === 'shotgun_pellet') {
@@ -1137,7 +1572,7 @@ function gameLoop(now) {
         }
         return;
       }
-      if (proj.type === 'bot_energy_orb' || proj.caster === dummy) {
+      if (proj.type === 'bot_energy_orb' || proj.caster === dummy || (proj.caster instanceof Monster)) {
         const res = player.takeDamage(proj.damage || 22, Math.atan2(proj.vy || 0, proj.vx || 0), 450);
         if (res) {
           audio.playBonk();
@@ -1215,6 +1650,63 @@ function gameLoop(now) {
       cinematics.addScreenShake(16);
 
       const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: 0, isCrit: true };
+      if (network.isHost) network.broadcast(hitMsg);
+      else network.sendToHost(hitMsg);
+    } else if (target instanceof Monster) {
+      if (proj.type === 'shotgun_pellet') {
+        target.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120, proj.isCrit, proj.caster);
+        audio.playBonk();
+        cinematics.addScreenShake(Math.min(10, 3 + (proj.isCrit ? 3 : 1)));
+        particles.spawnDashBurst(target.x, target.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#f59e0b');
+        const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
+        particles.spawnComicText(target.x, target.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), knockback: proj.knockback || 120, isCrit: proj.isCrit };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'limitless_repulsion') {
+        target.takeHit(proj.damage, proj.angle, proj.knockback, true, proj.caster);
+        audio.playRepulsionBurst();
+        particles.spawnComicText(target.x, target.y - 28, `REPULSED! -${proj.damage}`, '#00f0ff');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: proj.angle, knockback: proj.knockback, isCrit: true };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'levi_whirlwind') {
+        target.takeHit(proj.damage, proj.angle, proj.knockback, true, proj.caster);
+        audio.playSnapBladesSlash();
+        cinematics.addScreenShake(8);
+        const spinMsg = proj.isFirstHit ? 'BLENDER WHIRLWIND! 🌀' : `SLICE! -${proj.damage}`;
+        particles.spawnComicText(target.x, target.y - 28, spinMsg, '#10b981');
+        particles.spawnDashBurst(target.x, target.y, proj.angle, '#10b981');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: proj.angle, knockback: proj.knockback, isCrit: true };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'odm_gas_boost') {
+        target.takeHit(proj.damage, proj.angle, proj.knockback, false, proj.caster);
+        audio.playOdmGasHiss();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(target.x, target.y - 28, `GAS BLAST! -${proj.damage}`, '#10b981');
+        particles.spawnDashBurst(target.x, target.y, proj.angle, '#ffffff');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: proj.angle, knockback: proj.knockback, isCrit: false };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      target.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.isStun ? 0 : 350, true, proj.caster);
+      if (proj.isStun) {
+        target.applyStun(proj.stunDuration || 2.5);
+        particles.spawnComicText(target.x, target.y - 40, 'STUNNED! 💫', '#fde047');
+      }
+      audio.playClang();
+      particles.spawnComicText(target.x, target.y - 28, `${(proj.type || 'ULTIMATE').toUpperCase().replace(/_/g, ' ')}! -${proj.damage}`, '#ff2a5f');
+      cinematics.addScreenShake(16);
+
+      const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: 0, knockback: proj.isStun ? 0 : 350, isCrit: true };
       if (network.isHost) network.broadcast(hitMsg);
       else network.sendToHost(hitMsg);
     } else {
@@ -1353,7 +1845,7 @@ function gameLoop(now) {
       const worldMouseX = (input.mouse.screenX - window.innerWidth / 2) + player.x;
       const worldMouseY = (input.mouse.screenY - window.innerHeight / 2) + player.y;
 
-      const launched = player.fireOdmCable(worldMouseX, worldMouseY, audio, particles, dungeonBounds);
+      const launched = player.fireOdmCable(worldMouseX, worldMouseY, audio, particles, activeBounds);
       if (launched) {
         cinematics.addScreenShake(3);
         player.syncHUD();
@@ -1374,7 +1866,7 @@ function gameLoop(now) {
       const worldMouseX = (input.mouse.screenX - window.innerWidth / 2) + player.x;
       const worldMouseY = (input.mouse.screenY - window.innerHeight / 2) + player.y;
 
-      const launched = player.fireOdmCable(worldMouseX, worldMouseY, audio, particles, dungeonBounds);
+      const launched = player.fireOdmCable(worldMouseX, worldMouseY, audio, particles, activeBounds);
       if (launched) {
         cinematics.addScreenShake(3);
         player.syncHUD();
@@ -1452,28 +1944,36 @@ function gameLoop(now) {
   renderer.clear();
   renderer.beginCamera(player.x + shake.x, player.y + shake.y);
 
-  // Background stone floor
-  renderer.drawDungeonFloor(dungeonBounds);
+  if (currentFloor === 0) {
+    // Safe Lobby Base Camp
+    renderer.drawDungeonFloor(dungeonBounds);
 
-  // Ready Ritual Circle
-  readyCircle.draw(renderer.ctx);
+    // Ready Ritual Circle
+    readyCircle.draw(renderer.ctx);
 
-  // Corner torches
-  renderer.drawTorch(-560, -560, now * 0.001);
-  renderer.drawTorch(560, -560, now * 0.001);
-  renderer.drawTorch(-560, 560, now * 0.001);
-  renderer.drawTorch(560, 560, now * 0.001);
+    // Corner torches
+    renderer.drawTorch(-560, -560, now * 0.001);
+    renderer.drawTorch(560, -560, now * 0.001);
+    renderer.drawTorch(-560, 560, now * 0.001);
+    renderer.drawTorch(560, 560, now * 0.001);
 
-  // Wardrobe Station
-  wardrobeStation.draw(renderer.ctx, player);
+    // Wardrobe Station
+    wardrobeStation.draw(renderer.ctx, player);
+
+    // Training Dummy / Combat Automaton
+    dummy.draw(renderer.ctx, Math.hypot(player.x - dummy.x, player.y - dummy.y) <= 180);
+  } else if (currentFloor >= 1 && currentDungeon) {
+    // Procedural Anime Dungeon (BSP chambers, corridors, wall torches, destructibles, fog of war)
+    renderer.drawDungeon(currentDungeon, player.x, player.y, renderer.width, renderer.height, now * 0.001);
+
+    // Themed Anime Monsters (Fly Heads, Masked Ino, Cursed Brutes, Boss Finger Bearer)
+    renderer.drawMonsters(monsterManager.monsters, now * 0.001);
+  }
 
   // Ground Loot Items (with glowing rarity beams and proximity [E] pickup)
   for (const [_, loot] of groundItems.entries()) {
     loot.draw(renderer.ctx, loot.isNear(player));
   }
-
-  // Training Dummy / Combat Automaton
-  dummy.draw(renderer.ctx, Math.hypot(player.x - dummy.x, player.y - dummy.y) <= 180);
 
   // Dash after-images & particles
   renderer.drawAfterImages(player.afterImages);
@@ -1491,6 +1991,12 @@ function gameLoop(now) {
   renderer.drawCharacter(player);
 
   renderer.endCamera();
+
+  // Screen-space UI overlays for procedural dungeon
+  if (currentFloor >= 1 && currentDungeon) {
+    renderer.drawRoomBanner(currentDungeon, renderer.width, renderer.height);
+    renderer.drawBossHUD(monsterManager.getBoss(), renderer.width);
+  }
 
   // Full-screen post-processing cinematic overlays (Dark purple vortex, screen bisection cut, blood-red vignette)
   cinematics.drawScreenOverlay(renderer.ctx, renderer.width, renderer.height);
