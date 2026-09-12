@@ -49,7 +49,7 @@ export class Monster {
 
     // Room association (activates when room discovered)
     this.roomId = options.roomId || null;
-    this.isActive = options.isActive !== undefined ? options.isActive : false;
+    this.isActive = options.isActive !== undefined ? options.isActive : true;
   }
 
   takeHit(damage = 10, hitAngle = 0, knockback = 280, isCrit = false, attacker = null) {

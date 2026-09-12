@@ -12,6 +12,15 @@ export class CinematicManager {
     this.shakeDecay = 8; // decay per second
   }
 
+  spawnProjectile(proj) {
+    if (!proj) return;
+    this.projectiles.push({
+      life: proj.life || 2.0,
+      maxLife: proj.life || 2.0,
+      ...proj
+    });
+  }
+
   get activeCinematic() {
     return this.activeCinematics[this.activeCinematics.length - 1] || null;
   }
@@ -266,6 +275,30 @@ export class CinematicManager {
       });
       this.addScreenShake(6);
     }
+    this.shakeDecay = 16.0;
+  }
+
+  spawnProjectile(proj) {
+    if (!proj) return;
+    const speed = Math.hypot(proj.vx || 0, proj.vy || 0);
+    const life = proj.life || (proj.maxDist && speed > 0 ? proj.maxDist / speed : 2.5);
+    this.projectiles.push({
+      type: proj.type || 'bot_energy_orb',
+      x: proj.x || 0,
+      y: proj.y || 0,
+      vx: proj.vx || 0,
+      vy: proj.vy || 0,
+      damage: proj.damage || 15,
+      caster: proj.caster || null,
+      color: proj.color || '#a855f7',
+      radius: proj.radius || 10,
+      life: life,
+      maxLife: life,
+      maxDist: proj.maxDist || 500,
+      angle: proj.angle !== undefined ? proj.angle : Math.atan2(proj.vy || 0, proj.vx || 1),
+      isRemote: !!proj.isRemote,
+      hasHit: false
+    });
   }
 
   addScreenShake(amount) {
@@ -526,7 +559,7 @@ export class CinematicManager {
       const proj = this.projectiles[i];
       proj.x += proj.vx * dt;
       proj.y += proj.vy * dt;
-      proj.life -= dt;
+      proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - dt : -1;
 
       // Expand projectile radius if applicable (Hollow Purple)
       if (proj.radius && proj.maxRadius) {
@@ -537,6 +570,8 @@ export class CinematicManager {
       if (!proj.isRemote) {
         for (const target of targets) {
           if (!target || target === proj.caster) continue;
+          // Monsters do not shoot or hit fellow monsters
+          if (proj.caster && proj.caster.roomId !== undefined && target.roomId !== undefined) continue;
           if (proj.trappedBy === target) continue; // Trapped in Gojo's Mugen: deals 0 damage, cannot hit!
           if (target.isLimitlessBarrier && !proj.isRepelled) continue; // Barrier active: completely protects target!
 
@@ -666,11 +701,12 @@ export class CinematicManager {
         ctx.arc(0, 0, proj.radius * 0.65, -Math.PI * 0.45, Math.PI * 0.45);
         ctx.stroke();
       } else if (proj.type === 'bot_energy_orb') {
-        // Sleek, compact orange-gold arcane energy dart from Combat Bot
+        // Sleek, compact arcane / cursed energy dart
         const r = proj.radius || 8;
-        ctx.fillStyle = '#f59e0b';
-        ctx.shadowColor = '#fbbf24';
-        ctx.shadowBlur = 12;
+        const col = proj.color || '#f59e0b';
+        ctx.fillStyle = col;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 14;
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.fill();

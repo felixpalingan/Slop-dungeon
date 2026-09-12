@@ -249,8 +249,9 @@ export class Dungeon {
         },
         type: 'combat',
         name: `CHAMBER ${roomId - 1}`,
-        isDiscovered: false,
-        discoveredAlpha: 0,
+        isDiscovered: true,
+        discoveredAlpha: 1.0,
+        hasShownBanner: false,
         monstersSpawned: false,
         spawns: [],
         torches: []
@@ -340,6 +341,7 @@ export class Dungeon {
       this.spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
       this.spawnRoom.isDiscovered = true;
       this.spawnRoom.discoveredAlpha = 1.0;
+      this.spawnRoom.hasShownBanner = true;
 
       // Boss Room: Farthest from Spawn Room
       let maxDist = -1;
@@ -473,8 +475,8 @@ export class Dungeon {
         playerY >= room.bounds.minY &&
         playerY <= room.bounds.maxY
       ) {
-        if (!room.isDiscovered) {
-          room.isDiscovered = true;
+        if (!room.hasShownBanner) {
+          room.hasShownBanner = true;
           this.activeBanner = {
             title: room.name,
             subtitle: this.theme.shortName,
@@ -491,12 +493,12 @@ export class Dungeon {
   }
 
   /**
-   * Directly marks a room as discovered by ID (for network sync)
+   * Directly marks a room banner as shown by ID (for network sync)
    */
   discoverRoom(roomId) {
     const room = this.rooms.find(r => r.id === roomId);
-    if (room && !room.isDiscovered) {
-      room.isDiscovered = true;
+    if (room && !room.hasShownBanner) {
+      room.hasShownBanner = true;
       this.activeBanner = {
         title: room.name,
         subtitle: this.theme.shortName,
@@ -736,6 +738,8 @@ export class Dungeon {
     this.maxY = this.originY + this.height;
 
     // Reconstruct grid & rooms
+    this.corridorTiles = new Set();
+    this.torches = [];
     this.grid = Array.from({ length: this.cols }, () => new Uint8Array(this.rows));
     this.rooms = data.rooms.map(r => {
       const room = {
@@ -748,7 +752,9 @@ export class Dungeon {
           maxX: this.originX + (r.col + r.width) * this.tileSize,
           maxY: this.originY + (r.row + r.height) * this.tileSize
         },
-        discoveredAlpha: r.isDiscovered ? 1.0 : 0,
+        isDiscovered: true,
+        discoveredAlpha: 1.0,
+        hasShownBanner: r.hasShownBanner ?? true,
         torches: []
       };
 

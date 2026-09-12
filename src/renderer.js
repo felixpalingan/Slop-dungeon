@@ -1846,36 +1846,6 @@ export class Renderer {
 
       ctx.restore();
     }
-
-    // 6. Room Discovery Fog of War (Option A)
-    for (const room of dungeon.rooms) {
-      if (!room.isDiscovered) {
-        // Completely undiscovered: dark abyssal shroud
-        ctx.fillStyle = 'rgba(6, 4, 12, 0.97)';
-        ctx.fillRect(
-          room.bounds.minX,
-          room.bounds.minY,
-          room.bounds.maxX - room.bounds.minX,
-          room.bounds.maxY - room.bounds.minY
-        );
-
-        // Subtle glowing perimeter question mark or fog icon
-        ctx.font = '900 24px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.fillText('?', room.centerX, room.centerY + 8);
-      } else if (room.discoveredAlpha < 1.0) {
-        // Fading out dark veil
-        room.discoveredAlpha = Math.min(1.0, room.discoveredAlpha + 0.03);
-        ctx.fillStyle = `rgba(6, 4, 12, ${(1.0 - room.discoveredAlpha) * 0.97})`;
-        ctx.fillRect(
-          room.bounds.minX,
-          room.bounds.minY,
-          room.bounds.maxX - room.bounds.minX,
-          room.bounds.maxY - room.bounds.minY
-        );
-      }
-    }
   }
 
   /**

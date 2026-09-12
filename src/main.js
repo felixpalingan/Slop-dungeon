@@ -164,6 +164,37 @@ monsterManager.onBossKilled = (boss) => {
   }
 };
 
+function applyDamageToTarget(target, damage, angle, knockback, sourceLabel, color) {
+  if (!target) return;
+  if (target === player) {
+    const res = player.takeDamage(damage, angle, knockback);
+    if (res) {
+      const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : sourceLabel);
+      particles.spawnComicText(player.x, player.y - 20, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : color));
+      broadcastMyState();
+    }
+  } else if (typeof target.takeDamage === 'function') {
+    target.takeDamage(damage, angle, knockback);
+    particles.spawnComicText(target.x, target.y - 20, sourceLabel, color);
+  } else if (typeof target.takeHit === 'function') {
+    target.takeHit(damage, angle, knockback);
+    particles.spawnComicText(target.x, target.y - 20, sourceLabel, color);
+  } else {
+    // Check if remote peer
+    for (const [peerId, remote] of network.remotePlayers.entries()) {
+      if (remote === target) {
+        const kx = Math.cos(angle) * knockback;
+        const ky = Math.sin(angle) * knockback;
+        const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
+        if (network.isHost) network.broadcast(slapMsg);
+        else network.sendToHost(slapMsg);
+        particles.spawnComicText(remote.x, remote.y - 20, sourceLabel, color);
+        break;
+      }
+    }
+  }
+}
+
 function populateFloorMonsters(dungeon) {
   monsterManager.clear();
   const theme = dungeon.themeKey;
@@ -214,14 +245,13 @@ function populateFloorMonsters(dungeon) {
         radius,
         speed,
         roomId: room.id,
-        isActive: room.isDiscovered
+        isActive: true
       });
 
       if (archetype === 'swarmer') {
         monster.onAttack = (target) => {
           audio.playFlyHeadBuzz();
-          target.takeDamage(12, monster.angle, 160);
-          particles.spawnComicText(target.x, target.y - 20, '-12 (CURSE BITE)', '#c084fc');
+          applyDamageToTarget(target, 12, monster.angle, 160, '-12 (CURSE BITE)', '#c084fc');
         };
       } else if (archetype === 'ranged') {
         monster.onRangedAttack = (target) => {
@@ -236,6 +266,7 @@ function populateFloorMonsters(dungeon) {
             caster: monster,
             color: '#a855f7',
             radius: 9,
+            life: 2.5,
             maxDist: 400
           });
           particles.spawnComicText(monster.x, monster.y - 24, 'CURSE ORB!', '#c084fc');
@@ -246,10 +277,11 @@ function populateFloorMonsters(dungeon) {
           cinematics.addScreenShake(9);
           particles.spawnDashBurst(monster.x, monster.y, 0, '#f97316');
           particles.spawnComicText(monster.x, monster.y - 30, 'EARTH SLAM! 💥', '#f97316');
-          const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
-          if (dist <= monster.radius * 2.2 + target.radius) {
-            target.takeDamage(38, monster.angle, 520);
-            particles.spawnComicText(target.x, target.y - 20, '-38 SLAM!', '#f97316');
+          if (target) {
+            const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+            if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+              applyDamageToTarget(target, 38, monster.angle, 520, '-38 SLAM!', '#f97316');
+            }
           }
         };
       }
@@ -272,14 +304,13 @@ function populateFloorMonsters(dungeon) {
       radius: 46,
       speed: 90,
       roomId: dungeon.bossRoom.id,
-      isActive: false
+      isActive: true
     });
 
     boss.onBossAttack = (target) => {
       audio.playCleaverSlash();
       cinematics.addScreenShake(6);
-      target.takeDamage(28, boss.angle, 420);
-      particles.spawnComicText(target.x, target.y - 24, '-28 CURSE CLAW!', '#ef4444');
+      applyDamageToTarget(target, 28, boss.angle, 420, '-28 CURSE CLAW!', '#ef4444');
     };
 
     boss.onBossSpecial = (target) => {
@@ -296,6 +327,7 @@ function populateFloorMonsters(dungeon) {
         caster: boss,
         color: '#c084fc',
         radius: 18,
+        life: 2.5,
         maxDist: 800
       });
     };
@@ -1371,8 +1403,9 @@ let wasSandevistanActive = false;
 let slowMoTickTimer = 0;
 
 function gameLoop(now) {
-  const dt = Math.min(0.1, (now - lastTime) / 1000);
-  lastTime = now;
+  try {
+    const dt = Math.min(0.1, (now - lastTime) / 1000);
+    lastTime = now;
 
   const wasRolling = player.isRolling;
   const modalsOpen =
@@ -2001,10 +2034,13 @@ function gameLoop(now) {
   // Full-screen post-processing cinematic overlays (Dark purple vortex, screen bisection cut, blood-red vignette)
   cinematics.drawScreenOverlay(renderer.ctx, renderer.width, renderer.height);
 
-  // 4. Clear single-frame input flags
-  input.endFrame();
-
-  requestAnimationFrame(gameLoop);
+    // 4. Clear single-frame input flags
+    input.endFrame();
+  } catch (err) {
+    console.error('gameLoop tick error:', err);
+  } finally {
+    requestAnimationFrame(gameLoop);
+  }
 }
 
 requestAnimationFrame(gameLoop);
