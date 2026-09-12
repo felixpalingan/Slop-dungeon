@@ -195,6 +195,30 @@ function applyDamageToTarget(target, damage, angle, knockback, sourceLabel, colo
   }
 }
 
+function spawnRoomReward(room) {
+  if (!room) return;
+  const pot = {
+    id: `reward_pot_${room.id}_${Date.now()}`,
+    x: room.centerX,
+    y: room.centerY,
+    radius: 18,
+    hp: 1,
+    isBroken: false,
+    theme: currentDungeon.themeKey
+  };
+  room.containers.push(pot);
+  currentDungeon.containers.push(pot);
+  particles.spawnDashBurst(room.centerX, room.centerY, 0, '#00ff88');
+  particles.spawnComicText(room.centerX, room.centerY - 24, 'CHEST UNLOCKED! 🎁', '#00ff88');
+
+  // Chance of bonus anime material / consumable
+  const bonusItem = ITEM_CATALOG['sukuna_finger'];
+  if (bonusItem && Math.random() < 0.65) {
+    const lootObj = new GroundLoot(bonusItem, room.centerX + 32, room.centerY, `clear_reward_${Date.now()}`);
+    groundItems.set(lootObj.id, lootObj);
+  }
+}
+
 function populateFloorMonsters(dungeon) {
   monsterManager.clear();
   const theme = dungeon.themeKey;
@@ -205,8 +229,8 @@ function populateFloorMonsters(dungeon) {
     const mobCount = 3 + Math.floor(Math.random() * 2);
 
     for (let m = 0; m < mobCount; m++) {
-      const offsetX = (Math.random() - 0.5) * (room.width - 3) * dungeon.tileSize;
-      const offsetY = (Math.random() - 0.5) * (room.height - 3) * dungeon.tileSize;
+      const offsetX = (Math.random() - 0.5) * (room.width - 320);
+      const offsetY = (Math.random() - 0.5) * (room.height - 240);
       const spawnX = room.centerX + offsetX;
       const spawnY = room.centerY + offsetY;
 
@@ -245,7 +269,7 @@ function populateFloorMonsters(dungeon) {
         radius,
         speed,
         roomId: room.id,
-        isActive: true
+        isActive: false // Awakens only when player enters this chamber!
       });
 
       if (archetype === 'swarmer') {
@@ -299,12 +323,12 @@ function populateFloorMonsters(dungeon) {
       theme,
       archetype: 'boss',
       x: dungeon.bossRoom.centerX,
-      y: dungeon.bossRoom.centerY - 60,
+      y: dungeon.bossRoom.centerY - 50,
       hp: 850,
       radius: 46,
       speed: 90,
       roomId: dungeon.bossRoom.id,
-      isActive: true
+      isActive: false // Dormant until player enters Boss Sanctum!
     });
 
     boss.onBossAttack = (target) => {
@@ -367,6 +391,9 @@ function startFloorDescent(floorNumber, broadcast = true) {
   player.y = currentDungeon.spawnRoom.centerY;
   player.vx = 0;
   player.vy = 0;
+  currentDungeon.currentRoom = currentDungeon.spawnRoom;
+  currentDungeon.spawnRoom.hasVisited = true;
+  currentDungeon.spawnRoom.isCleared = true;
 
   // Clear previous floor ground loot and spawn new floor content
   groundItems.clear();
@@ -950,6 +977,9 @@ network.onMessageReceived = (fromPeerId, msg) => {
     player.y = currentDungeon.spawnRoom.centerY;
     player.vx = 0;
     player.vy = 0;
+    currentDungeon.currentRoom = currentDungeon.spawnRoom;
+    currentDungeon.spawnRoom.hasVisited = true;
+    currentDungeon.spawnRoom.isCleared = true;
     groundItems.clear();
     monsterManager.clear();
 
@@ -960,10 +990,39 @@ network.onMessageReceived = (fromPeerId, msg) => {
       hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
     }
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
+  } else if (msg.type === 'ROOM_TRANSITION') {
+    if (currentDungeon) {
+      const room = currentDungeon.rooms.find(r => r.id === msg.roomId);
+      if (room) {
+        room.hasVisited = true;
+        currentDungeon.currentRoom = room;
+        currentDungeon.showRoomBanner(room);
+        if (!room.isCleared) {
+          room.isLocked = true;
+          monsterManager.activateRoom(room.id);
+        }
+      }
+    }
+  } else if (msg.type === 'ROOM_CLEARED') {
+    if (currentDungeon) {
+      const room = currentDungeon.rooms.find(r => r.id === msg.roomId);
+      if (room) {
+        room.isLocked = false;
+        room.isCleared = true;
+        audio.playDoorUnlock();
+        audio.playRoomClear();
+        if (room.type === 'boss' && currentDungeon.exitPortal) {
+          currentDungeon.exitPortal.isActive = true;
+        }
+      }
+    }
   } else if (msg.type === 'ROOM_DISCOVERED') {
     if (currentDungeon) {
-      currentDungeon.discoverRoom(msg.roomId);
-      monsterManager.activateRoom(msg.roomId);
+      const room = currentDungeon.rooms.find(r => r.id === msg.roomId);
+      if (room) {
+        room.hasVisited = true;
+        currentDungeon.showRoomBanner(room);
+      }
     }
   } else if (msg.type === 'MONSTER_UPDATE_BATCH') {
     if (!network.isHost) {
@@ -1483,17 +1542,67 @@ function gameLoop(now) {
     readyCircle.update(worldDt, player, network.remotePlayers);
     wardrobeStation.update(worldDt);
   } else if (currentFloor >= 1 && currentDungeon) {
-    const discoveryRes = currentDungeon.checkRoomDiscovery(player.x, player.y);
-    if (discoveryRes && discoveryRes.discovered) {
-      monsterManager.activateRoom(discoveryRes.room.id);
-      audio.playDescentFanfare();
-      if (network.isHost) {
-        network.broadcast({
-          type: 'ROOM_DISCOVERED',
-          roomId: discoveryRes.room.id
-        });
+    // 1. Check Door Transitions
+    const doorTrans = currentDungeon.checkDoorTransition(player.x, player.y, player.radius || 22);
+    if (doorTrans) {
+      player.x = doorTrans.newX;
+      player.y = doorTrans.newY;
+      player.vx = 0;
+      player.vy = 0;
+      currentDungeon.currentRoom = doorTrans.targetRoom;
+      doorTrans.targetRoom.hasVisited = true;
+      currentDungeon.showRoomBanner(doorTrans.targetRoom);
+
+      // Check if targetRoom has monsters and is not cleared -> trigger combat lockdown!
+      if (!doorTrans.targetRoom.isCleared) {
+        const mobsInRoom = monsterManager.getMonstersInRoom(doorTrans.targetRoom.id);
+        if (mobsInRoom.length > 0) {
+          doorTrans.targetRoom.isLocked = true;
+          audio.playDoorLock();
+          cinematics.addScreenShake(12);
+          particles.spawnComicText(player.x, player.y - 45, 'ROOM LOCKED! DEFEAT ALL CURSES! ⚔️', '#ef4444');
+          monsterManager.activateRoom(doorTrans.targetRoom.id);
+        } else {
+          doorTrans.targetRoom.isCleared = true;
+        }
+      }
+
+      const transMsg = {
+        type: 'ROOM_TRANSITION',
+        roomId: doorTrans.targetRoom.id,
+        x: player.x,
+        y: player.y
+      };
+      if (network.isHost) network.broadcast(transMsg);
+      else network.sendToHost(transMsg);
+    }
+
+    // 2. Check Room Lockdown Completion
+    if (currentDungeon.currentRoom && currentDungeon.currentRoom.isLocked) {
+      const remainingMobs = monsterManager.getMonstersInRoom(currentDungeon.currentRoom.id);
+      if (remainingMobs.length === 0) {
+        currentDungeon.currentRoom.isLocked = false;
+        currentDungeon.currentRoom.isCleared = true;
+        audio.playDoorUnlock();
+        audio.playRoomClear();
+        cinematics.addScreenShake(8);
+        particles.spawnComicText(player.x, player.y - 45, 'ROOM CLEARED! ✨', '#00ff88');
+
+        if (currentDungeon.currentRoom.type === 'combat') {
+          spawnRoomReward(currentDungeon.currentRoom);
+        } else if (currentDungeon.currentRoom.type === 'boss') {
+          if (currentDungeon.exitPortal) {
+            currentDungeon.exitPortal.isActive = true;
+          }
+          audio.playDescentFanfare();
+        }
+
+        const clearMsg = { type: 'ROOM_CLEARED', roomId: currentDungeon.currentRoom.id };
+        if (network.isHost) network.broadcast(clearMsg);
+        else network.sendToHost(clearMsg);
       }
     }
+
     currentDungeon.update(worldDt);
     monsterManager.update(worldDt, [player, ...network.remotePlayers.values()], currentDungeon, network.isHost || !network.isConnected);
 
@@ -1975,7 +2084,18 @@ function gameLoop(now) {
   // 3. Render frame with screen shake
   const shake = cinematics.getShakeOffset();
   renderer.clear();
-  renderer.beginCamera(player.x + shake.x, player.y + shake.y);
+
+  let targetCamX = player.x;
+  let targetCamY = player.y;
+
+  if (currentFloor >= 1 && currentDungeon && currentDungeon.currentRoom) {
+    // Smooth Isaac-style camera centered on active room with slight dynamic player sway
+    const cr = currentDungeon.currentRoom;
+    targetCamX = cr.centerX + (player.x - cr.centerX) * 0.22;
+    targetCamY = cr.centerY + (player.y - cr.centerY) * 0.22;
+  }
+
+  renderer.beginCamera(targetCamX + shake.x, targetCamY + shake.y);
 
   if (currentFloor === 0) {
     // Safe Lobby Base Camp
@@ -1996,8 +2116,8 @@ function gameLoop(now) {
     // Training Dummy / Combat Automaton
     dummy.draw(renderer.ctx, Math.hypot(player.x - dummy.x, player.y - dummy.y) <= 180);
   } else if (currentFloor >= 1 && currentDungeon) {
-    // Procedural Anime Dungeon (BSP chambers, corridors, wall torches, destructibles, fog of war)
-    renderer.drawDungeon(currentDungeon, player.x, player.y, renderer.width, renderer.height, now * 0.001);
+    // Procedural Anime Dungeon (Isaac-style discrete rooms & cardinal doors)
+    renderer.drawDungeon(currentDungeon, targetCamX, targetCamY, renderer.width, renderer.height, now * 0.001);
 
     // Themed Anime Monsters (Fly Heads, Masked Ino, Cursed Brutes, Boss Finger Bearer)
     renderer.drawMonsters(monsterManager.monsters, now * 0.001);
@@ -2029,6 +2149,7 @@ function gameLoop(now) {
   if (currentFloor >= 1 && currentDungeon) {
     renderer.drawRoomBanner(currentDungeon, renderer.width, renderer.height);
     renderer.drawBossHUD(monsterManager.getBoss(), renderer.width);
+    renderer.drawMinimap(currentDungeon, renderer.width, renderer.height);
   }
 
   // Full-screen post-processing cinematic overlays (Dark purple vortex, screen bisection cut, blood-red vignette)

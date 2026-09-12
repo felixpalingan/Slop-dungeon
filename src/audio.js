@@ -1424,4 +1424,97 @@ export class AudioManager {
       console.warn('Audio error in Cursed Energy Beam:', e);
     }
   }
+
+  /**
+   * Heavy iron grate slam / room lockdown SFX
+   */
+  playDoorLock() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Low metallic heavy impact
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.28);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+
+      // Iron gate rattle noise
+      const rattle = this.ctx.createOscillator();
+      const rattleGain = this.ctx.createGain();
+      rattle.type = 'sawtooth';
+      rattle.frequency.setValueAtTime(440, now);
+      rattle.frequency.setValueAtTime(220, now + 0.08);
+      rattle.frequency.setValueAtTime(580, now + 0.16);
+      rattleGain.gain.setValueAtTime(0.18, now);
+      rattleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      rattle.connect(rattleGain);
+      rattleGain.connect(this.ctx.destination);
+      rattle.start(now);
+      rattle.stop(now + 0.25);
+    } catch (e) {
+      console.warn('Audio error in Door Lock:', e);
+    }
+  }
+
+  /**
+   * Mechanical latch unclick and unlock chime
+   */
+  playDoorUnlock() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Mechanical latch click
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(1320, now + 0.06);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch (e) {
+      console.warn('Audio error in Door Unlock:', e);
+    }
+  }
+
+  /**
+   * Triumphant retro roguelike Room Cleared fanfare (Ascending major chords)
+   */
+  playRoomClear() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.07);
+        osc.stop(now + idx * 0.07 + 0.22);
+      });
+    } catch (e) {
+      console.warn('Audio error in Room Clear Fanfare:', e);
+    }
+  }
 }

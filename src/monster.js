@@ -356,6 +356,14 @@ export class MonsterManager {
     }
   }
 
+  getMonstersInRoom(roomId) {
+    return this.monsters.filter(m => m.roomId === roomId && !m.isDead);
+  }
+
+  isRoomCleared(roomId) {
+    return this.monsters.filter(m => m.roomId === roomId && !m.isDead).length === 0;
+  }
+
   update(dt, players = [], dungeon = null, isHost = true) {
     const alive = [];
 

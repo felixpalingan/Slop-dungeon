@@ -1,18 +1,16 @@
 /**
- * Procedural Dungeon Generator & Tile Grid System for Dungeon Slop
- * Implements Binary Space Partitioning (BSP) room generation,
- * Room Discovery Fog of War, Circle-AABB wall collision resolution,
- * Levi ODM grapple wall raycasting, and theme configurations.
+ * Procedural The Binding of Isaac (TBoI) Style Dungeon Generator for Dungeon Slop
+ * Implements discrete room-graph generation, cardinal door transitions,
+ * combat room lockdown collision, and Isaac-style chamber mechanics.
  */
 
 export const TILES = {
   VOID: 0,
   FLOOR: 1,
   WALL: 2,
-  CORRIDOR: 3,
-  DOOR: 4,
-  CONTAINER: 5,
-  EXIT_PORTAL: 6
+  DOOR: 3,
+  CONTAINER: 4,
+  EXIT_PORTAL: 5
 };
 
 export const DUNGEON_THEMES = {
@@ -90,373 +88,329 @@ export const DUNGEON_THEMES = {
   }
 };
 
-class BSPNode {
-  constructor(x, y, width, height) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-    this.left = null;
-    this.right = null;
-    this.room = null;
-  }
+// Standard chamber dimensions (16:9 widescreen ratio)
+export const ROOM_COLS = 17; // 17 tiles wide = 1088px
+export const ROOM_ROWS = 11; // 11 tiles high = 704px
+export const TILE_SIZE = 64;
+export const ROOM_WIDTH = ROOM_COLS * TILE_SIZE; // 1088px
+export const ROOM_HEIGHT = ROOM_ROWS * TILE_SIZE; // 704px
 
-  split(minSize = 13) {
-    if (this.left || this.right) return false;
-
-    // Determine split direction (prefer splitting the longer axis)
-    let splitH = Math.random() > 0.5;
-    if (this.width > this.height && this.width / this.height >= 1.25) splitH = false;
-    else if (this.height > this.width && this.height / this.width >= 1.25) splitH = true;
-
-    const max = (splitH ? this.height : this.width) - minSize;
-    if (max <= minSize) return false;
-
-    const splitPos = Math.floor(minSize + Math.random() * (max - minSize));
-
-    if (splitH) {
-      this.left = new BSPNode(this.x, this.y, this.width, splitPos);
-      this.right = new BSPNode(this.x, this.y + splitPos, this.width, this.height - splitPos);
-    } else {
-      this.left = new BSPNode(this.x, this.y, splitPos, this.height);
-      this.right = new BSPNode(this.x + splitPos, this.y, this.width - splitPos, this.height);
-    }
-
-    return true;
-  }
-}
+// Physical world stride between adjacent room centers
+export const STRIDE_X = 1600;
+export const STRIDE_Y = 1200;
 
 export class Dungeon {
   constructor(options = {}) {
-    this.cols = options.cols || 46;
-    this.rows = options.rows || 46;
-    this.tileSize = options.tileSize || 64;
-
-    // Origin centered in world coordinates
-    this.originX = -Math.floor((this.cols * this.tileSize) / 2);
-    this.originY = -Math.floor((this.rows * this.tileSize) / 2);
-    this.width = this.cols * this.tileSize;
-    this.height = this.rows * this.tileSize;
-    this.minX = this.originX;
-    this.minY = this.originY;
-    this.maxX = this.originX + this.width;
-    this.maxY = this.originY + this.height;
-
     this.floorNumber = options.floorNumber || 1;
     this.themeKey = options.theme || 'jjk';
     this.theme = DUNGEON_THEMES[this.themeKey] || DUNGEON_THEMES.jjk;
-
-    // Grid: 2D array of tile types
-    this.grid = Array.from({ length: this.cols }, () => new Uint8Array(this.rows));
-    this.corridorTiles = new Set(); // Stores "col,row" for quick corridor lookup
+    this.tileSize = TILE_SIZE;
 
     this.rooms = [];
+    this.roomsMap = new Map(); // "gx,gy" -> Room
+    this.currentRoom = null;
     this.spawnRoom = null;
     this.bossRoom = null;
     this.treasureRoom = null;
     this.combatRooms = [];
 
     this.torches = [];
-    this.containers = []; // Destructible pots / crates
-    this.exitPortal = null; // { x, y, isActive }
+    this.containers = [];
+    this.exitPortal = null;
 
-    // Active room banner notification
+    // Room entrance banner notification
     this.activeBanner = null; // { title, subtitle, color, timer, maxTimer }
   }
 
+  createRoom(id, gx, gy, type = 'combat') {
+    const centerX = gx * STRIDE_X;
+    const centerY = gy * STRIDE_Y;
+    const halfW = ROOM_WIDTH / 2;
+    const halfH = ROOM_HEIGHT / 2;
+
+    return {
+      id,
+      gridX: gx,
+      gridY: gy,
+      type,
+      name: `CHAMBER ${id}`,
+      colCount: ROOM_COLS,
+      rowCount: ROOM_ROWS,
+      width: ROOM_WIDTH,
+      height: ROOM_HEIGHT,
+      centerX,
+      centerY,
+      bounds: {
+        minX: centerX - halfW,
+        maxX: centerX + halfW,
+        minY: centerY - halfH,
+        maxY: centerY + halfH
+      },
+      doors: [],
+      isCleared: type === 'spawn' || type === 'treasure',
+      isLocked: false,
+      hasVisited: type === 'spawn',
+      hasShownBanner: false,
+      torches: [],
+      containers: []
+    };
+  }
+
+  connectRooms(roomA, roomB, dirFromA, dirFromB) {
+    const makeDoor = (room, targetRoom, dir) => {
+      let x = room.centerX;
+      let y = room.centerY;
+      let w = 128;
+      let h = 64;
+      let targetSpawnX = targetRoom.centerX;
+      let targetSpawnY = targetRoom.centerY;
+
+      if (dir === 'north') {
+        y = room.bounds.minY;
+        w = 128;
+        h = 64;
+        targetSpawnX = targetRoom.centerX;
+        targetSpawnY = targetRoom.bounds.maxY - 110;
+      } else if (dir === 'south') {
+        y = room.bounds.maxY;
+        w = 128;
+        h = 64;
+        targetSpawnX = targetRoom.centerX;
+        targetSpawnY = targetRoom.bounds.minY + 110;
+      } else if (dir === 'west') {
+        x = room.bounds.minX;
+        w = 64;
+        h = 128;
+        targetSpawnX = targetRoom.bounds.maxX - 110;
+        targetSpawnY = targetRoom.centerY;
+      } else if (dir === 'east') {
+        x = room.bounds.maxX;
+        w = 64;
+        h = 128;
+        targetSpawnX = targetRoom.bounds.minX + 110;
+        targetSpawnY = targetRoom.centerY;
+      }
+
+      return {
+        dir,
+        targetRoomId: targetRoom.id,
+        x,
+        y,
+        width: w,
+        height: h,
+        targetSpawnX,
+        targetSpawnY,
+        isBoss: targetRoom.type === 'boss',
+        isTreasure: targetRoom.type === 'treasure'
+      };
+    };
+
+    const doorA = makeDoor(roomA, roomB, dirFromA);
+    const doorB = makeDoor(roomB, roomA, dirFromB);
+
+    roomA.doors.push(doorA);
+    roomB.doors.push(doorB);
+  }
+
   /**
-   * Generates procedural room-and-corridor dungeon using Binary Space Partitioning
+   * Generates discrete room-graph grid in The Binding of Isaac format
    */
   generate(seed = null) {
-    if (seed) this.seed = seed;
-
-    // Clear grid to VOID
-    for (let c = 0; c < this.cols; c++) {
-      for (let r = 0; r < this.rows; r++) {
-        this.grid[c][r] = TILES.VOID;
-      }
-    }
-
     this.rooms = [];
+    this.roomsMap.clear();
     this.torches = [];
     this.containers = [];
 
-    // 1. BSP Tree Root (leave 2-tile border)
-    const root = new BSPNode(2, 2, this.cols - 4, this.rows - 4);
-    const nodes = [root];
+    // 1. Create Spawn Room at (0, 0)
+    const spawnRoom = this.createRoom(1, 0, 0, 'spawn');
+    spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
+    spawnRoom.isCleared = true;
+    spawnRoom.hasVisited = true;
+    spawnRoom.hasShownBanner = true;
 
-    // Split partitions until we have 6 to 9 leaves
-    let didSplit = true;
-    while (didSplit && nodes.length < 8) {
-      didSplit = false;
-      const leaves = [];
-      const getLeaves = (n) => {
-        if (!n.left && !n.right) leaves.push(n);
-        else {
-          if (n.left) getLeaves(n.left);
-          if (n.right) getLeaves(n.right);
-        }
-      };
-      getLeaves(root);
+    this.rooms.push(spawnRoom);
+    this.roomsMap.set('0,0', spawnRoom);
+    this.spawnRoom = spawnRoom;
+    this.currentRoom = spawnRoom;
 
-      for (const leaf of leaves) {
-        if (leaf.split(13)) {
-          didSplit = true;
-          nodes.push(leaf.left);
-          nodes.push(leaf.right);
-          if (nodes.length >= 9) break;
-        }
-      }
-    }
+    // 2. Expand outwards to generate 7 to 9 rooms
+    const totalRooms = Math.min(10, 7 + Math.floor(this.floorNumber * 0.5));
+    let nextId = 2;
 
-    // 2. Carve rooms inside leaf partitions
-    const leafNodes = [];
-    const collectLeaves = (n) => {
-      if (!n.left && !n.right) leafNodes.push(n);
-      else {
-        if (n.left) collectLeaves(n.left);
-        if (n.right) collectLeaves(n.right);
-      }
-    };
-    collectLeaves(root);
+    while (this.rooms.length < totalRooms) {
+      // Pick random room that has fewer than 3 doors
+      const candidates = this.rooms.filter(r => r.doors.length < 3);
+      if (candidates.length === 0) break;
+      const current = candidates[Math.floor(Math.random() * candidates.length)];
 
-    let roomId = 1;
-    for (const leaf of leafNodes) {
-      // Room size inside partition (leave at least 2 tiles margin)
-      const minW = 7;
-      const minH = 7;
-      const maxW = Math.max(minW, leaf.width - 3);
-      const maxH = Math.max(minH, leaf.height - 3);
+      const dirs = [
+        { name: 'north', opp: 'south', dx: 0, dy: -1 },
+        { name: 'south', opp: 'north', dx: 0, dy: 1 },
+        { name: 'east', opp: 'west', dx: 1, dy: 0 },
+        { name: 'west', opp: 'east', dx: -1, dy: 0 }
+      ].sort(() => Math.random() - 0.5);
 
-      const rw = Math.floor(minW + Math.random() * (maxW - minW + 1));
-      const rh = Math.floor(minH + Math.random() * (maxH - minH + 1));
-      const rx = leaf.x + 1 + Math.floor(Math.random() * (leaf.width - rw - 2));
-      const ry = leaf.y + 1 + Math.floor(Math.random() * (leaf.height - rh - 2));
+      let added = false;
+      for (const d of dirs) {
+        const nx = current.gridX + d.dx;
+        const ny = current.gridY + d.dy;
+        const key = `${nx},${ny}`;
 
-      const room = {
-        id: roomId++,
-        col: rx,
-        row: ry,
-        width: rw,
-        height: rh,
-        centerX: this.originX + (rx + rw / 2) * this.tileSize,
-        centerY: this.originY + (ry + rh / 2) * this.tileSize,
-        bounds: {
-          minX: this.originX + rx * this.tileSize,
-          minY: this.originY + ry * this.tileSize,
-          maxX: this.originX + (rx + rw) * this.tileSize,
-          maxY: this.originY + (ry + rh) * this.tileSize
-        },
-        type: 'combat',
-        name: `CHAMBER ${roomId - 1}`,
-        isDiscovered: true,
-        discoveredAlpha: 1.0,
-        hasShownBanner: false,
-        monstersSpawned: false,
-        spawns: [],
-        torches: []
-      };
-
-      leaf.room = room;
-      this.rooms.push(room);
-
-      // Carve floor in grid
-      for (let c = rx; c < rx + rw; c++) {
-        for (let r = ry; r < ry + rh; r++) {
-          this.grid[c][r] = TILES.FLOOR;
-        }
-      }
-    }
-
-    // 3. Connect sibling BSP nodes with 2-tile wide corridors
-    const connectNodes = (n) => {
-      if (!n.left || !n.right) return;
-      connectNodes(n.left);
-      connectNodes(n.right);
-
-      const getRoom = (node) => {
-        if (node.room) return node.room;
-        if (node.left) {
-          const r = getRoom(node.left);
-          if (r) return r;
-        }
-        if (node.right) return getRoom(node.right);
-        return null;
-      };
-
-      const r1 = getRoom(n.left);
-      const r2 = getRoom(n.right);
-
-      if (r1 && r2) {
-        this.carveCorridor(
-          Math.floor(r1.col + r1.width / 2),
-          Math.floor(r1.row + r1.height / 2),
-          Math.floor(r2.col + r2.width / 2),
-          Math.floor(r2.row + r2.height / 2)
-        );
-      }
-    };
-    connectNodes(root);
-
-    // 4. Construct Walls around all Floor & Corridor tiles
-    for (let c = 1; c < this.cols - 1; c++) {
-      for (let r = 1; r < this.rows - 1; r++) {
-        if (this.grid[c][r] === TILES.VOID) {
-          // If any 8-neighbor is floor or corridor, make this a WALL
-          let hasFloorNeighbor = false;
-          for (let dc = -1; dc <= 1; dc++) {
-            for (let dr = -1; dr <= 1; dr++) {
-              if (dc === 0 && dr === 0) continue;
-              const neighbor = this.grid[c + dc][r + dr];
-              if (neighbor === TILES.FLOOR || neighbor === TILES.CORRIDOR || neighbor === TILES.DOOR) {
-                hasFloorNeighbor = true;
-                break;
-              }
-            }
-            if (hasFloorNeighbor) break;
+        if (!this.roomsMap.has(key)) {
+          // Check how many adjacent neighbors this cell has (enforce branching, avoid large loops)
+          let neighborCount = 0;
+          for (const c of [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }]) {
+            if (this.roomsMap.has(`${nx + c.dx},${ny + c.dy}`)) neighborCount++;
           }
-          if (hasFloorNeighbor) {
-            this.grid[c][r] = TILES.WALL;
+
+          if (neighborCount === 1) {
+            const newRoom = this.createRoom(nextId++, nx, ny, 'combat');
+            this.connectRooms(current, newRoom, d.name, d.opp);
+            this.rooms.push(newRoom);
+            this.roomsMap.set(key, newRoom);
+            added = true;
+            break;
           }
         }
       }
+
+      if (!added && candidates.length === 1 && this.rooms.length >= 6) {
+        break;
+      }
     }
 
-    // Perimeter boundary walls
-    for (let c = 0; c < this.cols; c++) {
-      this.grid[c][0] = TILES.WALL;
-      this.grid[c][this.rows - 1] = TILES.WALL;
-    }
-    for (let r = 0; r < this.rows; r++) {
-      this.grid[0][r] = TILES.WALL;
-      this.grid[this.cols - 1][r] = TILES.WALL;
-    }
+    // 3. Compute BFS distances from Spawn to assign Boss & Treasure rooms
+    const distances = new Map();
+    distances.set(spawnRoom.id, 0);
+    const queue = [spawnRoom];
 
-    // 5. Categorize Rooms
-    if (this.rooms.length > 0) {
-      // Spawn Room: First room or room closest to left/top
-      this.rooms.sort((a, b) => (a.col + a.row) - (b.col + b.row));
-      this.spawnRoom = this.rooms[0];
-      this.spawnRoom.type = 'spawn';
-      this.spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
-      this.spawnRoom.isDiscovered = true;
-      this.spawnRoom.discoveredAlpha = 1.0;
-      this.spawnRoom.hasShownBanner = true;
-
-      // Boss Room: Farthest from Spawn Room
-      let maxDist = -1;
-      let bossRoom = this.rooms[this.rooms.length - 1];
-      for (let i = 1; i < this.rooms.length; i++) {
-        const d = Math.hypot(this.rooms[i].centerX - this.spawnRoom.centerX, this.rooms[i].centerY - this.spawnRoom.centerY);
-        if (d > maxDist) {
-          maxDist = d;
-          bossRoom = this.rooms[i];
+    while (queue.length > 0) {
+      const r = queue.shift();
+      const d = distances.get(r.id);
+      for (const door of r.doors) {
+        if (!distances.has(door.targetRoomId)) {
+          distances.set(door.targetRoomId, d + 1);
+          const neighbor = this.rooms.find(x => x.id === door.targetRoomId);
+          if (neighbor) queue.push(neighbor);
         }
       }
-      this.bossRoom = bossRoom;
-      this.bossRoom.type = 'boss';
-      this.bossRoom.name = `${this.theme.bannerPrefix} BOSS SANCTUM`;
-
-      // Treasure Vault: One intermediate room
-      const otherRooms = this.rooms.filter(r => r !== this.spawnRoom && r !== this.bossRoom);
-      if (otherRooms.length > 0) {
-        this.treasureRoom = otherRooms[Math.floor(otherRooms.length / 2)];
-        this.treasureRoom.type = 'treasure';
-        this.treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
-      }
-
-      this.combatRooms = this.rooms.filter(r => r.type === 'combat');
-      for (let i = 0; i < this.combatRooms.length; i++) {
-        this.combatRooms[i].name = `${this.theme.bannerPrefix} CHAMBER 0${i + 1}`;
-      }
-
-      // 6. Setup Exit Descent Portal in Boss Sanctum
-      this.exitPortal = {
-        x: this.bossRoom.centerX,
-        y: this.bossRoom.centerY,
-        radius: 36,
-        isActive: false, // Activates when Boss is defeated!
-        pulseAngle: 0
-      };
     }
 
-    // 7. Place Wall Torches & Destructibles
+    // Sort non-spawn rooms by: 1) degree === 1 (dead ends), 2) distance from spawn
+    const nonSpawn = this.rooms.filter(r => r !== spawnRoom);
+    nonSpawn.sort((a, b) => {
+      const aDead = a.doors.length === 1 ? 1 : 0;
+      const bDead = b.doors.length === 1 ? 1 : 0;
+      if (aDead !== bDead) return bDead - aDead;
+      return (distances.get(b.id) || 0) - (distances.get(a.id) || 0);
+    });
+
+    // 4. Assign Boss Sanctum (deepest dead end)
+    const bossRoom = nonSpawn[0];
+    bossRoom.type = 'boss';
+    bossRoom.name = `${this.theme.bannerPrefix} BOSS SANCTUM`;
+    this.bossRoom = bossRoom;
+
+    // 5. Assign Treasure Vault (second deepest dead end)
+    if (nonSpawn.length > 1) {
+      const treasureRoom = nonSpawn[1];
+      treasureRoom.type = 'treasure';
+      treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
+      treasureRoom.isCleared = true; // Treasure room has no combat
+      this.treasureRoom = treasureRoom;
+    }
+
+    // 6. Name and configure remaining combat rooms
+    this.combatRooms = this.rooms.filter(r => r.type === 'combat');
+    for (let i = 0; i < this.combatRooms.length; i++) {
+      this.combatRooms[i].name = `${this.theme.bannerPrefix} CHAMBER 0${i + 1}`;
+      this.combatRooms[i].isCleared = false;
+    }
+
+    // Update door special flags (isBoss, isTreasure)
+    for (const r of this.rooms) {
+      for (const d of r.doors) {
+        const target = this.rooms.find(x => x.id === d.targetRoomId);
+        if (target) {
+          d.isBoss = target.type === 'boss';
+          d.isTreasure = target.type === 'treasure';
+        }
+      }
+    }
+
+    // 7. Setup Exit Descent Portal in Boss Sanctum
+    this.exitPortal = {
+      x: this.bossRoom.centerX,
+      y: this.bossRoom.centerY,
+      radius: 36,
+      isActive: false,
+      pulseAngle: 0
+    };
+
+    // 8. Place fixtures (Torches & Destructible Pots)
     this.populateFixtures();
 
     return this;
   }
 
   /**
-   * Carves a 2-tile wide corridor between two grid points (L-shaped)
-   */
-  carveCorridor(c1, r1, c2, r2) {
-    let currC = c1;
-    let currR = r1;
-
-    // Horizontal segment
-    while (currC !== c2) {
-      for (let w = 0; w < 2; w++) {
-        if (currR + w < this.rows && this.grid[currC][currR + w] === TILES.VOID) {
-          this.grid[currC][currR + w] = TILES.CORRIDOR;
-          this.corridorTiles.add(`${currC},${currR + w}`);
-        }
-      }
-      currC += currC < c2 ? 1 : -1;
-    }
-
-    // Vertical segment
-    while (currR !== r2) {
-      for (let w = 0; w < 2; w++) {
-        if (currC + w < this.cols && this.grid[currC + w][currR] === TILES.VOID) {
-          this.grid[currC + w][currR] = TILES.CORRIDOR;
-          this.corridorTiles.add(`${currC + w},${currR}`);
-        }
-      }
-      currR += currR < r2 ? 1 : -1;
-    }
-  }
-
-  /**
-   * Places wall torches on room perimeter and destructible containers in corners
+   * Places torches in chamber corners and destructible pots along walls
    */
   populateFixtures() {
+    this.torches = [];
+    this.containers = [];
     let containerId = 1;
 
     for (const room of this.rooms) {
-      // Place torches on north and south walls
-      const midCol = Math.floor(room.col + room.width / 2);
-      const torchNorthY = this.originY + room.row * this.tileSize + 6;
-      const torchNorthX = this.originX + midCol * this.tileSize + this.tileSize / 2;
-      const torchSouthY = this.originY + (room.row + room.height) * this.tileSize - 6;
-      const torchSouthX = torchNorthX;
+      // Place torches in the 4 corners of each room
+      const cornerOffsets = [
+        { ox: -room.width / 2 + 54, oy: -room.height / 2 + 54 },
+        { ox: room.width / 2 - 54, oy: -room.height / 2 + 54 },
+        { ox: -room.width / 2 + 54, oy: room.height / 2 - 54 },
+        { ox: room.width / 2 - 54, oy: room.height / 2 - 54 }
+      ];
 
-      const torch1 = { x: torchNorthX, y: torchNorthY, color: this.theme.torchColor, glow: this.theme.torchGlowColor, flicker: Math.random() * Math.PI * 2 };
-      const torch2 = { x: torchSouthX, y: torchSouthY, color: this.theme.torchColor, glow: this.theme.torchGlowColor, flicker: Math.random() * Math.PI * 2 };
-      this.torches.push(torch1, torch2);
-      room.torches.push(torch1, torch2);
+      for (const c of cornerOffsets) {
+        const torchColor = room.type === 'boss'
+          ? '#ef4444'
+          : (room.type === 'treasure' ? '#f59e0b' : this.theme.torchColor);
+        const torchGlow = room.type === 'boss'
+          ? 'rgba(239, 68, 68, 0.4)'
+          : (room.type === 'treasure' ? 'rgba(245, 158, 11, 0.4)' : this.theme.torchGlowColor);
 
-      // Destructible pots in corners of combat & treasure rooms
+        const t = {
+          x: room.centerX + c.ox,
+          y: room.centerY + c.oy,
+          color: torchColor,
+          glow: torchGlow,
+          flicker: Math.random() * Math.PI * 2
+        };
+        this.torches.push(t);
+        room.torches.push(t);
+      }
+
+      // Destructible pots in corners and walls of combat/treasure rooms
       if (room.type === 'combat' || room.type === 'treasure') {
-        const corners = [
-          { c: room.col + 1, r: room.row + 1 },
-          { c: room.col + room.width - 2, r: room.row + 1 },
-          { c: room.col + 1, r: room.row + room.height - 2 },
-          { c: room.col + room.width - 2, r: room.row + room.height - 2 }
+        const potSpots = [
+          { ox: -room.width / 2 + 120, oy: -room.height / 2 + 64 },
+          { ox: room.width / 2 - 120, oy: -room.height / 2 + 64 },
+          { ox: -room.width / 2 + 120, oy: room.height / 2 - 64 },
+          { ox: room.width / 2 - 120, oy: room.height / 2 - 64 }
         ];
 
-        for (const corner of corners) {
-          if (Math.random() < 0.65) {
-            const cx = this.originX + corner.c * this.tileSize + this.tileSize / 2;
-            const cy = this.originY + corner.r * this.tileSize + this.tileSize / 2;
-            this.containers.push({
+        for (const spot of potSpots) {
+          if (Math.random() < 0.75) {
+            const pot = {
               id: containerId++,
-              x: cx,
-              y: cy,
+              x: room.centerX + spot.ox,
+              y: room.centerY + spot.oy,
               radius: 18,
               hp: 1,
               isBroken: false,
               theme: this.themeKey
-            });
+            };
+            this.containers.push(pot);
+            room.containers.push(pot);
           }
         }
       }
@@ -464,146 +418,123 @@ export class Dungeon {
   }
 
   /**
-   * Checks if player has stepped inside an undiscovered room (Option A Fog of War).
-   * Illuminates the room smoothly, reveals monsters, and shows banner notification!
+   * Checks if player touches an open door threshold of currentRoom
+   * Returns { targetRoom, newX, newY, door } if transition occurs, else null
    */
-  checkRoomDiscovery(playerX, playerY) {
-    for (const room of this.rooms) {
-      if (
-        playerX >= room.bounds.minX &&
-        playerX <= room.bounds.maxX &&
-        playerY >= room.bounds.minY &&
-        playerY <= room.bounds.maxY
-      ) {
-        if (!room.hasShownBanner) {
-          room.hasShownBanner = true;
-          this.activeBanner = {
-            title: room.name,
-            subtitle: this.theme.shortName,
-            color: this.theme.torchColor,
-            timer: 3.2,
-            maxTimer: 3.2
+  checkDoorTransition(playerX, playerY, radius = 22) {
+    if (!this.currentRoom || this.currentRoom.isLocked) return null;
+
+    for (const door of this.currentRoom.doors) {
+      let triggered = false;
+
+      if (door.dir === 'north') {
+        triggered = playerY <= this.currentRoom.bounds.minY + 54 && Math.abs(playerX - door.x) <= 56;
+      } else if (door.dir === 'south') {
+        triggered = playerY >= this.currentRoom.bounds.maxY - 54 && Math.abs(playerX - door.x) <= 56;
+      } else if (door.dir === 'west') {
+        triggered = playerX <= this.currentRoom.bounds.minX + 54 && Math.abs(playerY - door.y) <= 56;
+      } else if (door.dir === 'east') {
+        triggered = playerX >= this.currentRoom.bounds.maxX - 54 && Math.abs(playerY - door.y) <= 56;
+      }
+
+      if (triggered) {
+        const targetRoom = this.rooms.find(r => r.id === door.targetRoomId);
+        if (targetRoom) {
+          return {
+            targetRoom,
+            newX: door.targetSpawnX,
+            newY: door.targetSpawnY,
+            door
           };
-          return { discovered: true, room };
         }
-        return { discovered: false, room };
       }
     }
-    return { discovered: false, room: null };
-  }
 
-  /**
-   * Directly marks a room banner as shown by ID (for network sync)
-   */
-  discoverRoom(roomId) {
-    const room = this.rooms.find(r => r.id === roomId);
-    if (room && !room.hasShownBanner) {
-      room.hasShownBanner = true;
-      this.activeBanner = {
-        title: room.name,
-        subtitle: this.theme.shortName,
-        color: this.theme.torchColor,
-        timer: 3.2,
-        maxTimer: 3.2
-      };
-      return room;
-    }
     return null;
   }
 
   /**
-   * Updates dungeon animations, banner timers, and exit portal effects
+   * Enforces chamber wall collision and door locks
+   * While currentRoom is locked (active combat), doors are impassable solid walls!
    */
-  update(dt) {
-    // Smoothly fade in discovered rooms
-    for (const room of this.rooms) {
-      if (room.isDiscovered && room.discoveredAlpha < 1.0) {
-        room.discoveredAlpha = Math.min(1.0, room.discoveredAlpha + dt * 2.5);
-      }
-    }
+  resolveCircleCollision(circleX, circleY, radius = 22) {
+    const room = this.currentRoom || this.spawnRoom;
+    if (!room) return { x: circleX, y: circleY, hitWall: false, normalX: 0, normalY: 0 };
 
-    // Update room entrance banner notification timer
-    if (this.activeBanner) {
-      this.activeBanner.timer -= dt;
-      if (this.activeBanner.timer <= 0) {
-        this.activeBanner = null;
-      }
-    }
-
-    // Update rotating exit portal pulse
-    if (this.exitPortal && this.exitPortal.isActive) {
-      this.exitPortal.pulseAngle = (this.exitPortal.pulseAngle || 0) + dt * 3.5;
-    }
-  }
-
-  /**
-   * Fast Circle-AABB collision resolution against dungeon walls and closed obstacles.
-   * Returns adjusted { x, y, hitWall, normalX, normalY }.
-   */
-  resolveCircleCollision(circleX, circleY, radius) {
     let resolvedX = circleX;
     let resolvedY = circleY;
     let hitWall = false;
     let normX = 0;
     let normY = 0;
 
-    // Convert circle position to grid indices
-    const centerCol = Math.floor((resolvedX - this.originX) / this.tileSize);
-    const centerRow = Math.floor((resolvedY - this.originY) / this.tileSize);
+    // Chamber wall inner edge thickness
+    const wallPad = 54;
+    const innerMinX = room.bounds.minX + wallPad;
+    const innerMaxX = room.bounds.maxX - wallPad;
+    const innerMinY = room.bounds.minY + wallPad;
+    const innerMaxY = room.bounds.maxY - wallPad;
 
-    // Check 3x3 neighboring tiles
-    for (let dc = -1; dc <= 1; dc++) {
-      for (let dr = -1; dr <= 1; dr++) {
-        const c = centerCol + dc;
-        const r = centerRow + dr;
+    const hasNorthDoor = room.doors.some(d => d.dir === 'north');
+    const hasSouthDoor = room.doors.some(d => d.dir === 'south');
+    const hasWestDoor = room.doors.some(d => d.dir === 'west');
+    const hasEastDoor = room.doors.some(d => d.dir === 'east');
 
-        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) {
-          continue;
-        }
+    const doorHalfWidth = 52; // 104px door opening
 
-        const tile = this.grid[c][r];
-        // WALL and VOID are solid collidable blocks
-        if (tile === TILES.WALL || tile === TILES.VOID) {
-          const tileMinX = this.originX + c * this.tileSize;
-          const tileMinY = this.originY + r * this.tileSize;
-          const tileMaxX = tileMinX + this.tileSize;
-          const tileMaxY = tileMinY + this.tileSize;
+    // 1. West Wall
+    if (resolvedX - radius < innerMinX) {
+      const isAtDoorway = hasWestDoor && Math.abs(resolvedY - room.centerY) <= doorHalfWidth;
+      if (room.isLocked || !isAtDoorway) {
+        resolvedX = innerMinX + radius;
+        hitWall = true;
+        normX = 1;
+      }
+    }
 
-          // Find closest point on tile AABB to circle center
-          const closestX = Math.max(tileMinX, Math.min(resolvedX, tileMaxX));
-          const closestY = Math.max(tileMinY, Math.min(resolvedY, tileMaxY));
+    // 2. East Wall
+    if (resolvedX + radius > innerMaxX) {
+      const isAtDoorway = hasEastDoor && Math.abs(resolvedY - room.centerY) <= doorHalfWidth;
+      if (room.isLocked || !isAtDoorway) {
+        resolvedX = innerMaxX - radius;
+        hitWall = true;
+        normX = -1;
+      }
+    }
 
-          const diffX = resolvedX - closestX;
-          const diffY = resolvedY - closestY;
-          const distSq = diffX * diffX + diffY * diffY;
+    // 3. North Wall
+    if (resolvedY - radius < innerMinY) {
+      const isAtDoorway = hasNorthDoor && Math.abs(resolvedX - room.centerX) <= doorHalfWidth;
+      if (room.isLocked || !isAtDoorway) {
+        resolvedY = innerMinY + radius;
+        hitWall = true;
+        normY = 1;
+      }
+    }
 
-          if (distSq < radius * radius) {
-            hitWall = true;
-            const dist = Math.sqrt(distSq);
-            let nx = 0;
-            let ny = 0;
+    // 4. South Wall
+    if (resolvedY + radius > innerMaxY) {
+      const isAtDoorway = hasSouthDoor && Math.abs(resolvedX - room.centerX) <= doorHalfWidth;
+      if (room.isLocked || !isAtDoorway) {
+        resolvedY = innerMaxY - radius;
+        hitWall = true;
+        normY = -1;
+      }
+    }
 
-            if (dist > 0.001) {
-              nx = diffX / dist;
-              ny = diffY / dist;
-            } else {
-              // Directly inside edge, push out away from tile center
-              const tileCenterX = tileMinX + this.tileSize / 2;
-              const tileCenterY = tileMinY + this.tileSize / 2;
-              const pushX = resolvedX - tileCenterX;
-              const pushY = resolvedY - tileCenterY;
-              const pushLen = Math.hypot(pushX, pushY) || 1;
-              nx = pushX / pushLen;
-              ny = pushY / pushLen;
-            }
-
-            const penetration = radius - dist;
-            resolvedX += nx * penetration;
-            resolvedY += ny * penetration;
-            normX = nx;
-            normY = ny;
-          }
-        }
+    // 5. Destructible Containers (Pots) inside this room
+    for (const c of room.containers) {
+      if (c.isBroken) continue;
+      const dx = resolvedX - c.x;
+      const dy = resolvedY - c.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = radius + (c.radius || 18);
+      if (dist < minDist && dist > 0.001) {
+        hitWall = true;
+        const push = minDist - dist;
+        resolvedX += (dx / dist) * push;
+        resolvedY += (dy / dist) * push;
+        normX = dx / dist;
+        normY = dy / dist;
       }
     }
 
@@ -611,101 +542,135 @@ export class Dungeon {
   }
 
   /**
-   * High-speed Grid DDA (Digital Differential Analyzer) Raycaster for Levi's ODM Gear Cables.
-   * Seamlessly detects collisions with room walls, corridor corners, and perimeter boundaries!
+   * Levi's ODM wire grapple raycast against chamber walls
    */
   raycastWall(startX, startY, dirX, dirY, maxDist = 2400) {
+    const room = this.currentRoom || this.spawnRoom;
+    if (!room) return { hit: false, x: startX, y: startY };
+
     const len = Math.hypot(dirX, dirY);
     if (len < 0.001) return { hit: false, x: startX, y: startY };
-
     const uX = dirX / len;
     const uY = dirY / len;
 
-    let posX = (startX - this.originX) / this.tileSize;
-    let posY = (startY - this.originY) / this.tileSize;
+    const minX = room.bounds.minX + 54;
+    const maxX = room.bounds.maxX - 54;
+    const minY = room.bounds.minY + 54;
+    const maxY = room.bounds.maxY - 54;
 
-    let mapX = Math.floor(posX);
-    let mapY = Math.floor(posY);
-
-    const stepX = uX >= 0 ? 1 : -1;
-    const stepY = uY >= 0 ? 1 : -1;
-
-    const deltaDistX = Math.abs(1 / (uX || 0.00001));
-    const deltaDistY = Math.abs(1 / (uY || 0.00001));
-
-    let sideDistX = uX >= 0 ? (mapX + 1.0 - posX) * deltaDistX : (posX - mapX) * deltaDistX;
-    let sideDistY = uY >= 0 ? (mapY + 1.0 - posY) * deltaDistY : (posY - mapY) * deltaDistY;
-
+    let closestDist = maxDist;
+    let hitX = startX;
+    let hitY = startY;
+    let normalX = 0;
+    let normalY = 0;
     let hit = false;
-    let side = 0; // 0 for vertical wall (X-axis), 1 for horizontal wall (Y-axis)
-    let totalDist = 0;
 
-    while (!hit && totalDist < maxDist) {
-      if (sideDistX < sideDistY) {
-        sideDistX += deltaDistX;
-        mapX += stepX;
-        side = 0;
-      } else {
-        sideDistY += deltaDistY;
-        mapY += stepY;
-        side = 1;
+    // West wall (x = minX)
+    if (uX < 0) {
+      const t = (minX - startX) / uX;
+      if (t > 0 && t < closestDist) {
+        const y = startY + uY * t;
+        if (y >= minY && y <= maxY) {
+          closestDist = t;
+          hitX = minX;
+          hitY = y;
+          normalX = 1;
+          normalY = 0;
+          hit = true;
+        }
       }
-
-      if (mapX < 0 || mapX >= this.cols || mapY < 0 || mapY >= this.rows) {
-        // Exceeded grid boundary
-        hit = true;
-        break;
+    }
+    // East wall (x = maxX)
+    if (uX > 0) {
+      const t = (maxX - startX) / uX;
+      if (t > 0 && t < closestDist) {
+        const y = startY + uY * t;
+        if (y >= minY && y <= maxY) {
+          closestDist = t;
+          hitX = maxX;
+          hitY = y;
+          normalX = -1;
+          normalY = 0;
+          hit = true;
+        }
       }
-
-      const tile = this.grid[mapX][mapY];
-      if (tile === TILES.WALL || tile === TILES.VOID) {
-        hit = true;
-        break;
+    }
+    // North wall (y = minY)
+    if (uY < 0) {
+      const t = (minY - startY) / uY;
+      if (t > 0 && t < closestDist) {
+        const x = startX + uX * t;
+        if (x >= minX && x <= maxX) {
+          closestDist = t;
+          hitX = x;
+          hitY = minY;
+          normalX = 0;
+          normalY = 1;
+          hit = true;
+        }
       }
-
-      totalDist = (side === 0)
-        ? (mapX - posX + (1 - stepX) / 2) / (uX || 0.00001) * this.tileSize
-        : (mapY - posY + (1 - stepY) / 2) / (uY || 0.00001) * this.tileSize;
+    }
+    // South wall (y = maxY)
+    if (uY > 0) {
+      const t = (maxY - startY) / uY;
+      if (t > 0 && t < closestDist) {
+        const x = startX + uX * t;
+        if (x >= minX && x <= maxX) {
+          closestDist = t;
+          hitX = x;
+          hitY = maxY;
+          normalX = 0;
+          normalY = -1;
+          hit = true;
+        }
+      }
     }
 
-    if (hit) {
-      let wallDist;
-      if (side === 0) {
-        wallDist = (mapX - posX + (1 - stepX) / 2) / (uX || 0.00001) * this.tileSize;
-      } else {
-        wallDist = (mapY - posY + (1 - stepY) / 2) / (uY || 0.00001) * this.tileSize;
-      }
-
-      const hitX = startX + uX * Math.max(0, wallDist);
-      const hitY = startY + uY * Math.max(0, wallDist);
-      const normalX = (side === 0) ? -stepX : 0;
-      const normalY = (side === 1) ? -stepY : 0;
-
-      return { hit: true, x: hitX, y: hitY, normalX, normalY, dist: wallDist };
-    }
-
-    return { hit: false, x: startX + uX * maxDist, y: startY + uY * maxDist, dist: maxDist };
+    return { hit, x: hitX, y: hitY, normalX, normalY, dist: closestDist };
   }
 
-  /**
-   * Compact serialization object to transmit dungeon layout to joining peers over WebRTC
-   */
+  showRoomBanner(room) {
+    if (!room || room.hasShownBanner) return;
+    room.hasShownBanner = true;
+    this.activeBanner = {
+      title: room.name,
+      subtitle: this.theme.shortName,
+      color: room.type === 'boss' ? '#ef4444' : (room.type === 'treasure' ? '#f59e0b' : this.theme.torchColor),
+      timer: 3.2,
+      maxTimer: 3.2
+    };
+  }
+
+  update(dt) {
+    // Update banner timer
+    if (this.activeBanner) {
+      this.activeBanner.timer -= dt;
+      if (this.activeBanner.timer <= 0) {
+        this.activeBanner = null;
+      }
+    }
+
+    // Update portal rotation
+    if (this.exitPortal) {
+      this.exitPortal.pulseAngle = (this.exitPortal.pulseAngle || 0) + dt * 2.0;
+    }
+  }
+
   getSyncData() {
     return {
-      cols: this.cols,
-      rows: this.rows,
-      tileSize: this.tileSize,
       floorNumber: this.floorNumber,
       themeKey: this.themeKey,
+      currentRoomId: this.currentRoom ? this.currentRoom.id : 1,
       rooms: this.rooms.map(r => ({
         id: r.id,
-        col: r.col,
-        row: r.row,
-        width: r.width,
-        height: r.height,
+        gridX: r.gridX,
+        gridY: r.gridY,
         type: r.type,
         name: r.name,
-        isDiscovered: r.isDiscovered
+        isCleared: r.isCleared,
+        isLocked: r.isLocked,
+        hasVisited: r.hasVisited,
+        doors: r.doors
       })),
       containers: this.containers.map(c => ({
         id: c.id,
@@ -717,86 +682,39 @@ export class Dungeon {
     };
   }
 
-  /**
-   * Applies received network sync data to instantiate the identical dungeon on guest peers
-   */
   applySyncData(data) {
-    this.cols = data.cols;
-    this.rows = data.rows;
-    this.tileSize = data.tileSize;
     this.floorNumber = data.floorNumber;
     this.themeKey = data.themeKey;
     this.theme = DUNGEON_THEMES[this.themeKey] || DUNGEON_THEMES.jjk;
+    this.rooms = [];
+    this.roomsMap.clear();
 
-    this.originX = -Math.floor((this.cols * this.tileSize) / 2);
-    this.originY = -Math.floor((this.rows * this.tileSize) / 2);
-    this.width = this.cols * this.tileSize;
-    this.height = this.rows * this.tileSize;
-    this.minX = this.originX;
-    this.minY = this.originY;
-    this.maxX = this.originX + this.width;
-    this.maxY = this.originY + this.height;
-
-    // Reconstruct grid & rooms
-    this.corridorTiles = new Set();
-    this.torches = [];
-    this.grid = Array.from({ length: this.cols }, () => new Uint8Array(this.rows));
-    this.rooms = data.rooms.map(r => {
-      const room = {
-        ...r,
-        centerX: this.originX + (r.col + r.width / 2) * this.tileSize,
-        centerY: this.originY + (r.row + r.height / 2) * this.tileSize,
-        bounds: {
-          minX: this.originX + r.col * this.tileSize,
-          minY: this.originY + r.row * this.tileSize,
-          maxX: this.originX + (r.col + r.width) * this.tileSize,
-          maxY: this.originY + (r.row + r.height) * this.tileSize
-        },
-        isDiscovered: true,
-        discoveredAlpha: 1.0,
-        hasShownBanner: r.hasShownBanner ?? true,
-        torches: []
-      };
-
-      for (let c = r.col; c < r.col + r.width; c++) {
-        for (let row = r.row; row < r.row + r.height; row++) {
-          this.grid[c][row] = TILES.FLOOR;
-        }
-      }
-      return room;
-    });
+    for (const r of data.rooms) {
+      const room = this.createRoom(r.id, r.gridX, r.gridY, r.type);
+      room.name = r.name;
+      room.isCleared = r.isCleared;
+      room.isLocked = r.isLocked;
+      room.hasVisited = r.hasVisited;
+      room.doors = r.doors;
+      this.rooms.push(room);
+      this.roomsMap.set(`${r.gridX},${r.gridY}`, room);
+    }
 
     this.spawnRoom = this.rooms.find(r => r.type === 'spawn') || this.rooms[0];
     this.bossRoom = this.rooms.find(r => r.type === 'boss') || this.rooms[this.rooms.length - 1];
     this.treasureRoom = this.rooms.find(r => r.type === 'treasure');
     this.combatRooms = this.rooms.filter(r => r.type === 'combat');
+    this.currentRoom = this.rooms.find(r => r.id === data.currentRoomId) || this.spawnRoom;
 
-    // Reconstruct walls around floor tiles
-    for (let c = 1; c < this.cols - 1; c++) {
-      for (let r = 1; r < this.rows - 1; r++) {
-        if (this.grid[c][r] === TILES.VOID) {
-          let hasFloor = false;
-          for (let dc = -1; dc <= 1; dc++) {
-            for (let dr = -1; dr <= 1; dr++) {
-              if (dc === 0 && dr === 0) continue;
-              if (this.grid[c + dc][r + dr] === TILES.FLOOR) {
-                hasFloor = true;
-                break;
-              }
-            }
-            if (hasFloor) break;
-          }
-          if (hasFloor) this.grid[c][r] = TILES.WALL;
-        }
+    this.populateFixtures();
+
+    // Restore container broken state
+    if (data.containers) {
+      for (const sc of data.containers) {
+        const local = this.containers.find(c => c.id === sc.id);
+        if (local) local.isBroken = sc.isBroken;
       }
     }
-
-    this.containers = data.containers.map(c => ({
-      ...c,
-      radius: 18,
-      hp: c.isBroken ? 0 : 1,
-      theme: this.themeKey
-    }));
 
     this.exitPortal = data.exitPortal;
   }

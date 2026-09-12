@@ -1666,98 +1666,93 @@ export class Renderer {
    * destructible containers, exit portals, and Room Discovery Fog of War!
    */
   drawDungeon(dungeon, cameraX, cameraY, viewWidth, viewHeight, time = 0) {
-    if (!dungeon || !dungeon.grid) return;
+    if (!dungeon || !dungeon.rooms) return;
     const ctx = this.ctx;
-    const size = dungeon.tileSize;
     const theme = dungeon.theme;
+    const tileSize = dungeon.tileSize || 64;
 
-    const halfW = viewWidth / 2 + size * 2;
-    const halfH = viewHeight / 2 + size * 2;
+    const halfW = viewWidth / 2 + 100;
+    const halfH = viewHeight / 2 + 100;
 
-    const startCol = Math.max(0, Math.floor((cameraX - halfW - dungeon.originX) / size));
-    const endCol = Math.min(dungeon.cols - 1, Math.ceil((cameraX + halfW - dungeon.originX) / size));
-    const startRow = Math.max(0, Math.floor((cameraY - halfH - dungeon.originY) / size));
-    const endRow = Math.min(dungeon.rows - 1, Math.ceil((cameraY + halfH - dungeon.originY) / size));
+    for (const room of dungeon.rooms) {
+      // Cull rooms not in view
+      if (
+        room.bounds.maxX < cameraX - halfW ||
+        room.bounds.minX > cameraX + halfW ||
+        room.bounds.maxY < cameraY - halfH ||
+        room.bounds.minY > cameraY + halfH
+      ) {
+        continue;
+      }
 
-    // 1. Draw Floors and Corridors
-    for (let c = startCol; c <= endCol; c++) {
-      for (let r = startRow; r <= endRow; r++) {
-        const tile = dungeon.grid[c][r];
-        if (tile === 1 || tile === 3 || tile === 4) { // FLOOR, CORRIDOR, DOOR
-          const x = dungeon.originX + c * size;
-          const y = dungeon.originY + r * size;
+      const minX = room.bounds.minX;
+      const maxX = room.bounds.maxX;
+      const minY = room.bounds.minY;
+      const maxY = room.bounds.maxY;
+      const rw = room.width;
+      const rh = room.height;
 
+      // 1. Draw Checkered Flagstone Floor
+      for (let c = 0; c < room.colCount; c++) {
+        for (let r = 0; r < room.rowCount; r++) {
+          const fx = minX + c * tileSize;
+          const fy = minY + r * tileSize;
           const isAlt = (c + r) % 2 === 0;
           ctx.fillStyle = isAlt ? theme.floorColor : theme.floorAltColor;
-          ctx.fillRect(x, y, size, size);
+          ctx.fillRect(fx, fy, tileSize, tileSize);
 
-          // Subtle grid border
           ctx.strokeStyle = theme.floorGridColor;
           ctx.lineWidth = 1;
-          ctx.strokeRect(x, y, size, size);
-
-          // Corridor texture dash
-          if (tile === 3) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
-            ctx.fillRect(x + 4, y + 4, size - 8, size - 8);
-          }
+          ctx.strokeRect(fx, fy, tileSize, tileSize);
         }
       }
-    }
 
-    // 2. Draw Walls with 3D Depth Top Bevels
-    for (let c = startCol; c <= endCol; c++) {
-      for (let r = startRow; r <= endRow; r++) {
-        const tile = dungeon.grid[c][r];
-        if (tile === 2) { // WALL
-          const x = dungeon.originX + c * size;
-          const y = dungeon.originY + r * size;
+      // 2. Draw 4 Perimeter Walls with 3D Bevels
+      const wallThick = 54;
+      ctx.fillStyle = theme.wallColor;
 
-          // Front face
-          ctx.fillStyle = theme.wallColor;
-          ctx.fillRect(x, y, size, size);
+      // Top Wall (North)
+      ctx.fillRect(minX, minY, rw, wallThick);
+      // Bottom Wall (South)
+      ctx.fillRect(minX, maxY - wallThick, rw, wallThick);
+      // Left Wall (West)
+      ctx.fillRect(minX, minY, wallThick, rh);
+      // Right Wall (East)
+      ctx.fillRect(maxX - wallThick, minY, wallThick, rh);
 
-          // Top 3D bevel / slab
-          ctx.fillStyle = theme.wallTopColor;
-          ctx.fillRect(x, y, size, 14);
+      // 3D Bevel Slab & Highlights
+      ctx.fillStyle = theme.wallTopColor;
+      ctx.fillRect(minX, minY, rw, 14);
+      ctx.fillRect(minX, maxY - wallThick, rw, 14);
+      ctx.fillRect(minX, minY, 14, rh);
+      ctx.fillRect(maxX - 14, minY, 14, rh);
 
-          // Trim highlight
-          ctx.fillStyle = theme.wallBevelColor;
-          ctx.fillRect(x, y + 12, size, 2);
+      ctx.fillStyle = theme.wallBevelColor;
+      ctx.fillRect(minX, minY + 12, rw, 2);
+      ctx.fillRect(minX, maxY - wallThick + 12, rw, 2);
 
-          // Perimeter outline
-          ctx.strokeStyle = theme.wallStrokeColor;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x, y, size, size);
-        }
+      // Outer outline
+      ctx.strokeStyle = theme.wallStrokeColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(minX, minY, rw, rh);
+
+      // 3. Draw Doors
+      for (const door of room.doors) {
+        this.drawDoor(ctx, room, door, theme, time);
       }
-    }
 
-    // 3. Draw Wall Torches
-    for (const torch of dungeon.torches) {
-      if (
-        torch.x >= cameraX - halfW &&
-        torch.x <= cameraX + halfW &&
-        torch.y >= cameraY - halfH &&
-        torch.y <= cameraY + halfH
-      ) {
+      // 4. Draw Torches inside this room
+      for (const torch of room.torches) {
         this.drawTorch(torch.x, torch.y, time, torch.color, torch.glow);
       }
-    }
 
-    // 4. Draw Destructible Containers (Pots / Crates)
-    for (const container of dungeon.containers) {
-      if (container.isBroken) continue;
-      if (
-        container.x >= cameraX - halfW &&
-        container.x <= cameraX + halfW &&
-        container.y >= cameraY - halfH &&
-        container.y <= cameraY + halfH
-      ) {
+      // 5. Draw Destructible Containers inside this room
+      for (const container of room.containers) {
+        if (container.isBroken) continue;
         ctx.save();
         ctx.translate(container.x, container.y);
 
-        // Clay pot shadow
+        // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
         ctx.ellipse(0, 10, 16, 7, 0, 0, Math.PI * 2);
@@ -1777,75 +1772,312 @@ export class Renderer {
         ctx.arc(0, -6, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Talisman or rune on pot
+        // Talisman tag
         ctx.fillStyle = '#fef08a';
         ctx.fillRect(-3, -1, 6, 8);
 
         ctx.restore();
       }
+
+      // 6. Draw Exit Descent Portal (in Boss Sanctum)
+      if (room.type === 'boss' && dungeon.exitPortal) {
+        this.drawExitPortal(ctx, dungeon.exitPortal, theme);
+      }
     }
+  }
 
-    // 5. Draw Exit Descent Portal in Boss Sanctum
-    if (dungeon.exitPortal) {
-      const p = dungeon.exitPortal;
-      ctx.save();
-      ctx.translate(p.x, p.y);
+  /**
+   * Renders chamber doors with Isaac-style open and locked states
+   */
+  drawDoor(ctx, room, door, theme, time) {
+    ctx.save();
+    const isLocked = room.isLocked;
+    const isBoss = door.isBoss;
+    const isTreasure = door.isTreasure;
+    const isHoriz = door.dir === 'north' || door.dir === 'south';
 
-      // Rotating portal pulse
-      p.pulseAngle = (p.pulseAngle || 0) + 0.025;
+    const dw = door.width;
+    const dh = door.height;
+    const dx = door.x - dw / 2;
+    const dy = door.y - dh / 2;
 
-      if (p.isActive) {
-        // Active radiant vortex portal!
-        const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, p.radius * 1.6);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.3, theme.torchColor);
-        grad.addColorStop(0.7, theme.wallBevelColor);
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    // Doorway opening background (depth threshold)
+    ctx.fillStyle = isLocked ? '#120f1a' : theme.floorAltColor;
+    ctx.fillRect(dx, dy, dw, dh);
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.radius * 1.6, 0, Math.PI * 2);
-        ctx.fill();
+    // Stone Frame Pillars
+    const frameColor = isBoss ? '#450a0a' : (isTreasure ? '#78350f' : theme.wallTopColor);
+    const trimColor = isBoss ? '#ef4444' : (isTreasure ? '#f59e0b' : theme.wallBevelColor);
 
-        // Rotating vortex rings
-        ctx.rotate(p.pulseAngle);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
-        for (let r = 0; r < 4; r++) {
+    ctx.strokeStyle = frameColor;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(dx, dy, dw, dh);
+
+    if (isLocked) {
+      // --- LOCKED DOOR: Heavy Portcullis Grates & Cursed Lock ---
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3;
+
+      if (isHoriz) {
+        for (let b = 14; b < dw - 10; b += 16) {
           ctx.beginPath();
-          ctx.arc(0, 0, 12 + r * 6, r, r + Math.PI);
+          ctx.moveTo(dx + b, dy);
+          ctx.lineTo(dx + b, dy + dh);
           ctx.stroke();
         }
-
-        // Floating "DESCENT PORTAL" indicator
-        ctx.rotate(-p.pulseAngle);
-        ctx.font = '900 11px "Outfit", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = theme.torchColor;
-        ctx.shadowBlur = 12;
-        ctx.fillText('▼ STEP TO DESCEND ▼', 0, -p.radius - 16);
-      } else {
-        // Inactive dormant stone portal
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.beginPath();
-        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.moveTo(dx, dy + dh / 2);
+        ctx.lineTo(dx + dw, dy + dh / 2);
         ctx.stroke();
-
-        ctx.font = '800 9px "Outfit", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#64748b';
-        ctx.fillText('🔒 DEFEAT GUARDIAN', 0, 3);
+      } else {
+        for (let b = 14; b < dh - 10; b += 16) {
+          ctx.beginPath();
+          ctx.moveTo(dx, dy + b);
+          ctx.lineTo(dx + dw, dy + b);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(dx + dw / 2, dy);
+        ctx.lineTo(dx + dw / 2, dy + dh);
+        ctx.stroke();
       }
 
+      // Central Lock Emblem
+      const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#a855f7');
+      const pulse = 1 + Math.sin(time * 6) * 0.15;
+
+      ctx.save();
+      ctx.translate(door.x, door.y);
+      ctx.scale(pulse, pulse);
+
+      ctx.fillStyle = emblemCol;
+      ctx.shadowColor = emblemCol;
+      ctx.shadowBlur = 12;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = '900 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 0;
+      ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 4);
       ctx.restore();
+    } else {
+      // --- OPEN DOOR: Atmospheric Archway & Runes ---
+      ctx.strokeStyle = trimColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(dx + 2, dy + 2, dw - 4, dh - 4);
+
+      // Directional arrow / room symbol
+      ctx.font = '900 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = trimColor;
+      ctx.shadowColor = trimColor;
+      ctx.shadowBlur = 8;
+      const symbol = isBoss ? '💀' : (isTreasure ? '★' : (isHoriz ? (door.dir === 'north' ? '▲' : '▼') : (door.dir === 'west' ? '◀' : '▶')));
+      ctx.fillText(symbol, door.x, door.y + 4);
     }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draws the descent portal in Boss Sanctum
+   */
+  drawExitPortal(ctx, p, theme) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    p.pulseAngle = (p.pulseAngle || 0) + 0.025;
+
+    if (p.isActive) {
+      const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, p.radius * 1.6);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, theme.torchColor);
+      grad.addColorStop(0.7, theme.wallBevelColor);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.rotate(p.pulseAngle);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      for (let r = 0; r < 4; r++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 12 + r * 6, r, r + Math.PI);
+        ctx.stroke();
+      }
+
+      ctx.rotate(-p.pulseAngle);
+      ctx.font = '900 11px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = theme.torchColor;
+      ctx.shadowBlur = 12;
+      ctx.fillText('▼ STEP TO DESCEND ▼', 0, -p.radius - 16);
+    } else {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = '800 9px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('🔒 DEFEAT GUARDIAN', 0, 3);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Authentic The Binding of Isaac Style Minimap HUD
+   * Renders room grid in the top-right corner
+   */
+  drawMinimap(dungeon, screenWidth, screenHeight) {
+    if (!dungeon || !dungeon.rooms || dungeon.rooms.length === 0) return;
+    const ctx = this.ctx;
+    ctx.save();
+
+    const mapW = 145;
+    const mapH = 105;
+    const mapX = screenWidth - mapW - 20;
+    const mapY = 20;
+
+    // Card background
+    ctx.fillStyle = 'rgba(8, 10, 16, 0.84)';
+    ctx.fillRect(mapX, mapY, mapW, mapH);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(mapX, mapY, mapW, mapH);
+
+    // Header label
+    ctx.font = '900 9px "Outfit", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('MAP', mapX + 8, mapY + 14);
+
+    // Current floor tag
+    ctx.font = '800 8px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = dungeon.theme.torchColor;
+    ctx.fillText(`FL.${dungeon.floorNumber}`, mapX + mapW - 8, mapY + 14);
+
+    // Calculate grid bounds
+    let minGx = 0, maxGx = 0, minGy = 0, maxGy = 0;
+    for (const r of dungeon.rooms) {
+      if (r.gridX < minGx) minGx = r.gridX;
+      if (r.gridX > maxGx) maxGx = r.gridX;
+      if (r.gridY < minGy) minGy = r.gridY;
+      if (r.gridY > maxGy) maxGy = r.gridY;
+    }
+
+    const gridSpanX = maxGx - minGx + 1;
+    const gridSpanY = maxGy - minGy + 1;
+
+    const cellW = 18;
+    const cellH = 12;
+    const gap = 4;
+    const totalGridW = gridSpanX * (cellW + gap) - gap;
+    const totalGridH = gridSpanY * (cellH + gap) - gap;
+
+    const originX = mapX + (mapW - totalGridW) / 2;
+    const originY = mapY + 22 + (mapH - 22 - totalGridH) / 2;
+
+    const visitedIds = new Set(dungeon.rooms.filter(r => r.hasVisited).map(r => r.id));
+
+    // Draw connecting door lines between visited rooms
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+    ctx.lineWidth = 1.5;
+    for (const room of dungeon.rooms) {
+      if (!room.hasVisited) continue;
+      const rx = originX + (room.gridX - minGx) * (cellW + gap) + cellW / 2;
+      const ry = originY + (room.gridY - minGy) * (cellH + gap) + cellH / 2;
+
+      for (const door of room.doors) {
+        const neighbor = dungeon.rooms.find(x => x.id === door.targetRoomId);
+        if (neighbor && neighbor.hasVisited) {
+          const nx = originX + (neighbor.gridX - minGx) * (cellW + gap) + cellW / 2;
+          const ny = originY + (neighbor.gridY - minGy) * (cellH + gap) + cellH / 2;
+          ctx.beginPath();
+          ctx.moveTo(rx, ry);
+          ctx.lineTo((rx + nx) / 2, (ry + ny) / 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw room boxes
+    for (const room of dungeon.rooms) {
+      const isCurrent = dungeon.currentRoom && dungeon.currentRoom.id === room.id;
+      const rx = originX + (room.gridX - minGx) * (cellW + gap);
+      const ry = originY + (room.gridY - minGy) * (cellH + gap);
+
+      const isDiscovered = room.hasVisited || room.doors.some(d => visitedIds.has(d.targetRoomId));
+      if (!isDiscovered) continue;
+
+      if (room.hasVisited) {
+        if (room.type === 'boss') {
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+          ctx.strokeStyle = '#ef4444';
+        } else if (room.type === 'treasure') {
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.45)';
+          ctx.strokeStyle = '#f59e0b';
+        } else if (room.type === 'spawn') {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+          ctx.strokeStyle = '#38bdf8';
+        } else {
+          ctx.fillStyle = room.isCleared ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.2)';
+          ctx.strokeStyle = room.isCleared ? '#64748b' : '#94a3b8';
+        }
+
+        ctx.lineWidth = 1;
+        ctx.fillRect(rx, ry, cellW, cellH);
+        ctx.strokeRect(rx, ry, cellW, cellH);
+
+        // Icon inside room
+        ctx.font = '800 8px sans-serif';
+        ctx.textAlign = 'center';
+        if (room.type === 'boss') {
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('💀', rx + cellW / 2, ry + cellH / 2 + 3);
+        } else if (room.type === 'treasure') {
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText('★', rx + cellW / 2, ry + cellH / 2 + 3);
+        }
+      } else {
+        // Discovered adjacent room (foggy outline with question mark)
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+        ctx.fillRect(rx, ry, cellW, cellH);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rx, ry, cellW, cellH);
+
+        ctx.font = '700 7px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+        ctx.fillText('?', rx + cellW / 2, ry + cellH / 2 + 2.5);
+      }
+
+      // Highlight current room
+      if (isCurrent) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx - 1, ry - 1, cellW + 2, cellH + 2);
+      }
+    }
+
+    ctx.restore();
   }
 
   /**
