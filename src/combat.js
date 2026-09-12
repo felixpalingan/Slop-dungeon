@@ -195,6 +195,11 @@ export class CombatSystem {
    * Sukuna's Hiten Fire Spear, Tome rune pulse, or standard slap/shield bash.
    */
   performOffhandAttack(attacker, targets = []) {
+    // If weapon is two-handed, perform the primary weapon attack instead of punch/slap
+    if (attacker.equipment?.weapon?.hands === 2) {
+      return this.performWeaponAttack(attacker, targets);
+    }
+
     const offhand = attacker.equipment?.offhand;
     const offhandVisual = offhand?.visual;
 

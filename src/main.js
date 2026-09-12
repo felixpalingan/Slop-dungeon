@@ -1308,6 +1308,44 @@ function gameLoop(now) {
   // Left Click & Right Click Attacks
   const weaponVisual = player.equipment?.weapon?.visual;
 
+  const performPrimaryAttack = () => {
+    const currentWeapon = player.equipment?.weapon;
+    const currentWeaponVisual = currentWeapon?.visual;
+    const isShotgun = currentWeaponVisual === 'david_shotgun';
+    const isDualBlades = currentWeaponVisual === 'dual_snap_blades';
+
+    if (player.triggerAttack()) {
+      playWeaponAttackSound(currentWeapon);
+      if (isShotgun) {
+        particles.spawnComicText(player.x, player.y - 28, `SHELLS: ${player.shotgunAmmo}/4`, '#00ff88');
+        cinematics.addScreenShake(7);
+        spawnShotgunPellets(player, false);
+
+        const fireMsg = {
+          type: 'SHOTGUN_FIRE',
+          peerId: network.myPeerId,
+          x: player.x,
+          y: player.y,
+          angle: player.angle
+        };
+        if (network.isHost) network.broadcast(fireMsg);
+        else network.sendToHost(fireMsg);
+      } else {
+        if (isDualBlades) {
+          cinematics.addScreenShake(5);
+        }
+        handleAttacks();
+      }
+      broadcastMyState();
+      return true;
+    } else if (isShotgun && player.isReloadingShotgun) {
+      audio.playShieldLock();
+      particles.spawnComicText(player.x, player.y - 30, 'RELOADING... 🔄', '#facc15');
+      return false;
+    }
+    return false;
+  };
+
   // Left Click: ODM Cable Launch (if in ODM Mode) OR Standard Weapon Attack (Dual Blades, Shotgun, Swords, etc.)
   if (input.justPressedLeft && !modalsOpen && !player.isStunned) {
     if (player.isOdmMode && isLeviGearEquipped) {
@@ -1325,39 +1363,11 @@ function gameLoop(now) {
         particles.spawnComicText(player.x, player.y - 32, 'OUT OF GAS! 💨', '#ef4444');
       }
     } else {
-      const isShotgun = weaponVisual === 'david_shotgun';
-      const isDualBlades = weaponVisual === 'dual_snap_blades';
-      if (player.triggerAttack()) {
-        playWeaponAttackSound(player.equipment?.weapon);
-        if (isShotgun) {
-          particles.spawnComicText(player.x, player.y - 28, `SHELLS: ${player.shotgunAmmo}/4`, '#00ff88');
-          cinematics.addScreenShake(7);
-          spawnShotgunPellets(player, false);
-
-          const fireMsg = {
-            type: 'SHOTGUN_FIRE',
-            peerId: network.myPeerId,
-            x: player.x,
-            y: player.y,
-            angle: player.angle
-          };
-          if (network.isHost) network.broadcast(fireMsg);
-          else network.sendToHost(fireMsg);
-        } else {
-          if (isDualBlades) {
-            cinematics.addScreenShake(5);
-          }
-          handleAttacks();
-        }
-        broadcastMyState();
-      } else if (isShotgun && player.isReloadingShotgun) {
-        audio.playShieldLock();
-        particles.spawnComicText(player.x, player.y - 30, 'RELOADING... 🔄', '#facc15');
-      }
+      performPrimaryAttack();
     }
   }
 
-  // Right Click: ODM Cable Launch (if in ODM Mode) OR Standard Off-hand Slap / Ability
+  // Right Click: ODM Cable Launch (if in ODM Mode) OR 2-Handed Weapon Attack OR Standard Off-hand Slap / Ability
   if (input.justPressedRight && !modalsOpen && !player.isBlocking && !player.isStunned) {
     if (player.isOdmMode && isLeviGearEquipped) {
       // In ODM Mode, Right Click ALSO launches an ODM cable (enables rapid dual cable maneuvering!)
@@ -1373,6 +1383,9 @@ function gameLoop(now) {
         audio.playShieldLock();
         particles.spawnComicText(player.x, player.y - 32, 'OUT OF GAS! 💨', '#ef4444');
       }
+    } else if (player.equipment?.weapon?.hands === 2) {
+      // TWO-HANDED WEAPON: Both Left Click and Right Click perform the exact same weapon attack (no barehanded punch!)
+      performPrimaryAttack();
     } else {
       if (player.triggerSlap()) {
         const offhandVisual = player.equipment?.offhand?.visual;
