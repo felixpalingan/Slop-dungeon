@@ -868,6 +868,60 @@ export class CinematicManager {
         ctx.lineTo(7, 3);
         ctx.closePath();
         ctx.fill();
+      } else if (proj.type === 'merchant_rpg_rocket') {
+        // Spelunky Merchant RPG Rocket
+        const moveAngle = Math.atan2(proj.vy, proj.vx);
+        ctx.rotate(moveAngle);
+
+        // Rocket exhaust plume
+        const plumeLen = 22 + Math.random() * 12;
+        ctx.fillStyle = '#f97316';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.moveTo(-16, -5);
+        ctx.lineTo(-16 - plumeLen, 0);
+        ctx.lineTo(-16, 5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Smoke particles behind rocket
+        ctx.fillStyle = 'rgba(156, 163, 175, 0.6)';
+        ctx.beginPath();
+        ctx.arc(-22 - Math.random() * 8, (Math.random() - 0.5) * 6, 4 + Math.random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Steel rocket tube
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(-16, -5, 24, 10);
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-16, -5, 24, 10);
+
+        // Yellow hazard bands on tube
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(-6, -5, 4, 10);
+        ctx.fillRect(2, -5, 4, 10);
+
+        // Stabilizer tail fins
+        ctx.fillStyle = '#4b5563';
+        ctx.beginPath();
+        ctx.moveTo(-14, -5);
+        ctx.lineTo(-20, -11);
+        ctx.lineTo(-10, -5);
+        ctx.moveTo(-14, 5);
+        ctx.lineTo(-20, 11);
+        ctx.lineTo(-10, 5);
+        ctx.fill();
+
+        // High-explosive warhead cone
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(8, -7);
+        ctx.lineTo(22, 0);
+        ctx.lineTo(8, 7);
+        ctx.closePath();
+        ctx.fill();
       }
 
       ctx.restore();

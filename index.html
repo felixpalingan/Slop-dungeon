@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Dungeon Slop - Co-op Dungeon Crawler</title>
+  <title>Slop Dungeon - Co-op Dungeon Crawler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -32,6 +32,11 @@
               <span class="bar-text" id="hud-stamina-text">STAMINA [SHIFT]</span>
             </div>
           </div>
+        </div>
+        <div class="slops-badge" id="hud-slops-badge" title="Shared party wallet across co-op!">
+          <span class="slops-icon">🪙</span>
+          <span class="slops-val"><strong id="hud-slops-amount">0</strong> SLOPS</span>
+          <span class="slops-label">PARTY WALLET</span>
         </div>
       </div>
 
@@ -222,6 +227,119 @@
           <div class="inventory-footer">
             <span class="hint-text">💡 Press <kbd>DROP</kbd> on any item to drop it on the ground for your friends!</span>
             <button id="btn-close-inventory" class="action-btn primary-btn">CLOSE [TAB / I]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slop Merchant Modal (Shop, Sell, Trade-Up Forge, Spin-a-Wheel Gacha) -->
+      <div id="merchant-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card merchant-card">
+          <div class="merchant-header">
+            <div class="merchant-profile">
+              <div class="merchant-avatar">💰</div>
+              <div>
+                <h2 class="modal-title">SLOP MERCHANT</h2>
+                <p class="modal-subtitle">"Buy supplies, trade-up, or spin the wheel! Don't get grabby..."</p>
+              </div>
+            </div>
+            <div class="merchant-wallet-badge">
+              <span class="wallet-icon">🪙</span>
+              <div>
+                <div class="wallet-label">SHARED VAULT</div>
+                <strong id="merchant-slops-amount">0 SLOPS</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Merchant Tabs -->
+          <div class="merchant-tabs">
+            <button class="merchant-tab-btn active" data-tab="shop">🛒 SUPPLIES SHOP</button>
+            <button class="merchant-tab-btn" data-tab="sell">🏷️ SELL ITEMS</button>
+            <button class="merchant-tab-btn" data-tab="forge">⚒️ TRADE-UP FORGE</button>
+            <button class="merchant-tab-btn" data-tab="wheel">🎡 SPIN-A-WHEEL</button>
+          </div>
+
+          <!-- Tab Content: Shop -->
+          <div class="merchant-tab-pane active" id="pane-shop">
+            <p class="tab-description">Vital consumables & rare dungeon gear. Paid from the party's shared Slops vault.</p>
+            <div class="shop-grid" id="shop-items-grid"></div>
+          </div>
+
+          <!-- Tab Content: Sell -->
+          <div class="merchant-tab-pane" id="pane-sell">
+            <p class="tab-description">Sell unwanted equipment from your backpack into the party's shared Slops wallet.</p>
+            <div class="sell-grid" id="sell-items-grid"></div>
+          </div>
+
+          <!-- Tab Content: Trade-Up Forge -->
+          <div class="merchant-tab-pane" id="pane-forge">
+            <p class="tab-description">Place <strong>3 items of the EXACT SAME RARITY</strong> to forge 1 random item of the NEXT higher rarity!</p>
+            <div class="forge-container">
+              <div class="forge-workbench">
+                <div class="forge-slots-row">
+                  <div class="forge-slot-box">
+                    <div class="forge-slot" id="forge-slot-0" data-index="0">Empty</div>
+                    <span class="forge-slot-sub">Slot 1</span>
+                  </div>
+                  <div class="forge-plus">+</div>
+                  <div class="forge-slot-box">
+                    <div class="forge-slot" id="forge-slot-1" data-index="1">Empty</div>
+                    <span class="forge-slot-sub">Slot 2</span>
+                  </div>
+                  <div class="forge-plus">+</div>
+                  <div class="forge-slot-box">
+                    <div class="forge-slot" id="forge-slot-2" data-index="2">Empty</div>
+                    <span class="forge-slot-sub">Slot 3</span>
+                  </div>
+                  <div class="forge-arrow">➔</div>
+                  <div class="forge-slot-box">
+                    <div class="forge-slot forge-result-slot" id="forge-slot-result">?</div>
+                    <span class="forge-slot-sub">Next Tier</span>
+                  </div>
+                </div>
+                <div class="forge-controls">
+                  <button id="btn-execute-forge" class="action-btn primary-btn forge-btn uniform-action-btn" disabled>⚒️ FORGE TRADE-UP</button>
+                  <button id="btn-clear-forge" class="action-btn outline-btn uniform-action-btn">CLEAR SLOTS</button>
+                </div>
+              </div>
+              <div class="forge-inventory-picker">
+                <span class="picker-title">Select items from backpack to insert into forge:</span>
+                <div class="backpack-grid mini-grid" id="forge-inventory-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Content: Spin-a-Wheel Gacha -->
+          <div class="merchant-tab-pane" id="pane-wheel">
+            <p class="tab-description">Wager 1 piece of equipment on the Slop Wheel! (50% Ancur, 45% Upgrade, 5% Secret Mythic. No pity!)</p>
+            <div class="wheel-game-container">
+              <div class="wheel-canvas-wrapper">
+                <canvas id="wheel-canvas" width="260" height="260"></canvas>
+                <div class="wheel-pointer">▼</div>
+              </div>
+              <div class="wheel-side-panel">
+                <div class="wheel-wager-box">
+                  <span class="sub-label">Wagered Item:</span>
+                  <div class="forge-slot wager-slot" id="wheel-wager-slot">Select Item</div>
+                </div>
+                <div class="wheel-odds-legend">
+                  <div class="odds-item odds-red"><span class="odds-pct">50%</span> 💀 Ancur (Destroyed)</div>
+                  <div class="odds-item odds-green"><span class="odds-pct">45%</span> ⬆️ Rarity Upgrade</div>
+                  <div class="odds-item odds-gold"><span class="odds-pct">5%</span> 👑 Secret Mythic Drop</div>
+                </div>
+                <button id="btn-spin-wheel" class="action-btn primary-btn spin-btn uniform-action-btn" disabled>🎡 SPIN WHEEL</button>
+                <div id="wheel-result-message" class="wheel-result-msg hidden"></div>
+              </div>
+            </div>
+            <div class="wheel-inventory-picker">
+              <span class="picker-title">Choose item from backpack to wager:</span>
+              <div class="backpack-grid mini-grid" id="wheel-inventory-grid"></div>
+            </div>
+          </div>
+
+          <div class="merchant-footer">
+            <span class="hint-text">⚠️ Caution: The merchant is armed with an RPG. Attacking him will provoke explosive retaliation!</span>
+            <button id="btn-close-merchant" class="action-btn primary-btn uniform-action-btn">LEAVE SHOP [ESC / E]</button>
           </div>
         </div>
       </div>

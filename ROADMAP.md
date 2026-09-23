@@ -1,8 +1,10 @@
-# Dungeon Slop — Development Roadmap & Implementation Plan
+# Slop Dungeon 🗡️🎲 — Development Roadmap & Implementation Plan
+
+> **Repository**: [https://github.com/felixpalingan/Slop-dungeon](https://github.com/felixpalingan/Slop-dungeon)
 
 A 1 to 6 player cooperative top-down dungeon crawler designed for chaotic friend-group fun. Delve as deep into procedural roguelike dungeon floors as possible — loot, gamble, and survive!
 
-All visuals are **100% procedural 2D shapes** (zero sprite art needed), networking runs serverlessly via **WebRTC (PeerJS)** with room codes, and the game features a full 6-slot gear system, shared ground loot trading, anime full-screen cinematic ultimates, a gambling/transmutation merchant, downed/revive co-op mechanics, and escalating procedural dungeon floors with traps and enemy variety.
+All visuals are **100% procedural 2D shapes** (zero sprite art needed), networking runs serverlessly via **WebRTC (PeerJS)** with room codes, and the game features a full 6-slot gear system, shared ground loot trading, anime full-screen cinematic ultimates, a shared-wallet Slop economy with the Slop Merchant, a spin-a-wheel gacha altar, downed/revive co-op mechanics, and escalating procedural dungeon floors with traps and enemy variety.
 
 ---
 
@@ -10,7 +12,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│                          Dungeon Slop Phase Gates                          │
+│                          Slop Dungeon Phase Gates                          │
 ├────────────────────────────────────────────────────────────────────────────┤
 │  Phase 1: Foundation, Procedural 2D Character & Movement [DONE ✅]         │
 │      ▼                                                                     │
@@ -41,8 +43,8 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 5.2: Game Over / Party Wipe & Victory Summary Screen [UPCOMING]│
 │    ├── Step 5.3: New Enemy Types (Kamikaze / Shaman Buffer) [UPCOMING]     │
 │    ├── Step 5.4: Room Hazards & Traps (Spike / Flame Pillar) [UPCOMING]    │
-│    ├── Step 5.5: Merchant Room + Gacha Gambling Altar [UPCOMING]           │
-│    ├── Step 5.6: Restore True Roguelike Procedural Layout [UPCOMING]       │
+│    ├── Step 5.5: Slop Merchant, Economy, Spin-a-Wheel Gacha & Trade-Up [UPCOMING] │
+│    ├── Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms [DONE ✅] │
 │    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [UPCOMING]     │
 │      ▼                                                                     │
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
@@ -107,7 +109,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 
 ### Phase 5: Gameplay Refinement & Content Depth `[IN PROGRESS 🔧]`
 
-> Core goal: Make the dungeon feel dangerous, tense, rewarding, and adictively replayable.
+> Core goal: Make the dungeon feel dangerous, tense, rewarding, and addictively replayable with maximum friend-group chaos.
 
 - **Step 5.1: Downed / Revive Co-op System** `[UPCOMING]`
   - HP reaching 0 triggers *Downed* crawl state (30s bleed-out, 60% speed penalty, cannot attack).
@@ -119,35 +121,51 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Party Wipe triggers dramatic screen shake + blood-red vignette fade into **Wipe Screen**.
   - Stats: Total Kills, Damage Dealt, Floors Reached, Time Survived, and top MVP player.
   - Buttons: *Restart to Lobby* / *Try Again from Floor 1*.
-  - Boss-clear victory banner and "Descend Deeper?" prompt after Floor 3 (cycle loop or final fanfare).
+  - Boss-clear victory banner and "Descend Deeper?" prompt after Floor 3.
 
 - **Step 5.3: New Enemy Types** `[UPCOMING]`
-  - **Kamikaze Exploder** (`cursed_bomb` / `suicide_drone`): Sprints toward player, flashes red, detonates with a 1-second AoE warning circle and a massive explosion. Reward: large loot drop.
+  - **Kamikaze Exploder** (`cursed_bomb` / `suicide_drone`): Sprints toward player, flashes red, detonates with a 1-second AoE warning circle and a massive explosion. Reward: large Slops drop.
   - **Shaman / Buffer** (`curse_chanter`): Kites away while emitting an aura shield or HP regen to nearby allies. Priority target — players must hunt this one first or fight unkillable mobs.
 
 - **Step 5.4: Room Hazards & Traps** `[UPCOMING]`
   - **Spike Trap**: Floor tiles that surge upward periodically (or 0.5s after being stepped on). Enemies can be lured into them.
   - **Cursed Flame Pillar / Gas Vent**: Rotating jets of cursed fire/steam in arena center, forcing positional combat.
 
-- **Step 5.5: Merchant Room + Gacha Gambling Altar** `[UPCOMING]`
-  - New room type: **Merchant Den (💰🎲)** — placed as a mid-floor branch in the procedural layout.
-  - **Standard Shop**: Purchase Health Potions (+50 HP), Stamina Elixirs, or Throwable Bombs using dropped Soul Coins.
-  - **Trade-Up Forge (3-for-1)**: Sacrifice 3 items of the same rarity → receive 1 item of the next tier (animated forge blast VFX).
-  - **Cursed Dice (The Gamble)**: Sacrifice 1 item + Soul Coins → spin the roulette:
-    - 🎰 *Jackpot (15%)*: Mythic / secret Anime Legendary item!
-    - ✅ *Win (50%)*: Item one tier higher.
-    - 💥 *Bust (35%)*: Item shatters — only ash and a comic `SHATTERED! 💥` popup remain.
+- **Step 5.5: Slop Merchant, Economy, Spin-a-Wheel Gacha & Trade-Up** `[COMPLETED ✅]`
+  - **Currency**: **Slops** (in-run currency).
+  - **Shared Party Wallet**: 1 shared Slops balance for all connected players — maximum co-op communication and chaotic spending!
+  - **The Slop Merchant**:
+    - Appears in dedicated Merchant Rooms.
+    - Sells survival consumables (Health Flask +50 HP, Stamina Tonic).
+    - **Item Buyback / Scrap**: Unwanted items can ONLY be sold/scrapped directly to the Slop Merchant for Slops.
+    - **Spelunky RPG Retaliation Mechanic**: If a player attacks, damages, or slaps the Slop Merchant, he does *not* go on an endless party-wiping rampage. Instead, he shoulders an RPG rocket launcher, locks on with a red dashed laser sight and crosshair for a dramatic 1.8-second windup delay, and fires a single high-damage explosive rocket directly at the culprit! Features an AoE splash blast that can damage teammates caught nearby.
+    - **Homing Slop Coins**: Defeated monsters drop Slop coins that initially scatter and can be picked up; if uncollected after 1 second, they automatically accelerate and fly directly towards the player who made the kill.
+    - **Clean Uniform Trader UI**: Redesigned modal with equal-sized tab buttons, standardized action buttons, uniform card heights, and structured grids preventing elements from covering or overlapping each other.
+    - *No throwables* (focused strictly on core gear, potions, and upgrades).
+  - **Trade-Up Forge (3-for-1)**:
+    - Must sacrifice **3 items of the exact same rarity** (e.g. 3 Rares).
+    - Guarantees 1 random item of the **next higher rarity tier** (e.g. 1 random Epic).
+  - **Spin-a-Wheel Gacha Altar**:
+    - Bet 1 item + Slops fee → spins a dramatic fortune wheel.
+    - **Strict Probabilities** (No pity system):
+      - 💥 **Ancur / Shattered (50%)**: Item is completely destroyed into ash.
+      - ⬆️ **Upgrade (45%)**: Item upgrades to the next rarity tier with boosted stats.
+      - 🎰 **Jackpot (5%)**: Secret Anime Mythic / Legendary item drop!
 
-- **Step 5.6: Restore True Roguelike Procedural Layout** `[UPCOMING]`
-  - Remove the fixed cardinal hub layout from `dungeon.generate()`.
-  - Restore random-walk expansion (7–10 rooms) with BFS-assigned Boss and Treasure dead-ends.
-  - Add new room types to the graph: `merchant` and `trap` variants.
-  - **Dev Toggle**: Floor Selector modal keeps a `[x] Test Hub Mode` checkbox for development-only fixed layouts.
+- **Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms** `[COMPLETED ✅]`
+  - Procedural grid layout (e.g., dynamic grid graph of rooms).
+  - Layout shape and room placements are randomized each run.
+  - Room contents are randomized: `battle`, `treasure`, `merchant`, or `boss`.
+  - **Guarantee Rule**: Every floor is guaranteed to contain at least one of each room type:
+    - At least 1 **Battle** room
+    - At least 1 **Treasure** room
+    - At least 1 **Merchant** room
+    - At least 1 **Boss** room
 
-- **Step 5.7: Lobby Dev Mode Cleanup** `[UPCOMING]`
+- **Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest)** `[UPCOMING]`
   - In **live mode**: Lobby spawns only with default starter gear (Rusty Sword / Leather Tunic).
   - Move all Batch 1/2 demo gear into a **Dev Armory Chest** prop in the lobby corner, only visible in dev/test mode.
-  - Players must earn anime gear through dungeon loot progression.
+  - Players must earn anime gear through dungeon loot progression and the Slop Merchant / Gacha.
 
 ---
 

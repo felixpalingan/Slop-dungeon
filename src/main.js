@@ -8,12 +8,13 @@ import { Dummy } from './dummy.js';
 import { ReadyCircle } from './readyCircle.js';
 import { CustomizationStation } from './customizationStation.js';
 import { FloorSelectStation } from './floorSelectStation.js';
-import { ITEM_CATALOG, ItemRarity, checkSetBonus, getRandomDungeonLoot } from './items.js';
+import { ITEM_CATALOG, ItemRarity, checkSetBonus, getRandomDungeonLoot, executeTradeUp, executeGachaSpin, getItemSellPrice, SLOP_SELL_VALUES } from './items.js';
 import { CombatSystem } from './combat.js';
 import { GroundLoot } from './groundLoot.js';
 import { CinematicManager } from './cinematics.js';
 import { Dungeon, DUNGEON_THEMES } from './dungeon.js';
 import { Monster, MonsterManager } from './monster.js';
+import { SlopMerchant } from './slopMerchant.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -117,7 +118,105 @@ window.addEventListener('click', unlockAudio, { passive: true });
 // Floor Progression & Monster Management
 let currentFloor = 0; // 0 = Safe Lobby Base Camp, 1+ = Procedural Dungeon Floors
 let currentDungeon = null;
+let slopMerchant = null;
 const monsterManager = new MonsterManager();
+
+// --- SHARED SLOPS PARTY WALLET & COIN DROPS ---
+let sharedSlops = 100; // Starter party funds
+const slopCoins = [];
+
+function updateSlopsUI() {
+  const hudSlops = document.getElementById('hud-slops-amount');
+  if (hudSlops) hudSlops.textContent = sharedSlops.toLocaleString();
+  const merchantSlops = document.getElementById('merchant-slops-amount');
+  if (merchantSlops) merchantSlops.textContent = `${sharedSlops.toLocaleString()} SLOPS`;
+}
+
+function broadcastSlops() {
+  const msg = { type: 'SLOPS_SYNC', amount: sharedSlops };
+  if (network.isHost) network.broadcast(msg);
+  else network.sendToHost(msg);
+}
+
+class SlopCoin {
+  constructor(x, y, value = 5, targetPlayer = null) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 140;
+    this.vy = (Math.random() - 0.5) * 140;
+    this.value = value;
+    this.radius = 8;
+    this.magnetRange = 95;
+    this.bounce = Math.random() * Math.PI * 2;
+    this.targetPlayer = targetPlayer;
+    this.homingDelay = 1.0; // 1 second after dropping, fly directly to killer player!
+    this.homingSpeed = 220;
+  }
+  update(dt, localPlayer) {
+    this.vx *= 0.91;
+    this.vy *= 0.91;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.bounce += dt * 6;
+
+    // Normal local proximity magnet (within 95px)
+    if (localPlayer) {
+      const dist = Math.hypot(localPlayer.x - this.x, localPlayer.y - this.y);
+      if (dist <= this.magnetRange && dist > 1) {
+        const pull = (1 - dist / this.magnetRange) * 520;
+        this.x += ((localPlayer.x - this.x) / dist) * pull * dt;
+        this.y += ((localPlayer.y - this.y) / dist) * pull * dt;
+      }
+    }
+
+    // Homing flight towards the killer player if left uncollected!
+    if (this.homingDelay > 0) {
+      this.homingDelay -= dt;
+    }
+    if (this.homingDelay <= 0) {
+      const dest = (this.targetPlayer && !this.targetPlayer.isDead) ? this.targetPlayer : localPlayer;
+      if (dest) {
+        const dx = dest.x - this.x;
+        const dy = dest.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1) {
+          this.homingSpeed = Math.min(880, this.homingSpeed + dt * 1100);
+          this.x += (dx / dist) * this.homingSpeed * dt;
+          this.y += (dy / dist) * this.homingSpeed * dt;
+        }
+      }
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    const bobY = Math.sin(this.bounce) * 3;
+    ctx.translate(this.x, this.y + bobY);
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = (this.homingDelay <= 0) ? 14 : 8;
+    ctx.fillStyle = (this.homingDelay <= 0) ? '#fde047' : '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#78350f';
+    ctx.font = 'bold 8px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', 0, 0);
+    ctx.restore();
+  }
+}
+
+function spawnSlopCoins(x, y, count, valuePerCoin = 5, targetPlayer = null) {
+  for (let i = 0; i < count; i++) {
+    slopCoins.push(new SlopCoin(x + (Math.random() - 0.5) * 16, y + (Math.random() - 0.5) * 16, valuePerCoin, targetPlayer));
+  }
+}
+
+// Initial UI sync
+updateSlopsUI();
 
 // Monster Death Callbacks
 monsterManager.onMonsterKilled = (monster) => {
@@ -143,6 +242,10 @@ monsterManager.onMonsterKilled = (monster) => {
     particles.spawnDashBurst(monster.x, monster.y, 0, burstColor);
   }
   cinematics.addScreenShake(3);
+
+  // Drop Slops coins from defeated monster! (Will home towards the killer player if left uncollected)
+  const killer = monster.lastAttacker || player;
+  spawnSlopCoins(monster.x, monster.y, 2 + Math.floor(Math.random() * 3), 5, killer);
 
   // 35% chance to drop a minor heal orb
   if (Math.random() < 0.35) {
@@ -206,6 +309,9 @@ monsterManager.onBossKilled = (boss) => {
       const lootObj = new GroundLoot(item, lx, ly, `boss_drop_${idx}_${Date.now()}`);
       groundItems.set(lootObj.id, lootObj);
     });
+
+    // Shower of Slops coins for vanquishing the Floor Guardian!
+    spawnSlopCoins(boss.x, boss.y, 14, 15);
 
     // Check if all escorts in the boss chamber are also defeated
     const remainingInBossRoom = getAliveMonstersInChamber(currentDungeon.bossRoom);
@@ -1211,6 +1317,14 @@ function startFloorDescent(floorNumber, broadcast = true) {
 
   // Clear previous floor ground loot and spawn new floor content
   groundItems.clear();
+  slopCoins.length = 0;
+
+  // Spawn Slop Merchant in Merchant Sanctum
+  if (currentDungeon.merchantRoom) {
+    slopMerchant = new SlopMerchant(currentDungeon.merchantRoom.centerX, currentDungeon.merchantRoom.centerY);
+  } else {
+    slopMerchant = null;
+  }
 
   if (network.isHost || !network.isConnected) {
     populateFloorMonsters(currentDungeon);
@@ -1233,6 +1347,12 @@ function startFloorDescent(floorNumber, broadcast = true) {
     });
   }
 
+  // Hide SOLO status and LOBBY button while inside the dungeon
+  const topRightHud = document.querySelector('.hud-top-right');
+  if (topRightHud) {
+    topRightHud.style.display = 'none';
+  }
+
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
 }
 
@@ -1245,6 +1365,8 @@ readyCircle.onDescentTriggered = () => {
 function returnToLobby(broadcast = true) {
   currentFloor = 0;
   currentDungeon = null;
+  slopMerchant = null;
+  slopCoins.length = 0;
   monsterManager.clear();
   groundItems.clear();
 
@@ -1261,6 +1383,12 @@ function returnToLobby(broadcast = true) {
     hudFloor.textContent = '0 (LOBBY)';
     hudFloor.style.color = '#38bdf8';
     hudFloor.style.textShadow = 'none';
+  }
+
+  // Restore SOLO status and LOBBY button when returning to lobby
+  const topRightHud = document.querySelector('.hud-top-right');
+  if (topRightHud) {
+    topRightHud.style.display = 'flex';
   }
 
   audio.playDescentFanfare();
@@ -1556,8 +1684,539 @@ document.querySelectorAll('.color-btn').forEach((btn) => {
   });
 });
 
+// --- SLOP MERCHANT MODAL LOGIC ---
+const merchantModal = document.getElementById('merchant-modal');
+const btnCloseMerchant = document.getElementById('btn-close-merchant');
+const shopItemsGrid = document.getElementById('shop-items-grid');
+const sellItemsGrid = document.getElementById('sell-items-grid');
+const forgeInventoryGrid = document.getElementById('forge-inventory-grid');
+const btnExecuteForge = document.getElementById('btn-execute-forge');
+const btnClearForge = document.getElementById('btn-clear-forge');
+const forgeSlotResult = document.getElementById('forge-slot-result');
+const wheelInventoryGrid = document.getElementById('wheel-inventory-grid');
+const btnSpinWheel = document.getElementById('btn-spin-wheel');
+const wheelWagerSlot = document.getElementById('wheel-wager-slot');
+const wheelResultMsg = document.getElementById('wheel-result-message');
+const wheelCanvas = document.getElementById('wheel-canvas');
+
+let activeMerchantTab = 'shop';
+let forgeSlots = [null, null, null];
+let wheelWagerItem = null;
+let isWheelSpinning = false;
+let currentWheelAngle = 0;
+
+function openMerchantModal() {
+  if (!merchantModal) return;
+  merchantModal.classList.remove('hidden');
+  updateSlopsUI();
+  switchMerchantTab(activeMerchantTab);
+  audio.playSwing();
+  if (slopMerchant) {
+    slopMerchant.say('Welcome to the Slop Emporium! Best prices in the crypts! 💰', '#fbbf24', 4.0);
+  }
+}
+
+function closeMerchantModal() {
+  if (!merchantModal) return;
+  merchantModal.classList.add('hidden');
+  audio.playFootstep();
+}
+
+if (btnCloseMerchant) {
+  btnCloseMerchant.addEventListener('click', closeMerchantModal);
+}
+
+// Tab Switching
+document.querySelectorAll('.merchant-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.getAttribute('data-tab');
+    switchMerchantTab(tab);
+  });
+});
+
+function switchMerchantTab(tabName) {
+  activeMerchantTab = tabName;
+  document.querySelectorAll('.merchant-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
+  });
+  document.querySelectorAll('.merchant-tab-pane').forEach(p => {
+    p.classList.remove('active');
+  });
+  const targetPane = document.getElementById(`pane-${tabName}`);
+  if (targetPane) targetPane.classList.add('active');
+
+  updateSlopsUI();
+
+  if (tabName === 'shop') renderShopTab();
+  else if (tabName === 'sell') renderSellTab();
+  else if (tabName === 'forge') renderForgeTab();
+  else if (tabName === 'wheel') renderWheelTab();
+}
+
+// 1. SUPPLIES SHOP
+function renderShopTab() {
+  if (!shopItemsGrid) return;
+  shopItemsGrid.innerHTML = '';
+
+  const shopStock = [
+    { item: ITEM_CATALOG['health_flask'] || { id: 'health_flask', name: 'Health Flask', slot: 'consumable', rarity: 'COMMON', desc: 'Restores +45 HP instantly on use!' }, price: 25 },
+    { item: ITEM_CATALOG['stamina_tonic'] || { id: 'stamina_tonic', name: 'Stamina Tonic', slot: 'consumable', rarity: 'COMMON', desc: 'Refills stamina & grants +20% move speed!' }, price: 20 },
+    { item: ITEM_CATALOG['crystal_blade'] || ITEM_CATALOG['rusty_sword'], price: 75 },
+    { item: ITEM_CATALOG['knight_shield'] || ITEM_CATALOG['wooden_buckler'], price: 60 },
+    { item: ITEM_CATALOG['iron_plate'] || ITEM_CATALOG['leather_tunic'], price: 80 },
+    { item: ITEM_CATALOG['travel_boots'], price: 40 }
+  ];
+
+  shopStock.forEach(({ item, price }) => {
+    if (!item) return;
+    const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+    const card = document.createElement('div');
+    card.className = 'shop-item-card';
+    const canAfford = sharedSlops >= price;
+    const hasSpace = player.inventory.length < player.maxInventorySize;
+
+    card.innerHTML = `
+      <div class="shop-card-top">
+        <div class="shop-item-header">
+          <span class="shop-item-name" style="color: ${rarity.color}" title="${item.name}">${item.name}</span>
+          <span class="shop-item-price">🪙 ${price}</span>
+        </div>
+        <div class="shop-item-desc">${item.desc || (item.slot + ' equipment')}</div>
+      </div>
+      <button class="shop-buy-btn uniform-action-btn" ${(!canAfford || !hasSpace) ? 'disabled' : ''} data-item-id="${item.id}" data-price="${price}">
+        ${!canAfford ? 'NOT ENOUGH SLOPS' : (!hasSpace ? 'BACKPACK FULL' : `BUY FOR ${price} SLOPS`)}
+      </button>
+    `;
+    shopItemsGrid.appendChild(card);
+  });
+
+  shopItemsGrid.querySelectorAll('.shop-buy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const itemId = btn.getAttribute('data-item-id');
+      const price = parseInt(btn.getAttribute('data-price'));
+      if (sharedSlops < price) return;
+      if (player.inventory.length >= player.maxInventorySize) return;
+
+      const item = ITEM_CATALOG[itemId];
+      if (!item) return;
+
+      sharedSlops -= price;
+      // If it's a health flask, heal immediately or add to inventory
+      if (item.id === 'health_flask') {
+        player.hp = Math.min(player.maxHp, player.hp + 45);
+        player.syncHUD();
+        particles.spawnComicText(player.x, player.y - 32, '+45 HP 💚 (FLASK)', '#22c55e');
+      } else {
+        player.inventory.push({ ...item });
+      }
+
+      audio.playShopBuy();
+      particles.spawnComicText(player.x, player.y - 30, `BOUGHT ${item.name}! 🛍️`, '#fbbf24');
+      updateSlopsUI();
+      broadcastSlops();
+      renderShopTab();
+    });
+  });
+}
+
+// 2. SELL ITEMS
+function renderSellTab() {
+  if (!sellItemsGrid) return;
+  sellItemsGrid.innerHTML = '';
+
+  if (player.inventory.length === 0) {
+    sellItemsGrid.innerHTML = '<span style="grid-column: 1 / -1; color:#64748b; padding:24px; text-align:center; font-size:0.85rem;">Backpack is empty! Explore the dungeon and find loot to sell.</span>';
+    return;
+  }
+
+  player.inventory.forEach((item, idx) => {
+    const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+    const sellPrice = getItemSellPrice(item);
+    const card = document.createElement('div');
+    card.className = 'sell-item-card';
+
+    card.innerHTML = `
+      <div class="shop-card-top">
+        <div class="sell-item-header">
+          <span class="sell-item-name" style="color: ${rarity.color}" title="${item.name}">${item.name}</span>
+          <span class="sell-item-price">+${sellPrice} SLOPS</span>
+        </div>
+        <div class="shop-item-desc">${item.desc || (item.slot + ' equipment')}</div>
+      </div>
+      <button class="sell-btn uniform-action-btn" data-idx="${idx}" data-price="${sellPrice}">
+        SELL FOR ${sellPrice} SLOPS 🪙
+      </button>
+    `;
+    sellItemsGrid.appendChild(card);
+  });
+
+  sellItemsGrid.querySelectorAll('.sell-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-idx'));
+      const price = parseInt(btn.getAttribute('data-price'));
+      const soldItem = player.inventory.splice(idx, 1)[0];
+      if (soldItem) {
+        sharedSlops += price;
+        audio.playShopSell();
+        particles.spawnComicText(player.x, player.y - 30, `+${price} SLOPS 🪙`, '#4ade80');
+        updateSlopsUI();
+        broadcastSlops();
+        renderSellTab();
+      }
+    });
+  });
+}
+
+// 3. TRADE-UP FORGE
+function renderForgeTab() {
+  if (!forgeInventoryGrid) return;
+
+  // Render 3 slots
+  for (let s = 0; s < 3; s++) {
+    const slotEl = document.getElementById(`forge-slot-${s}`);
+    if (!slotEl) continue;
+    const item = forgeSlots[s];
+    if (item) {
+      const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+      slotEl.className = 'forge-slot filled';
+      slotEl.innerHTML = `<span style="color:${rarity.color}">${item.name}</span><span style="font-size:0.6rem; color:#94a3b8;">(${item.rarity})</span>`;
+    } else {
+      slotEl.className = 'forge-slot';
+      slotEl.innerHTML = 'Empty';
+    }
+  }
+
+  // Check valid trade-up condition: exactly 3 items, all of the exact same rarity, not Mythic
+  const allFilled = forgeSlots.every(it => it !== null);
+  const sameRarity = allFilled && (forgeSlots[0].rarity === forgeSlots[1].rarity && forgeSlots[1].rarity === forgeSlots[2].rarity);
+  const notMythic = allFilled && forgeSlots[0].rarity !== 'MYTHIC';
+  const isValid = allFilled && sameRarity && notMythic;
+
+  if (btnExecuteForge) {
+    btnExecuteForge.disabled = !isValid;
+  }
+
+  // Render mini backpack picker (excluding items already placed in forge slots)
+  forgeInventoryGrid.innerHTML = '';
+  const placedIndices = new Set();
+  forgeSlots.forEach(sl => {
+    if (sl) {
+      const idx = player.inventory.indexOf(sl);
+      if (idx !== -1) placedIndices.add(idx);
+    }
+  });
+
+  player.inventory.forEach((item, idx) => {
+    if (placedIndices.has(idx)) return;
+    const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+    const card = document.createElement('div');
+    card.className = 'backpack-item-card mini-card forge-pick-card';
+    card.style.cursor = 'pointer';
+    card.innerHTML = `
+      <div class="mini-card-info">
+        <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
+        <div class="mini-card-sub">${item.rarity} • ${item.slot}</div>
+      </div>
+      <button class="mini-action-btn" style="border-color:#f59e0b; color:#fbbf24;">INSERT</button>
+    `;
+    card.addEventListener('click', () => {
+      // Put in first empty forge slot
+      const emptyIdx = forgeSlots.findIndex(sl => sl === null);
+      if (emptyIdx !== -1) {
+        forgeSlots[emptyIdx] = item;
+        audio.playSwing();
+        renderForgeTab();
+      }
+    });
+    forgeInventoryGrid.appendChild(card);
+  });
+}
+
+// Clear individual forge slot on click
+[0, 1, 2].forEach(slotIdx => {
+  const el = document.getElementById(`forge-slot-${slotIdx}`);
+  if (el) {
+    el.addEventListener('click', () => {
+      if (forgeSlots[slotIdx]) {
+        forgeSlots[slotIdx] = null;
+        audio.playFootstep();
+        renderForgeTab();
+      }
+    });
+  }
+});
+
+if (btnClearForge) {
+  btnClearForge.addEventListener('click', () => {
+    forgeSlots = [null, null, null];
+    if (forgeSlotResult) forgeSlotResult.innerHTML = '?';
+    audio.playFootstep();
+    renderForgeTab();
+  });
+}
+
+if (btnExecuteForge) {
+  btnExecuteForge.addEventListener('click', () => {
+    if (!forgeSlots.every(it => it !== null)) return;
+    const res = executeTradeUp(forgeSlots);
+    if (res.success && res.resultItem) {
+      // Remove consumed items from inventory
+      forgeSlots.forEach(itemToConsume => {
+        const idx = player.inventory.indexOf(itemToConsume);
+        if (idx !== -1) player.inventory.splice(idx, 1);
+      });
+
+      // Add upgraded item
+      player.inventory.push({ ...res.resultItem });
+
+      // Audio & VFX
+      audio.playForgeHammer();
+      cinematics.addScreenShake(14);
+      particles.spawnComicText(player.x, player.y - 35, `FORGED: ${res.resultItem.name}! ⚒️✨`, '#c084fc');
+      particles.spawnDashBurst(player.x, player.y, 0, '#a855f7');
+
+      if (forgeSlotResult) {
+        const rarity = ItemRarity[res.resultItem.rarity] || ItemRarity.COMMON;
+        forgeSlotResult.innerHTML = `<span style="color:${rarity.color}">${res.resultItem.name}</span>`;
+      }
+
+      forgeSlots = [null, null, null];
+      renderForgeTab();
+    } else {
+      alert(res.error || 'Trade-up requirements not met!');
+    }
+  });
+}
+
+// 4. SPIN-A-WHEEL GACHA
+function drawWheel(angle = 0) {
+  if (!wheelCanvas) return;
+  const ctx = wheelCanvas.getContext('2d');
+  const w = wheelCanvas.width;
+  const h = wheelCanvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const r = w / 2 - 8;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+
+  // 3 Sectors conforming strictly to user specs:
+  // Sector 0: 50% = Math.PI radians (Ancur)
+  // Sector 1: 45% = 0.90 * Math.PI radians (Upgrade)
+  // Sector 2: 5%  = 0.10 * Math.PI radians (Jackpot)
+  const sectors = [
+    { start: 0, end: Math.PI, color: '#ef4444', label: '💀 ANCUR (50%)', textColor: '#ffffff' },
+    { start: Math.PI, end: Math.PI * 1.9, color: '#10b981', label: '⬆️ UPGRADE (45%)', textColor: '#ffffff' },
+    { start: Math.PI * 1.9, end: Math.PI * 2, color: '#f59e0b', label: '👑 JACKPOT (5%)', textColor: '#170f03' }
+  ];
+
+  for (const s of sectors) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, s.start, s.end);
+    ctx.closePath();
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Text label along wedge bisector
+    const midAngle = (s.start + s.end) / 2;
+    ctx.save();
+    ctx.rotate(midAngle);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = s.textColor;
+    ctx.font = 'bold 11px Outfit, sans-serif';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(s.label, r - 16, 0);
+    ctx.restore();
+  }
+
+  // Outer gold rim & tick pegs
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Draw 16 golden tick pegs along rim
+  ctx.fillStyle = '#fbbf24';
+  for (let p = 0; p < 16; p++) {
+    const pegAngle = (p / 16) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(Math.cos(pegAngle) * (r - 2), Math.sin(pegAngle) * (r - 2), 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Center hub peg
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.arc(0, 0, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function renderWheelTab() {
+  drawWheel(currentWheelAngle);
+
+  if (wheelWagerSlot) {
+    if (wheelWagerItem) {
+      const rarity = ItemRarity[wheelWagerItem.rarity] || ItemRarity.COMMON;
+      wheelWagerSlot.className = 'forge-slot wager-slot filled';
+      wheelWagerSlot.innerHTML = `<span style="color:${rarity.color}">${wheelWagerItem.name}</span><span style="font-size:0.65rem; color:#94a3b8;">(${wheelWagerItem.rarity})</span>`;
+    } else {
+      wheelWagerSlot.className = 'forge-slot wager-slot';
+      wheelWagerSlot.innerHTML = 'Select Item Below';
+    }
+  }
+
+  if (btnSpinWheel) {
+    btnSpinWheel.disabled = !wheelWagerItem || isWheelSpinning;
+  }
+
+  if (wheelInventoryGrid) {
+    wheelInventoryGrid.innerHTML = '';
+    player.inventory.forEach((item, idx) => {
+      const isSelected = wheelWagerItem === item;
+      const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+      const card = document.createElement('div');
+      card.className = `backpack-item-card mini-card wheel-pick-card ${isSelected ? 'selected' : ''}`;
+      card.style.cursor = 'pointer';
+      card.innerHTML = `
+        <div class="mini-card-info">
+          <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
+          <div class="mini-card-sub">${item.rarity} • ${item.slot}</div>
+        </div>
+        <button class="mini-action-btn" style="border-color:${isSelected ? '#10b981' : '#f59e0b'}; color:${isSelected ? '#4ade80' : '#fbbf24'};">
+          ${isSelected ? 'WAGERED' : 'WAGER'}
+        </button>
+      `;
+      card.addEventListener('click', () => {
+        if (isWheelSpinning) return;
+        wheelWagerItem = item;
+        audio.playSwing();
+        renderWheelTab();
+      });
+      wheelInventoryGrid.appendChild(card);
+    });
+  }
+}
+
+if (btnSpinWheel) {
+  btnSpinWheel.addEventListener('click', () => {
+    if (!wheelWagerItem || isWheelSpinning) return;
+    isWheelSpinning = true;
+    btnSpinWheel.disabled = true;
+
+    // Calculate outcome mathematically: 50% ancur, 45% upgrade, 5% jackpot
+    const spinResult = executeGachaSpin(wheelWagerItem);
+
+    // Target angle under top pointer (top pointer is at -Math.PI / 2)
+    // Sector 0 (ancur): 0 to Math.PI (center at 0.5 * Math.PI)
+    // Sector 1 (upgrade): Math.PI to 1.9 * Math.PI (center at 1.45 * Math.PI)
+    // Sector 2 (jackpot): 1.9 * Math.PI to 2.0 * Math.PI (center at 1.95 * Math.PI)
+    let targetSectorAngle = 0.5 * Math.PI;
+    if (spinResult.outcome === 'upgrade') {
+      targetSectorAngle = 1.45 * Math.PI;
+    } else if (spinResult.outcome === 'jackpot') {
+      targetSectorAngle = 1.95 * Math.PI;
+    }
+
+    // Solve for final wheel rotation so pointer (-PI/2) points to targetSectorAngle:
+    // finalAngle mod 2PI = (-PI/2 - targetSectorAngle) mod 2PI
+    const pointerAngle = -Math.PI / 2;
+    const baseTargetRotation = pointerAngle - targetSectorAngle;
+    const fullSpins = 6 * Math.PI * 2; // 6 full revolutions
+    const startAngle = currentWheelAngle;
+    const finalAngle = startAngle + fullSpins + ((baseTargetRotation - (startAngle % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2));
+
+    const spinDuration = 3200; // 3.2s
+    const startTime = performance.now();
+    let lastTickAngle = startAngle;
+
+    function animateSpin(nowTime) {
+      const elapsed = nowTime - startTime;
+      const progress = Math.min(1, elapsed / spinDuration);
+      // Cubic ease-out
+      const ease = 1 - Math.pow(1 - progress, 3);
+      currentWheelAngle = startAngle + (finalAngle - startAngle) * ease;
+
+      // Tick sound every 22.5° (Math.PI / 8)
+      if (Math.abs(currentWheelAngle - lastTickAngle) >= Math.PI / 8) {
+        audio.playWheelTick();
+        lastTickAngle = currentWheelAngle;
+      }
+
+      drawWheel(currentWheelAngle);
+
+      if (progress < 1) {
+        requestAnimationFrame(animateSpin);
+      } else {
+        // Spin finished! Apply outcome
+        isWheelSpinning = false;
+        const wagerIdx = player.inventory.indexOf(wheelWagerItem);
+
+        if (spinResult.outcome === 'ancur') {
+          if (wagerIdx !== -1) player.inventory.splice(wagerIdx, 1);
+          audio.playRocketExplosion();
+          cinematics.addScreenShake(12);
+          particles.spawnComicText(player.x, player.y - 30, 'ANCUR! 💥 ITEM DESTROYED!', '#ef4444');
+          if (wheelResultMsg) {
+            wheelResultMsg.className = 'wheel-result-msg';
+            wheelResultMsg.style.background = 'rgba(239, 68, 68, 0.25)';
+            wheelResultMsg.style.color = '#f87171';
+            wheelResultMsg.textContent = '💀 ANCUR! Your wagered item was destroyed!';
+            wheelResultMsg.classList.remove('hidden');
+          }
+        } else if (spinResult.outcome === 'upgrade') {
+          if (wagerIdx !== -1) player.inventory[wagerIdx] = { ...spinResult.resultItem };
+          audio.playDescentFanfare();
+          cinematics.addScreenShake(8);
+          particles.spawnComicText(player.x, player.y - 30, `UPGRADE! ✨ ${spinResult.resultItem.name}`, '#4ade80');
+          if (wheelResultMsg) {
+            wheelResultMsg.className = 'wheel-result-msg';
+            wheelResultMsg.style.background = 'rgba(34, 197, 94, 0.25)';
+            wheelResultMsg.style.color = '#4ade80';
+            wheelResultMsg.textContent = `✨ UPGRADE! Promoted to ${spinResult.resultItem.name} (${spinResult.resultItem.rarity})!`;
+            wheelResultMsg.classList.remove('hidden');
+          }
+        } else if (spinResult.outcome === 'jackpot') {
+          if (wagerIdx !== -1) player.inventory[wagerIdx] = { ...spinResult.resultItem };
+          audio.playBossVictoryFanfare();
+          cinematics.addScreenShake(20);
+          particles.spawnComicText(player.x, player.y - 40, `👑 SECRET MYTHIC: ${spinResult.resultItem.name}!`, '#fbbf24');
+          if (wheelResultMsg) {
+            wheelResultMsg.className = 'wheel-result-msg';
+            wheelResultMsg.style.background = 'rgba(245, 158, 11, 0.3)';
+            wheelResultMsg.style.color = '#fbbf24';
+            wheelResultMsg.textContent = `👑 SECRET MYTHIC JACKPOT! Won ${spinResult.resultItem.name}!`;
+            wheelResultMsg.classList.remove('hidden');
+          }
+        }
+
+        wheelWagerItem = null;
+        renderWheelTab();
+      }
+    }
+
+    requestAnimationFrame(animateSpin);
+  });
+}
+
 // --- LOBBY CO-OP NETWORKING UI ---
 const lobbyModal = document.getElementById('lobby-modal');
+
 const btnOpenLobby = document.getElementById('btn-open-lobby');
 const btnCloseLobby = document.getElementById('btn-close-lobby');
 const btnCreateRoom = document.getElementById('btn-create-room');
@@ -1768,8 +2427,10 @@ network.onPlayerJoined = (joinedPeerId) => {
   // If host, sync all ground loot and bot mode to newly joined player
   if (network.isHost) {
     sendFullLootSync(joinedPeerId);
+    network.sendTo(joinedPeerId, { type: 'SLOPS_SYNC', amount: sharedSlops });
     setTimeout(() => {
       sendFullLootSync(joinedPeerId);
+      network.sendTo(joinedPeerId, { type: 'SLOPS_SYNC', amount: sharedSlops });
     }, 250);
   }
 };
@@ -1895,6 +2556,12 @@ network.onMessageReceived = (fromPeerId, msg) => {
       hudFloor.style.color = currentDungeon.theme.torchColor;
       hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
     }
+
+    const topRightHud = document.querySelector('.hud-top-right');
+    if (topRightHud) {
+      topRightHud.style.display = 'none';
+    }
+
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
   } else if (msg.type === 'RETURN_TO_LOBBY') {
     returnToLobby(false);
@@ -1960,6 +2627,14 @@ network.onMessageReceived = (fromPeerId, msg) => {
     const caster = network.remotePlayers.get(msg.peerId) || { x: msg.x, y: msg.y, angle: msg.angle };
     spawnShotgunPellets(caster, true);
     if (audio.playCarnageShotgun) audio.playCarnageShotgun();
+  } else if (msg.type === 'SLOPS_SYNC') {
+    sharedSlops = msg.amount;
+    updateSlopsUI();
+  } else if (msg.type === 'MERCHANT_ATTACKED') {
+    if (slopMerchant) {
+      const attacker = network.remotePlayers.get(msg.attackerPeerId) || player;
+      slopMerchant.handleAttacked(attacker, audio, cinematics, particles);
+    }
   }
 };
 
@@ -2057,9 +2732,10 @@ function spawnShotgunPellets(caster, isRemote = false) {
 }
 
 function handleAttacks() {
+  const merchantTarget = (currentFloor >= 1 && slopMerchant && Math.hypot(player.x - slopMerchant.x, player.y - slopMerchant.y) <= 450) ? [slopMerchant] : [];
   const targets = currentFloor === 0
     ? [dummy, ...network.remotePlayers.values()]
-    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...network.remotePlayers.values()];
+    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...merchantTarget, ...network.remotePlayers.values()];
   const hits = combat.performWeaponAttack(player, targets);
 
   // Destructible containers in dungeon
@@ -2077,12 +2753,19 @@ function handleAttacks() {
           particles.spawnComicText(player.x, player.y - 32, '+20 HP 💚', '#22c55e');
           player.syncHUD();
         }
+        // Drop 1-3 Slop coins from smashed pot!
+        spawnSlopCoins(container.x, container.y, 1 + Math.floor(Math.random() * 3), 4, player);
       }
     }
   }
 
   for (const hit of hits) {
-    if (hit.target === dummy) {
+    if (hit.target === slopMerchant) {
+      slopMerchant.handleAttacked(player, audio, cinematics, particles);
+      const attackMsg = { type: 'MERCHANT_ATTACKED', attackerPeerId: network.myPeerId };
+      if (network.isHost) network.broadcast(attackMsg);
+      else network.sendToHost(attackMsg);
+    } else if (hit.target === dummy) {
       dummy.takeHit(hit.damage, hit.angle, hit.knockback || 0);
       if (hit.isPull) {
         dummy.pullTowards(player.x, player.y, 45);
@@ -2244,13 +2927,19 @@ function handleAttacks() {
 }
 
 function handleOffhandAttack() {
+  const merchantTarget = (currentFloor >= 1 && slopMerchant && Math.hypot(player.x - slopMerchant.x, player.y - slopMerchant.y) <= 450) ? [slopMerchant] : [];
   const targets = currentFloor === 0
     ? [dummy, ...network.remotePlayers.values()]
-    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...network.remotePlayers.values()];
+    : [...monsterManager.getNearbyMonsters(player.x, player.y, 450), ...merchantTarget, ...network.remotePlayers.values()];
   const hits = combat.performOffhandAttack(player, targets);
 
   for (const hit of hits) {
-    if (hit.target === dummy) {
+    if (hit.target === slopMerchant) {
+      slopMerchant.handleAttacked(player, audio, cinematics, particles);
+      const attackMsg = { type: 'MERCHANT_ATTACKED', attackerPeerId: network.myPeerId };
+      if (network.isHost) network.broadcast(attackMsg);
+      else network.sendToHost(attackMsg);
+    } else if (hit.target === dummy) {
       dummy.takeHit(hit.damage, hit.angle, hit.knockback);
 
       if (hit.attackType === 'reversal_red') {
@@ -2379,7 +3068,8 @@ function gameLoop(now) {
     !wardrobeModal.classList.contains('hidden') ||
     !lobbyModal.classList.contains('hidden') ||
     !invModal.classList.contains('hidden') ||
-    (floorModal && !floorModal.classList.contains('hidden'));
+    (floorModal && !floorModal.classList.contains('hidden')) ||
+    (merchantModal && !merchantModal.classList.contains('hidden'));
 
   // Inventory toggle hotkeys: I or Tab
   if (input.justPressedI || (input.keys.tab && !input.tabHandled)) {
@@ -2394,6 +3084,7 @@ function gameLoop(now) {
     if (!wardrobeModal.classList.contains('hidden')) closeWardrobe();
     if (!lobbyModal.classList.contains('hidden')) lobbyModal.classList.add('hidden');
     if (floorModal && !floorModal.classList.contains('hidden')) closeFloorModal();
+    if (merchantModal && !merchantModal.classList.contains('hidden')) closeMerchantModal();
   }
 
   // Handle Shield Blocking
@@ -2453,6 +3144,31 @@ function gameLoop(now) {
     wardrobeStation.update(worldDt);
     floorStation.update(worldDt);
   } else if (currentFloor >= 1 && currentDungeon) {
+    // Update Slop Merchant (with RPG windup, laser aiming, and rocket launch)
+    if (slopMerchant) {
+      slopMerchant.update(worldDt, audio, cinematics, particles);
+    }
+
+    // Update Slop Coins (with auto magnetic pull towards nearby players & homing to killer)
+    const allLivingPlayers = [player, ...network.remotePlayers.values()].filter(p => p && !p.isDead);
+    for (let cIdx = slopCoins.length - 1; cIdx >= 0; cIdx--) {
+      const coin = slopCoins[cIdx];
+      coin.update(worldDt, player);
+
+      for (const p of allLivingPlayers) {
+        const dist = Math.hypot(p.x - coin.x, p.y - coin.y);
+        if (dist <= (p.radius || 22) + coin.radius + 8) {
+          sharedSlops += coin.value;
+          updateSlopsUI();
+          audio.playCoinPickup();
+          particles.spawnComicText(p.x, p.y - 25, `+${coin.value} SLOPS 🪙`, '#fbbf24');
+          broadcastSlops();
+          slopCoins.splice(cIdx, 1);
+          break;
+        }
+      }
+    }
+
     // 1. Check Door Transitions
     const doorTrans = currentDungeon.checkDoorTransition(player.x, player.y, player.radius || 22);
     if (doorTrans) {
@@ -2495,7 +3211,7 @@ function gameLoop(now) {
 
     // 2. Enforce Room Lockdown & Clearance: ALL monsters must be dead before doors/portal unlock!
     if (currentDungeon.currentRoom && !currentDungeon.currentRoom.isCleared &&
-        currentDungeon.currentRoom.type !== 'spawn' && currentDungeon.currentRoom.type !== 'treasure') {
+        currentDungeon.currentRoom.type !== 'spawn' && currentDungeon.currentRoom.type !== 'treasure' && currentDungeon.currentRoom.type !== 'merchant') {
       const aliveMobsInRoom = getAliveMonstersInChamber(currentDungeon.currentRoom);
       if (aliveMobsInRoom.length > 0) {
         if (!currentDungeon.currentRoom.isLocked) {
@@ -2672,6 +3388,42 @@ function gameLoop(now) {
     ? [dummy, player, ...network.remotePlayers.values()]
     : [player, ...monsterManager.getAliveMonsters(), ...network.remotePlayers.values()];
   cinematics.update(worldDt, cinematicTargets, (target, proj) => {
+    // Spelunky Slop Merchant RPG Rocket Detonation
+    if (proj.type === 'merchant_rpg_rocket') {
+      proj.life = 0; // consumed on impact
+      audio.playRocketExplosion();
+      cinematics.addScreenShake(18);
+      particles.spawnDashBurst(proj.x, proj.y, 0, '#f97316');
+      particles.spawnComicText(proj.x, proj.y - 32, '💥 RPG BLAST!', '#ef4444');
+
+      // AoE Splash: damages instigator and anyone caught in splash radius!
+      const splashRadius = proj.aoeRadius || 130;
+      const pDist = Math.hypot(player.x - proj.x, player.y - proj.y);
+      if (pDist <= splashRadius) {
+        const splashAngle = Math.atan2(player.y - proj.y, player.x - proj.x);
+        const res = player.takeDamage(proj.damage || 65, splashAngle, 650);
+        if (res) {
+          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (RPG DETONATION! 💥)`);
+          particles.spawnComicText(player.x, player.y - 28, statusText, '#ef4444');
+          broadcastMyState();
+        }
+      }
+
+      // Blast nearby remote peers
+      for (const [peerId, remote] of network.remotePlayers.entries()) {
+        const rDist = Math.hypot(remote.x - proj.x, remote.y - proj.y);
+        if (rDist <= splashRadius) {
+          const splashAngle = Math.atan2(remote.y - proj.y, remote.x - proj.x);
+          const kx = Math.cos(splashAngle) * 600;
+          const ky = Math.sin(splashAngle) * 600;
+          const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
+          if (network.isHost) network.broadcast(slapMsg);
+          else network.sendToHost(slapMsg);
+        }
+      }
+      return;
+    }
+
     if (target === player) {
       if (proj.type === 'shotgun_pellet') {
         const res = player.takeDamage(proj.damage || 14, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
@@ -2898,12 +3650,14 @@ function gameLoop(now) {
     }
   }
 
-  // [E] Key interactions (Pick up loot OR Open Mirror OR Open Floor Gateway)
+  // [E] Key interactions (Pick up loot OR Open Mirror OR Open Floor Gateway OR Open Merchant)
   if (input.justPressedE && !modalsOpen) {
     if (currentFloor === 0 && floorStation.isPlayerNearby(player)) {
       openFloorModal();
     } else if (currentFloor === 0 && wardrobeStation.isPlayerNearby(player)) {
       openWardrobe();
+    } else if (currentFloor >= 1 && slopMerchant && slopMerchant.isNear(player)) {
+      openMerchantModal();
     } else {
       tryPickupNearbyLoot();
     }
@@ -3115,6 +3869,16 @@ function gameLoop(now) {
   } else if (currentFloor >= 1 && currentDungeon) {
     // Procedural Anime Dungeon (Isaac-style discrete rooms & cardinal doors)
     renderer.drawDungeon(currentDungeon, targetCamX, targetCamY, renderer.width, renderer.height, now * 0.001);
+
+    // Slop Merchant (with rug, goods, speech bubble, and RPG)
+    if (slopMerchant) {
+      slopMerchant.draw(renderer.ctx, slopMerchant.isNear(player), now * 0.001);
+    }
+
+    // Slop Coins
+    for (const coin of slopCoins) {
+      coin.draw(renderer.ctx);
+    }
 
     // Themed Anime Monsters (Fly Heads, Masked Ino, Cursed Brutes, Boss Finger Bearer)
     renderer.drawMonsters(monsterManager.monsters, now * 0.001);

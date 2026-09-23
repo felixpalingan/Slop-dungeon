@@ -1891,6 +1891,7 @@ export class Renderer {
     const isLocked = room.isLocked;
     const isBoss = door.isBoss;
     const isTreasure = door.isTreasure;
+    const isMerchant = door.isMerchant;
 
     const dx = door.x;
     const dy = door.y;
@@ -1900,8 +1901,8 @@ export class Renderer {
     const cy = door.centerY || (dy + dh / 2);
 
     // Frame styling
-    const frameColor = isBoss ? '#450a0a' : (isTreasure ? '#78350f' : theme.wallTopColor);
-    const trimColor = isBoss ? '#ef4444' : (isTreasure ? '#f59e0b' : theme.wallBevelColor);
+    const frameColor = isBoss ? '#450a0a' : (isTreasure ? '#78350f' : (isMerchant ? '#064e3b' : theme.wallTopColor));
+    const trimColor = isBoss ? '#ef4444' : (isTreasure ? '#f59e0b' : (isMerchant ? '#10b981' : theme.wallBevelColor));
 
     if (door.dir === 'north') {
       // NORTH DOOR: Flush inside the 72px tall North wall
@@ -1946,7 +1947,7 @@ export class Renderer {
 
         // Pulsing lock seal (Clean solid emblem, no glow)
         const pulse = 1 + Math.sin(time * 6) * 0.12;
-        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : (isMerchant ? '#10b981' : '#c084fc'));
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(pulse, pulse);
@@ -1960,14 +1961,14 @@ export class Renderer {
         ctx.font = '900 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 4);
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : '🔒')), 0, 4);
         ctx.restore();
       } else {
         // Open: Directional rune
         ctx.font = '900 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = trimColor;
-        const symbol = isBoss ? '💀' : (isTreasure ? '★' : '▲');
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : '▲'));
         ctx.fillText(symbol, cx, cy + 5);
       }
     } else if (door.dir === 'south') {
@@ -1995,7 +1996,7 @@ export class Renderer {
         ctx.stroke();
 
         const pulse = 1 + Math.sin(time * 6) * 0.12;
-        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : (isMerchant ? '#10b981' : '#c084fc'));
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(pulse, pulse);
@@ -2006,13 +2007,13 @@ export class Renderer {
         ctx.font = '900 8px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 3);
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : '🔒')), 0, 3);
         ctx.restore();
       } else {
         ctx.font = '900 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = trimColor;
-        const symbol = isBoss ? '💀' : (isTreasure ? '★' : '▼');
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : '▼'));
         ctx.fillText(symbol, cx, cy + 4);
       }
     } else {
@@ -2040,7 +2041,7 @@ export class Renderer {
         ctx.stroke();
 
         const pulse = 1 + Math.sin(time * 6) * 0.12;
-        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : (isMerchant ? '#10b981' : '#c084fc'));
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(pulse, pulse);
@@ -2051,13 +2052,13 @@ export class Renderer {
         ctx.font = '900 8px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 3);
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : '🔒')), 0, 3);
         ctx.restore();
       } else {
         ctx.font = '900 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = trimColor;
-        const symbol = isBoss ? '💀' : (isTreasure ? '★' : (door.dir === 'west' ? '◀' : '▶'));
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : (isMerchant ? '💰' : (door.dir === 'west' ? '◀' : '▶')));
         ctx.fillText(symbol, cx, cy + 4);
       }
     }
@@ -2185,7 +2186,7 @@ export class Renderer {
     const mapW = 154;
     const mapH = 104;
     const mapX = screenWidth - mapW - 16;
-    const mapY = 52;
+    const mapY = 16;
 
     // Card background (Clean dark card)
     ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
@@ -2218,37 +2219,60 @@ export class Renderer {
     const gridSpanX = maxGx - minGx + 1;
     const gridSpanY = maxGy - minGy + 1;
 
-    const cellW = 20;
-    const cellH = 14;
-    const gap = 5;
+    const maxGridW = mapW - 16;
+    const maxGridH = mapH - 28;
+    const gap = 3;
+    const baseW = Math.floor((maxGridW - (gridSpanX - 1) * gap) / gridSpanX);
+    const baseH = Math.floor((maxGridH - (gridSpanY - 1) * gap) / gridSpanY);
+    const cellW = Math.max(12, Math.min(20, baseW));
+    const cellH = Math.max(9, Math.min(14, baseH));
     const totalGridW = gridSpanX * (cellW + gap) - gap;
     const totalGridH = gridSpanY * (cellH + gap) - gap;
 
     const originX = mapX + (mapW - totalGridW) / 2;
-    const originY = mapY + 22 + (mapH - 22 - totalGridH) / 2;
+    const originY = mapY + 20 + (mapH - 20 - totalGridH) / 2;
 
-    // Draw connecting door lines between all connected rooms (full layout visibility)
+    // Draw connecting door lines ONLY between explored rooms (and subtle stubs to unexplored doorways)
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
     ctx.lineWidth = 2;
     for (const room of dungeon.rooms) {
+      if (!room.hasVisited) continue;
       const rx = originX + (room.gridX - minGx) * (cellW + gap) + cellW / 2;
       const ry = originY + (room.gridY - minGy) * (cellH + gap) + cellH / 2;
 
       for (const door of room.doors) {
         const neighbor = dungeon.rooms.find(x => x.id === door.targetRoomId);
-        if (neighbor && neighbor.id > room.id) {
+        if (neighbor && neighbor.hasVisited && neighbor.id > room.id) {
+          // Both rooms explored: draw full corridor line
           const nx = originX + (neighbor.gridX - minGx) * (cellW + gap) + cellW / 2;
           const ny = originY + (neighbor.gridY - minGy) * (cellH + gap) + cellH / 2;
           ctx.beginPath();
           ctx.moveTo(rx, ry);
           ctx.lineTo(nx, ny);
           ctx.stroke();
+        } else if (neighbor && !neighbor.hasVisited) {
+          // Door leads to unexplored room: draw a subtle doorway tick stub
+          let tx = rx;
+          let ty = ry;
+          if (door.dir === 'north') ty -= (cellH / 2 + 3);
+          else if (door.dir === 'south') ty += (cellH / 2 + 3);
+          else if (door.dir === 'west') tx -= (cellW / 2 + 3);
+          else if (door.dir === 'east') tx += (cellW / 2 + 3);
+
+          ctx.save();
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+          ctx.beginPath();
+          ctx.moveTo(rx, ry);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+          ctx.restore();
         }
       }
     }
 
-    // Draw room boxes for all rooms in layout
+    // Draw room boxes ONLY for rooms that have been explored!
     for (const room of dungeon.rooms) {
+      if (!room.hasVisited) continue;
       const isCurrent = dungeon.currentRoom && dungeon.currentRoom.id === room.id;
       const rx = originX + (room.gridX - minGx) * (cellW + gap);
       const ry = originY + (room.gridY - minGy) * (cellH + gap);
@@ -2259,6 +2283,9 @@ export class Renderer {
       } else if (room.type === 'treasure') {
         ctx.fillStyle = isCurrent ? 'rgba(245, 158, 11, 0.65)' : 'rgba(245, 158, 11, 0.4)';
         ctx.strokeStyle = '#f59e0b';
+      } else if (room.type === 'merchant') {
+        ctx.fillStyle = isCurrent ? 'rgba(16, 185, 129, 0.65)' : 'rgba(16, 185, 129, 0.4)';
+        ctx.strokeStyle = '#10b981';
       } else if (room.type === 'spawn') {
         ctx.fillStyle = isCurrent ? 'rgba(56, 189, 248, 0.55)' : 'rgba(56, 189, 248, 0.3)';
         ctx.strokeStyle = '#38bdf8';
@@ -2282,6 +2309,9 @@ export class Renderer {
       } else if (room.type === 'treasure') {
         ctx.fillStyle = '#fde68a';
         ctx.fillText('★', rx + cellW / 2, ry + cellH / 2 + 3);
+      } else if (room.type === 'merchant') {
+        ctx.fillStyle = '#6ee7b7';
+        ctx.fillText('💰', rx + cellW / 2, ry + cellH / 2 + 3);
       } else if (room.type === 'spawn') {
         ctx.fillStyle = '#bae6fd';
         ctx.fillText('🏠', rx + cellW / 2, ry + cellH / 2 + 3);

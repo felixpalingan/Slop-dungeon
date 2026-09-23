@@ -737,6 +737,26 @@ export const ITEM_CATALOG = {
     armorPenetration: 0.35,
     visual: 'david_gorilla_arms',
     desc: 'Hydraulic titanium arm prosthetics. Right-click unleashes a heavy cybernetic piston punch with forward lunge and high knockback.'
+  },
+  'health_flask': {
+    id: 'health_flask',
+    name: 'Health Flask',
+    slot: 'consumable',
+    rarity: 'COMMON',
+    healAmount: 50,
+    price: 25,
+    visual: 'health_flask',
+    desc: 'Restores 50 HP immediately upon purchase or use.'
+  },
+  'stamina_tonic': {
+    id: 'stamina_tonic',
+    name: 'Stamina Tonic',
+    slot: 'consumable',
+    rarity: 'RARE',
+    staminaDuration: 8.0,
+    price: 20,
+    visual: 'stamina_tonic',
+    desc: 'Instantly refills stamina and grants 8 seconds of unlimited stamina!'
   }
 };
 
@@ -793,4 +813,121 @@ export function getRandomDungeonLoot(themeKey = 'jjk', options = {}) {
 
   return pool[Math.floor(Math.random() * pool.length)];
 }
+
+// --- SLOP DUNGEON ECONOMY, TRADE-UP & GACHA SYSTEM ---
+
+export const SLOP_SELL_VALUES = {
+  'COMMON': 5,
+  'RARE': 15,
+  'EPIC': 35,
+  'LEGENDARY': 75,
+  'MYTHIC': 150
+};
+
+export const NEXT_RARITY_TIER = {
+  'COMMON': 'RARE',
+  'RARE': 'EPIC',
+  'EPIC': 'LEGENDARY',
+  'LEGENDARY': 'MYTHIC',
+  'MYTHIC': 'MYTHIC'
+};
+
+export function getItemSellPrice(item) {
+  if (!item) return 0;
+  const rarityKey = (typeof item.rarity === 'string' ? item.rarity : (item.rarity?.name || 'COMMON')).toUpperCase();
+  return SLOP_SELL_VALUES[rarityKey] || 5;
+}
+
+/**
+ * Trade-Up Forge: Requires exactly 3 items of the exact same rarity.
+ * Consumes the 3 items and yields 1 random item of the next higher rarity tier.
+ */
+export function executeTradeUp(items = []) {
+  if (items.length !== 3) {
+    return { success: false, error: 'Trade-up requires exactly 3 items!' };
+  }
+
+  const getRarityKey = (it) => (typeof it.rarity === 'string' ? it.rarity : (it.rarity?.name || 'COMMON')).toUpperCase();
+  const r0 = getRarityKey(items[0]);
+  const r1 = getRarityKey(items[1]);
+  const r2 = getRarityKey(items[2]);
+
+  if (r0 !== r1 || r0 !== r2) {
+    return { success: false, error: 'All 3 items must have the EXACT same rarity!' };
+  }
+
+  const targetRarity = NEXT_RARITY_TIER[r0] || 'EPIC';
+  const allGear = Object.values(ITEM_CATALOG).filter(it => it.slot !== 'consumable');
+  const pool = allGear.filter(it => getRarityKey(it) === targetRarity);
+
+  const resultItem = pool.length > 0
+    ? pool[Math.floor(Math.random() * pool.length)]
+    : allGear[Math.floor(Math.random() * allGear.length)];
+
+  return {
+    success: true,
+    resultItem,
+    targetRarity,
+    consumedItems: items
+  };
+}
+
+/**
+ * Spin-a-Wheel Gacha Altar:
+ * Outcome probabilities (strictly NO pity system):
+ * - 50% Ancur (Shattered): Item is completely destroyed
+ * - 45% Upgrade: Item promoted to next rarity tier
+ * - 5% Jackpot: Secret Anime Mythic drop!
+ */
+export function executeGachaSpin(wageredItem) {
+  if (!wageredItem) {
+    return { success: false, error: 'No item selected for wager!' };
+  }
+
+  const roll = Math.random() * 100; // 0 to 100
+  const getRarityKey = (it) => (typeof it.rarity === 'string' ? it.rarity : (it.rarity?.name || 'COMMON')).toUpperCase();
+  const currentRarity = getRarityKey(wageredItem);
+
+  if (roll < 50) {
+    // 50% CHANCE: ANCUR / SHATTERED!
+    return {
+      success: true,
+      outcome: 'ancur',
+      message: 'SHATTERED! 💥 Item broke into worthless ash!',
+      resultItem: null,
+      roll: roll.toFixed(1)
+    };
+  } else if (roll < 95) {
+    // 45% CHANCE: UPGRADE!
+    const targetRarity = NEXT_RARITY_TIER[currentRarity] || 'LEGENDARY';
+    const allGear = Object.values(ITEM_CATALOG).filter(it => it.slot !== 'consumable');
+    const pool = allGear.filter(it => getRarityKey(it) === targetRarity);
+    const resultItem = pool.length > 0
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : allGear[Math.floor(Math.random() * allGear.length)];
+
+    return {
+      success: true,
+      outcome: 'upgrade',
+      message: `UPGRADE SUCCESS! ⬆️ Promoted to ${targetRarity}!`,
+      resultItem,
+      roll: roll.toFixed(1)
+    };
+  } else {
+    // 5% CHANCE: JACKPOT ANIME MYTHIC!
+    const mythicPool = Object.values(ITEM_CATALOG).filter(it => getRarityKey(it) === 'MYTHIC');
+    const resultItem = mythicPool.length > 0
+      ? mythicPool[Math.floor(Math.random() * mythicPool.length)]
+      : ITEM_CATALOG['lapse_blue'];
+
+    return {
+      success: true,
+      outcome: 'jackpot',
+      message: `🎰 JACKPOT! 🌟 You scored an Anime Mythic: ${resultItem.name}!`,
+      resultItem,
+      roll: roll.toFixed(1)
+    };
+  }
+}
+
 

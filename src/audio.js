@@ -1976,4 +1976,200 @@ export class AudioManager {
       console.warn('Audio error in Titan Thud:', e);
     }
   }
+
+  /**
+   * Bright gold coin pickup / Slops collection sound
+   */
+  playCoinPickup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987.77, now); // B5
+      osc.frequency.setValueAtTime(1318.51, now + 0.06); // E6
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch (e) {
+      console.warn('Audio error in Coin Pickup:', e);
+    }
+  }
+
+  /**
+   * Cash register / merchant purchase chime
+   */
+  playShopBuy() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.05);
+        gain.gain.setValueAtTime(0.2, now + i * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.18);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.05);
+        osc.stop(now + i * 0.05 + 0.18);
+      });
+    } catch (e) {
+      console.warn('Audio error in Shop Buy:', e);
+    }
+  }
+
+  /**
+   * Clinking coins sound when selling items to Slop Merchant
+   */
+  playShopSell() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1400 + Math.random() * 400, now + i * 0.04);
+        gain.gain.setValueAtTime(0.18, now + i * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.04);
+        osc.stop(now + i * 0.04 + 0.12);
+      }
+    } catch (e) {
+      console.warn('Audio error in Shop Sell:', e);
+    }
+  }
+
+  /**
+   * Heavy anvil hammer impact with metallic resonance and spark fizzle
+   */
+  playForgeHammer() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Anvil high ping
+      const ping = this.ctx.createOscillator();
+      const pingGain = this.ctx.createGain();
+      ping.type = 'sine';
+      ping.frequency.setValueAtTime(2400, now);
+      ping.frequency.exponentialRampToValueAtTime(1800, now + 0.4);
+      pingGain.gain.setValueAtTime(0.4, now);
+      pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      ping.connect(pingGain);
+      pingGain.connect(this.ctx.destination);
+      ping.start(now);
+      ping.stop(now + 0.45);
+
+      // Heavy hammer body thud
+      const thud = this.ctx.createOscillator();
+      const thudGain = this.ctx.createGain();
+      thud.type = 'triangle';
+      thud.frequency.setValueAtTime(160, now);
+      thud.frequency.exponentialRampToValueAtTime(45, now + 0.25);
+      thudGain.gain.setValueAtTime(0.5, now);
+      thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      thud.connect(thudGain);
+      thudGain.connect(this.ctx.destination);
+      thud.start(now);
+      thud.stop(now + 0.25);
+    } catch (e) {
+      console.warn('Audio error in Forge Hammer:', e);
+    }
+  }
+
+  /**
+   * Mechanical tick click for Spin-a-Wheel gacha
+   */
+  playWheelTick(pitch = 1.0) {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(750 * pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.03);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.035);
+    } catch (e) {
+      console.warn('Audio error in Wheel Tick:', e);
+    }
+  }
+
+  /**
+   * High-pressure RPG rocket launch whoosh
+   */
+  playRocketLaunch() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.22);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch (e) {
+      console.warn('Audio error in Rocket Launch:', e);
+    }
+  }
+
+  /**
+   * Catastrophic RPG rocket explosion / AoE blast
+   */
+  playRocketExplosion() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.45);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    } catch (e) {
+      console.warn('Audio error in Rocket Explosion:', e);
+    }
+  }
 }

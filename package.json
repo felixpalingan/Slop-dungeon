@@ -1,7 +1,11 @@
 {
-  "name": "dungeon-slop",
+  "name": "slop-dungeon",
   "private": true,
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felixpalingan/Slop-dungeon.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host",

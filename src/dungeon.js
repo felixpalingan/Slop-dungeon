@@ -117,6 +117,7 @@ export class Dungeon {
     this.spawnRoom = null;
     this.bossRoom = null;
     this.treasureRoom = null;
+    this.merchantRoom = null;
     this.combatRooms = [];
 
     this.torches = [];
@@ -152,7 +153,7 @@ export class Dungeon {
         maxY: centerY + halfH
       },
       doors: [],
-      isCleared: type === 'spawn' || type === 'treasure',
+      isCleared: type === 'spawn' || type === 'treasure' || type === 'merchant',
       isLocked: false,
       hasVisited: type === 'spawn',
       hasShownBanner: false,
@@ -230,7 +231,8 @@ export class Dungeon {
         targetSpawnX,
         targetSpawnY,
         isBoss: targetRoom.type === 'boss',
-        isTreasure: targetRoom.type === 'treasure'
+        isTreasure: targetRoom.type === 'treasure',
+        isMerchant: targetRoom.type === 'merchant'
       };
     };
 
@@ -242,7 +244,8 @@ export class Dungeon {
   }
 
   /**
-   * Generates discrete room-graph grid in The Binding of Isaac format
+   * Generates procedural random-grid dungeon layout in The Binding of Isaac format
+   * Dynamically constructs 7 to 9 branching rooms with GUARANTEED Battle, Treasure, Merchant, and Boss rooms!
    */
   generate(seed = null) {
     this.rooms = [];
@@ -250,76 +253,197 @@ export class Dungeon {
     this.torches = [];
     this.containers = [];
 
+    // Target chamber count: 7 to 9 rooms for a balanced, exciting roguelike floor
+    const targetRoomCount = 7 + Math.floor(Math.random() * 3); // 7, 8, or 9 chambers
+
+    // Cardinal directions on grid
+    const CARDINAL_DIRS = [
+      { dx: 0, dy: -1, dir: 'north', opp: 'south' },
+      { dx: 0, dy: 1, dir: 'south', opp: 'north' },
+      { dx: -1, dy: 0, dir: 'west', opp: 'east' },
+      { dx: 1, dy: 0, dir: 'east', opp: 'west' }
+    ];
+
+    // Helper to shuffle array
+    const shuffle = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
     // 1. Create Central Spawn Room at (0, 0)
     const spawnRoom = this.createRoom(1, 0, 0, 'spawn');
-    spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
-    spawnRoom.isCleared = true;
-    spawnRoom.hasVisited = true;
-    spawnRoom.hasShownBanner = true;
-
     this.rooms.push(spawnRoom);
     this.roomsMap.set('0,0', spawnRoom);
     this.spawnRoom = spawnRoom;
     this.currentRoom = spawnRoom;
 
-    // 2. Cardinal Hub Layout (All main chambers directly 1 door away from Spawn)
-    // North (Ke Atas): Boss Sanctum (0, -1)
-    const bossRoom = this.createRoom(2, 0, -1, 'boss');
-    bossRoom.name = `${this.theme.bannerPrefix} BOSS SANCTUM`;
-    this.connectRooms(spawnRoom, bossRoom, 'north', 'south');
-    this.rooms.push(bossRoom);
-    this.roomsMap.set('0,-1', bossRoom);
-    this.bossRoom = bossRoom;
+    let roomIdCounter = 2;
+    let attempts = 0;
+    const maxAttempts = 350;
 
-    // West (Ke Kiri): Treasure Vault (-1, 0)
-    const treasureRoom = this.createRoom(3, -1, 0, 'treasure');
-    treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
-    treasureRoom.isCleared = true;
-    this.connectRooms(spawnRoom, treasureRoom, 'west', 'east');
-    this.rooms.push(treasureRoom);
-    this.roomsMap.set('-1,0', treasureRoom);
-    this.treasureRoom = treasureRoom;
+    // 2. Randomized Grid Expansion (The Binding of Isaac style random walk / branching)
+    while (this.rooms.length < targetRoomCount && attempts < maxAttempts) {
+      attempts++;
+      // Pick a random existing room to branch from
+      const parentRoom = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+      const shuffledDirs = shuffle([...CARDINAL_DIRS]);
 
-    // East (Ke Kanan): Combat Chamber East (1, 0)
-    const combatEast = this.createRoom(4, 1, 0, 'combat');
-    combatEast.name = `${this.theme.bannerPrefix} EAST BATTLEGROUND`;
-    combatEast.isCleared = false;
-    this.connectRooms(spawnRoom, combatEast, 'east', 'west');
-    this.rooms.push(combatEast);
-    this.roomsMap.set('1,0', combatEast);
+      for (const d of shuffledDirs) {
+        const nGx = parentRoom.gridX + d.dx;
+        const nGy = parentRoom.gridY + d.dy;
+        const key = `${nGx},${nGy}`;
 
-    // South (Ke Bawah): Combat Chamber South (0, 1)
-    const combatSouth = this.createRoom(5, 0, 1, 'combat');
-    combatSouth.name = `${this.theme.bannerPrefix} SOUTH ARENA`;
-    combatSouth.isCleared = false;
-    this.connectRooms(spawnRoom, combatSouth, 'south', 'north');
-    this.rooms.push(combatSouth);
-    this.roomsMap.set('0,1', combatSouth);
+        // Limit grid radius to ±3 so layout stays coherent and fits comfortably on minimap
+        if (Math.abs(nGx) > 3 || Math.abs(nGy) > 3) continue;
 
-    // Southeast: Additional Combat Chamber (1, 1) connecting East and South
-    const combatSE = this.createRoom(6, 1, 1, 'combat');
-    combatSE.name = `${this.theme.bannerPrefix} SOUTHEAST CRYPT`;
-    combatSE.isCleared = false;
-    this.connectRooms(combatEast, combatSE, 'south', 'north');
-    this.connectRooms(combatSouth, combatSE, 'east', 'west');
-    this.rooms.push(combatSE);
-    this.roomsMap.set('1,1', combatSE);
+        if (this.roomsMap.has(key)) {
+          // Already occupied room: occasional loopback (15% chance) if not already connected
+          const neighbor = this.roomsMap.get(key);
+          const alreadyConnected = parentRoom.doors.some(dr => dr.targetRoomId === neighbor.id);
+          if (!alreadyConnected && Math.random() < 0.15) {
+            this.connectRooms(parentRoom, neighbor, d.dir, d.opp);
+          }
+        } else {
+          // Check how many neighbors are already around this candidate cell
+          let neighborCount = 0;
+          for (const checkDir of CARDINAL_DIRS) {
+            if (this.roomsMap.has(`${nGx + checkDir.dx},${nGy + checkDir.dy}`)) {
+              neighborCount++;
+            }
+          }
 
-    // 3. Register combat rooms list
-    this.combatRooms = [combatEast, combatSouth, combatSE];
+          // If more than 1 neighbor, 50% chance to skip to promote branching paths instead of 2x2 blocks
+          if (neighborCount > 1 && Math.random() < 0.5) continue;
 
-    // 4. Update door special flags (isBoss, isTreasure)
+          // Create new room at (nGx, nGy)
+          const newRoom = this.createRoom(roomIdCounter++, nGx, nGy, 'combat');
+          this.rooms.push(newRoom);
+          this.roomsMap.set(key, newRoom);
+          this.connectRooms(parentRoom, newRoom, d.dir, d.opp);
+          break; // Move to next expansion step
+        }
+      }
+    }
+
+    // 3. BFS Distance Calculation from Spawn (0, 0)
+    const distances = new Map();
+    distances.set(spawnRoom.id, 0);
+    const queue = [spawnRoom];
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      const currDist = distances.get(curr.id);
+
+      for (const door of curr.doors) {
+        if (!distances.has(door.targetRoomId)) {
+          distances.set(door.targetRoomId, currDist + 1);
+          const neighbor = this.rooms.find(r => r.id === door.targetRoomId);
+          if (neighbor) queue.push(neighbor);
+        }
+      }
+    }
+
+    // Sort non-spawn rooms by distance descending
+    const nonSpawnRooms = this.rooms.filter(r => r.id !== spawnRoom.id);
+
+    // Identify dead-end rooms (doors.length === 1)
+    const deadEnds = nonSpawnRooms.filter(r => r.doors.length === 1);
+
+    // 4. Assign Boss Sanctum (Guaranteed 1)
+    // Priority: Furthest dead-end room, or simply furthest room
+    let bossCandidate = null;
+    if (deadEnds.length > 0) {
+      deadEnds.sort((a, b) => (distances.get(b.id) || 0) - (distances.get(a.id) || 0));
+      bossCandidate = deadEnds[0];
+    } else {
+      nonSpawnRooms.sort((a, b) => (distances.get(b.id) || 0) - (distances.get(a.id) || 0));
+      bossCandidate = nonSpawnRooms[0];
+    }
+    bossCandidate.type = 'boss';
+    this.bossRoom = bossCandidate;
+
+    // Remaining available non-spawn rooms
+    let available = nonSpawnRooms.filter(r => r.id !== this.bossRoom.id);
+
+    // 5. Assign Treasure Vault (Guaranteed 1)
+    // Prefer another dead-end or high distance room
+    const remainingDeadEnds = available.filter(r => r.doors.length === 1);
+    let treasureCandidate = null;
+    if (remainingDeadEnds.length > 0) {
+      treasureCandidate = remainingDeadEnds[0];
+    } else {
+      available.sort((a, b) => (distances.get(b.id) || 0) - (distances.get(a.id) || 0));
+      treasureCandidate = available[0];
+    }
+    treasureCandidate.type = 'treasure';
+    this.treasureRoom = treasureCandidate;
+    available = available.filter(r => r.id !== this.treasureRoom.id);
+
+    // 6. Assign Slop Merchant (Guaranteed 1)
+    // Prefer mid-distance branch room (distance >= 1)
+    let merchantCandidate = null;
+    const midDistanceRooms = available.filter(r => (distances.get(r.id) || 0) >= 1);
+    if (midDistanceRooms.length > 0) {
+      // Pick random mid-distance room
+      merchantCandidate = midDistanceRooms[Math.floor(Math.random() * midDistanceRooms.length)];
+    } else {
+      merchantCandidate = available[0];
+    }
+    merchantCandidate.type = 'merchant';
+    this.merchantRoom = merchantCandidate;
+    available = available.filter(r => r.id !== this.merchantRoom.id);
+
+    // 7. All remaining rooms are Combat Battlegrounds (Guaranteed at least 1)
+    for (const r of available) {
+      r.type = 'combat';
+    }
+    this.combatRooms = this.rooms.filter(r => r.type === 'combat');
+
+    // 8. Assign Chamber Names and Clearance Flags
+    spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
+    spawnRoom.isCleared = true;
+    spawnRoom.hasVisited = true;
+    spawnRoom.hasShownBanner = true;
+
+    this.bossRoom.name = `${this.theme.bannerPrefix} BOSS SANCTUM`;
+    this.bossRoom.isCleared = false;
+
+    this.treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
+    this.treasureRoom.isCleared = true;
+
+    this.merchantRoom.name = `${this.theme.bannerPrefix} SLOP EMPORIUM`;
+    this.merchantRoom.isCleared = true;
+
+    const combatTitles = [
+      'WEST WARD',
+      'EAST BATTLEGROUND',
+      'SOUTH ARENA',
+      'NORTH CRYPT',
+      'INNER SANCTUM',
+      'CENTRAL QUAD',
+      'FORGOTTEN AISLE'
+    ];
+    this.combatRooms.forEach((cr, idx) => {
+      cr.name = `${this.theme.bannerPrefix} ${combatTitles[idx % combatTitles.length]}`;
+      cr.isCleared = false;
+    });
+
+    // 9. Update door special flags (isBoss, isTreasure, isMerchant)
     for (const r of this.rooms) {
       for (const d of r.doors) {
         const target = this.rooms.find(x => x.id === d.targetRoomId);
         if (target) {
           d.isBoss = target.type === 'boss';
           d.isTreasure = target.type === 'treasure';
+          d.isMerchant = target.type === 'merchant';
         }
       }
     }
 
-    // 5. Setup Exit Descent Portal in Boss Sanctum
+    // 10. Setup Exit Descent Portal in Boss Sanctum
     this.exitPortal = {
       x: this.bossRoom.centerX,
       y: this.bossRoom.centerY,
@@ -331,7 +455,7 @@ export class Dungeon {
       allReady: false
     };
 
-    // 6. Place fixtures (Torches & Destructible Pots)
+    // 11. Place fixtures (Torches & Destructible Pots)
     this.populateFixtures();
 
     return this;
@@ -357,10 +481,10 @@ export class Dungeon {
       for (const c of cornerOffsets) {
         const torchColor = room.type === 'boss'
           ? '#ef4444'
-          : (room.type === 'treasure' ? '#f59e0b' : this.theme.torchColor);
+          : (room.type === 'treasure' ? '#f59e0b' : (room.type === 'merchant' ? '#10b981' : this.theme.torchColor));
         const torchGlow = room.type === 'boss'
           ? 'rgba(239, 68, 68, 0.4)'
-          : (room.type === 'treasure' ? 'rgba(245, 158, 11, 0.4)' : this.theme.torchGlowColor);
+          : (room.type === 'treasure' ? 'rgba(245, 158, 11, 0.4)' : (room.type === 'merchant' ? 'rgba(16, 185, 129, 0.4)' : this.theme.torchGlowColor));
 
         const t = {
           x: room.centerX + c.ox,
@@ -624,7 +748,7 @@ export class Dungeon {
     this.activeBanner = {
       title: room.name,
       subtitle: this.theme.shortName,
-      color: room.type === 'boss' ? '#ef4444' : (room.type === 'treasure' ? '#f59e0b' : this.theme.torchColor),
+      color: room.type === 'boss' ? '#ef4444' : (room.type === 'treasure' ? '#f59e0b' : (room.type === 'merchant' ? '#fbbf24' : this.theme.torchColor)),
       timer: 3.2,
       maxTimer: 3.2
     };
@@ -692,6 +816,7 @@ export class Dungeon {
     this.spawnRoom = this.rooms.find(r => r.type === 'spawn') || this.rooms[0];
     this.bossRoom = this.rooms.find(r => r.type === 'boss') || this.rooms[this.rooms.length - 1];
     this.treasureRoom = this.rooms.find(r => r.type === 'treasure');
+    this.merchantRoom = this.rooms.find(r => r.type === 'merchant');
     this.combatRooms = this.rooms.filter(r => r.type === 'combat');
     this.currentRoom = this.rooms.find(r => r.id === data.currentRoomId) || this.spawnRoom;
 

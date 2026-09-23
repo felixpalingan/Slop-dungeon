@@ -75,6 +75,10 @@ export class Monster {
   takeHit(damage = 10, hitAngle = 0, knockback = 280, isCrit = false, attacker = null) {
     if (this.isDead || this.isDying) return { damage: 0, isDead: this.isDead };
 
+    if (attacker) {
+      this.lastAttacker = attacker;
+    }
+
     this.hp = Math.max(0, this.hp - damage);
     this.hitFlashTimer = 0.18;
 

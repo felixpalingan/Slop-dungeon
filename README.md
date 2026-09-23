@@ -1,6 +1,8 @@
-# Dungeon Slop 🗡️🎲
+# Slop Dungeon 🗡️🎲
 
-A **1–6 player cooperative top-down dungeon crawler** designed for chaotic friend-group fun. Delve into randomised, procedural dungeon floors, gear up with iconic anime-themed equipment, trigger flashy full-screen cinematic ultimates, gamble your loot at the Cursed Merchant, and survive boss fights with unique multi-phase attack patterns — all directly in the browser, no install required.
+> **Repository**: [https://github.com/felixpalingan/Slop-dungeon](https://github.com/felixpalingan/Slop-dungeon)
+
+A **1–6 player cooperative top-down dungeon crawler** designed for chaotic friend-group fun. Delve into randomised, procedural dungeon floors, gear up with iconic anime-themed equipment, trigger flashy full-screen cinematic ultimates, manage a shared wallet of **Slops**, gamble your loot at the **Slop Merchant's** spin-a-wheel gacha altar (just don't hit the merchant!), and survive boss fights with unique multi-phase attack patterns — all directly in the browser, no install required.
 
 ---
 
@@ -25,8 +27,8 @@ A **1–6 player cooperative top-down dungeon crawler** designed for chaotic fri
 | **Game Over & Victory Summary Screen** | 🔧 Upcoming |
 | **Kamikaze Exploder & Shaman Buffer enemies** | 🔧 Upcoming |
 | **Room Hazards & Traps (spikes / flame pillars)** | 🔧 Upcoming |
-| **Merchant Room + Gacha Gambling Altar** | 🔧 Upcoming |
-| **Roguelike procedural layout restore** | 🔧 Upcoming |
+| **Slop Merchant, Shared Slops, Spin-a-Wheel Gacha & Trade-Up** | 🔧 Upcoming |
+| **Random Grid Map Generation (guaranteed battle, treasure, merchant, boss)** | 🔧 Upcoming |
 
 ---
 
@@ -89,10 +91,22 @@ Equipment comes in sets tied to anime characters. Each set provides a **weapon**
 - **Spike Trap** — floor tiles that surge upward; can be used offensively by luring enemies.
 - **Cursed Flame Pillar** — rotating AoE jets in arena center forcing positional play.
 
-### Merchant Room + Gacha Gambling Altar
-- Mid-floor optional branch room reachable through the roguelike dungeon graph.
-- **Trade-Up Forge (3-for-1)**: Sacrifice 3 same-rarity items → 1 next-tier item.
-- **Cursed Dice (Gacha)**: Sacrifice 1 item → spin the roulette (15% Legendary / 50% Upgrade / 35% Shatter).
+### Slop Merchant, Shared Economy & Gacha Altar
+- **Currency**: **Slops** (shared party wallet for chaotic group coordination).
+- **The Slop Merchant**:
+  - Sells potions (Health / Stamina).
+  - Unwanted items can be sold/scrapped directly to the Slop Merchant.
+  - **Spelunky RPG Retaliation**: Attacking or slapping the merchant does *not* wipe the party. Instead, he pulls out an RPG rocket launcher and fires a high-damage rocket directly at the instigator, complete with an AoE splash radius!
+- **Trade-Up Forge**: Sacrifice 3 items of the same rarity → receive 1 random item of the next higher tier.
+- **Spin-a-Wheel Gacha**: Gamble 1 item + Slops on a fortune wheel (No pity system):
+  - 💥 **Ancur / Shattered (50%)**: Item destroyed.
+  - ⬆️ **Upgrade (45%)**: Item tier promoted.
+  - 🎰 **Jackpot (5%)**: Secret Anime Mythic drop!
+
+### Random Grid Map Generation
+- Procedural grid layout with randomized room placements.
+- Room types: Battle, Treasure, Merchant, and Boss.
+- **Guaranteed Content**: Every floor is guaranteed to contain at least 1 Battle, 1 Treasure, 1 Merchant, and 1 Boss room.
 
 ### New Enemy Types
 - **Kamikaze Exploder** — sprints at players, flashes red, detonates with AoE warning circle.
