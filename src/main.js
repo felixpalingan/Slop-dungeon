@@ -7,7 +7,8 @@ import { NetworkManager } from './network.js';
 import { Dummy } from './dummy.js';
 import { ReadyCircle } from './readyCircle.js';
 import { CustomizationStation } from './customizationStation.js';
-import { ITEM_CATALOG, ItemRarity, checkSetBonus } from './items.js';
+import { FloorSelectStation } from './floorSelectStation.js';
+import { ITEM_CATALOG, ItemRarity, checkSetBonus, getRandomDungeonLoot } from './items.js';
 import { CombatSystem } from './combat.js';
 import { GroundLoot } from './groundLoot.js';
 import { CinematicManager } from './cinematics.js';
@@ -46,6 +47,7 @@ const cinematics = new CinematicManager();
 const dummy = new Dummy(0, -180);
 const readyCircle = new ReadyCircle(0, 160, 75);
 const wardrobeStation = new CustomizationStation(-240, -120);
+const floorStation = new FloorSelectStation(240, -120);
 
 // Ground loot items in world (trading & drops)
 const groundItems = new Map();
@@ -119,8 +121,27 @@ const monsterManager = new MonsterManager();
 
 // Monster Death Callbacks
 monsterManager.onMonsterKilled = (monster) => {
-  particles.spawnComicText(monster.x, monster.y - 20, 'EXORCISED! 💥', '#c084fc');
-  particles.spawnDashBurst(monster.x, monster.y, 0, '#a855f7');
+  const isCyber = monster.theme === 'cyberpunk' || (currentDungeon && currentDungeon.themeKey === 'cyberpunk');
+  const isAot = monster.theme === 'aot' || (currentDungeon && currentDungeon.themeKey === 'aot');
+  const isBoss = monster.archetype === 'boss';
+
+  // Only spawn mob kill text if not the final boss (boss has dedicated onBossKilled banner)
+  if (!isBoss) {
+    let killText = 'EXORCISED! 💥';
+    let killColor = '#c084fc';
+    let burstColor = '#a855f7';
+    if (isCyber) {
+      killText = 'FLATLINED! ⚡';
+      killColor = '#00f0ff';
+      burstColor = '#06b6d4';
+    } else if (isAot) {
+      killText = 'TITAN SLAIN! ⚔️';
+      killColor = '#22c55e';
+      burstColor = '#16a34a';
+    }
+    particles.spawnComicText(monster.x, monster.y - 20, killText, killColor);
+    particles.spawnDashBurst(monster.x, monster.y, 0, burstColor);
+  }
   cinematics.addScreenShake(3);
 
   // 35% chance to drop a minor heal orb
@@ -131,20 +152,52 @@ monsterManager.onMonsterKilled = (monster) => {
   }
 };
 
+function getAliveMonstersInChamber(room) {
+  if (!room) return [];
+  return monsterManager.monsters.filter(m => {
+    if (!m || m.isDead || m.hp <= 0) return false;
+    // Match by assigned roomId
+    if (m.roomId === room.id) return true;
+    // Also match if physically within chamber bounding box
+    if (room.bounds &&
+        m.x >= room.bounds.minX - 10 && m.x <= room.bounds.maxX + 10 &&
+        m.y >= room.bounds.minY - 10 && m.y <= room.bounds.maxY + 10) {
+      return true;
+    }
+    return false;
+  });
+}
+
 monsterManager.onBossKilled = (boss) => {
   audio.playBossVictoryFanfare();
   cinematics.addScreenShake(18);
-  particles.spawnComicText(boss.x, boss.y - 40, 'SPECIAL GRADE EXORCISED! 🏆', '#c084fc');
+  let bossTitle = 'SPECIAL GRADE EXORCISED! 🏆';
+  let bossColor = '#c084fc';
+  if (currentDungeon && currentDungeon.themeKey === 'cyberpunk') {
+    bossTitle = 'CHROME TITAN FLATLINED! 🏆';
+    bossColor = '#00f0ff';
+  } else if (currentDungeon && currentDungeon.themeKey === 'aot') {
+    bossTitle = 'ARMORED TITAN VANQUISHED! 🏆';
+    bossColor = '#22c55e';
+  }
+  particles.spawnComicText(boss.x, boss.y - 40, bossTitle, bossColor);
 
   if (currentDungeon) {
-    currentDungeon.exitPortal.isActive = true;
+    // Drop fountain of diverse Mythic / Legendary anime loot!
+    const bossLoot = [];
+    const excludedIds = [];
+    for (let b = 0; b < 3; b++) {
+      const item = getRandomDungeonLoot(currentDungeon.themeKey, {
+        minRarity: 'LEGENDARY',
+        guaranteeTheme: true,
+        excludeIds: excludedIds
+      });
+      if (item) {
+        bossLoot.push(item);
+        excludedIds.push(item.id);
+      }
+    }
 
-    // Drop fountain of Mythic JJK loot!
-    const bossLoot = [
-      ITEM_CATALOG['sukuna_finger'],
-      ITEM_CATALOG['sukuna_cleaver'],
-      ITEM_CATALOG['reversal_red']
-    ];
     bossLoot.forEach((item, idx) => {
       if (!item) return;
       const dropAngle = (idx / bossLoot.length) * Math.PI * 2;
@@ -154,13 +207,36 @@ monsterManager.onBossKilled = (boss) => {
       groundItems.set(lootObj.id, lootObj);
     });
 
-    currentDungeon.activeBanner = {
-      title: 'SPECIAL GRADE EXORCISED!',
-      subtitle: 'DESCENT PORTAL UNLOCKED • PROCEED TO NEXT FLOOR',
-      color: '#00ff88',
-      timer: 4.5,
-      maxTimer: 4.5
-    };
+    // Check if all escorts in the boss chamber are also defeated
+    const remainingInBossRoom = getAliveMonstersInChamber(currentDungeon.bossRoom);
+    if (remainingInBossRoom.length === 0) {
+      currentDungeon.bossRoom.isLocked = false;
+      currentDungeon.bossRoom.isCleared = true;
+      if (currentDungeon.exitPortal) {
+        currentDungeon.exitPortal.isActive = true;
+      }
+      let clearTitle = 'SPECIAL GRADE EXORCISED!';
+      if (currentDungeon.themeKey === 'cyberpunk') clearTitle = 'CHROME TITAN FLATLINED!';
+      else if (currentDungeon.themeKey === 'aot') clearTitle = 'ARMORED TITAN VANQUISHED!';
+      currentDungeon.activeBanner = {
+        title: clearTitle,
+        subtitle: 'ALL FOES DEFEATED • DESCENT PORTAL UNLOCKED',
+        color: '#00ff88',
+        timer: 4.5,
+        maxTimer: 4.5
+      };
+    } else {
+      let pendingTitle = 'BOSS EXORCISED!';
+      if (currentDungeon.themeKey === 'cyberpunk') pendingTitle = 'TITAN FLATLINED!';
+      else if (currentDungeon.themeKey === 'aot') pendingTitle = 'ARMORED TITAN DOWN!';
+      currentDungeon.activeBanner = {
+        title: pendingTitle,
+        subtitle: `ELIMINATE REMAINING GUARDS (${remainingInBossRoom.length} REMAINING)`,
+        color: '#f59e0b',
+        timer: 3.5,
+        maxTimer: 3.5
+      };
+    }
   }
 };
 
@@ -197,25 +273,28 @@ function applyDamageToTarget(target, damage, angle, knockback, sourceLabel, colo
 
 function spawnRoomReward(room) {
   if (!room) return;
-  const pot = {
-    id: `reward_pot_${room.id}_${Date.now()}`,
-    x: room.centerX,
-    y: room.centerY,
-    radius: 18,
-    hp: 1,
-    isBroken: false,
-    theme: currentDungeon.themeKey
-  };
-  room.containers.push(pot);
-  currentDungeon.containers.push(pot);
   particles.spawnDashBurst(room.centerX, room.centerY, 0, '#00ff88');
-  particles.spawnComicText(room.centerX, room.centerY - 24, 'CHEST UNLOCKED! 🎁', '#00ff88');
 
-  // Chance of bonus anime material / consumable
-  const bonusItem = ITEM_CATALOG['sukuna_finger'];
-  if (bonusItem && Math.random() < 0.65) {
-    const lootObj = new GroundLoot(bonusItem, room.centerX + 32, room.centerY, `clear_reward_${Date.now()}`);
+  // Spawn diverse, theme-appropriate room clear reward directly on the ground (no obstacle pots!)
+  const roomLoot = getRandomDungeonLoot(currentDungeon ? currentDungeon.themeKey : 'jjk', {
+    minRarity: 'RARE'
+  });
+
+  if (roomLoot) {
+    const lootObj = new GroundLoot(roomLoot, room.centerX, room.centerY, `room_reward_${room.id}_${Date.now()}`);
     groundItems.set(lootObj.id, lootObj);
+    particles.spawnComicText(room.centerX, room.centerY - 24, `${roomLoot.name.toUpperCase()}! 🎁`, '#00ff88');
+
+    // 45% chance of a second diverse drop
+    if (Math.random() < 0.45) {
+      const extraLoot = getRandomDungeonLoot(currentDungeon ? currentDungeon.themeKey : 'jjk', {
+        excludeIds: [roomLoot.id]
+      });
+      if (extraLoot) {
+        const lootObj2 = new GroundLoot(extraLoot, room.centerX + 36, room.centerY, `extra_reward_${room.id}_${Date.now()}`);
+        groundItems.set(lootObj2.id, lootObj2);
+      }
+    }
   }
 }
 
@@ -223,14 +302,14 @@ function populateFloorMonsters(dungeon) {
   monsterManager.clear();
   const theme = dungeon.themeKey;
 
-  // In each combat chamber, spawn a squad of theme-specific anime mobs!
+  // In each combat chamber, spawn a squad of 7 to 10 theme-specific anime mobs!
   for (let i = 0; i < dungeon.combatRooms.length; i++) {
     const room = dungeon.combatRooms[i];
-    const mobCount = 3 + Math.floor(Math.random() * 2);
+    const mobCount = 7 + Math.floor(Math.random() * 4); // 7 to 10 mobs per chamber
 
     for (let m = 0; m < mobCount; m++) {
-      const offsetX = (Math.random() - 0.5) * (room.width - 320);
-      const offsetY = (Math.random() - 0.5) * (room.height - 240);
+      const offsetX = (Math.random() - 0.5) * (room.width - 400);
+      const offsetY = (Math.random() - 0.5) * (room.height - 300);
       const spawnX = room.centerX + offsetX;
       const spawnY = room.centerY + offsetY;
 
@@ -238,23 +317,80 @@ function populateFloorMonsters(dungeon) {
       let archetype = 'swarmer';
       let hp = 45;
       let radius = 18;
-      let speed = 160;
+      let speed = 165;
       let name = 'Fly Head Cursed Spirit';
 
-      if (m === 0) {
-        monsterType = 'masked_ino';
-        archetype = 'ranged';
-        hp = 65;
-        radius = 20;
-        speed = 115;
-        name = 'Masked Ino Cursed Spirit';
-      } else if (i === 1 && m === 1) {
-        monsterType = 'cursed_brute';
-        archetype = 'brute';
-        hp = 220;
-        radius = 26;
-        speed = 75;
-        name = 'Cursed Womb Brute';
+      if (theme === 'cyberpunk') {
+        if (m === 0) {
+          // 1 Heavy Brute per chamber
+          monsterType = 'maelstrom_cyberpsycho';
+          archetype = 'brute';
+          hp = 250;
+          radius = 28;
+          speed = 85;
+          name = 'Maelstrom Cyberpsycho';
+        } else if (m === 1 || m === 2) {
+          // 2 Ranged Snipers per chamber
+          monsterType = 'tyger_claw_sniper';
+          archetype = 'ranged';
+          hp = 75;
+          radius = 20;
+          speed = 115;
+          name = 'Tyger Claw Cyber-Gunner';
+        } else {
+          // Swarmers
+          monsterType = 'arasaka_drone';
+          archetype = 'swarmer';
+          hp = 42;
+          radius = 18;
+          speed = 175;
+          name = 'Arasaka Security Drone';
+        }
+      } else if (theme === 'aot') {
+        if (m === 0) {
+          // 1 Heavy Hardened Titan per chamber
+          monsterType = 'hardened_brute';
+          archetype = 'brute';
+          hp = 270;
+          radius = 30;
+          speed = 80;
+          name = 'Hardened Fist Titan';
+        } else if (m === 1 || m === 2) {
+          // 2 Marleyan Snipers per chamber
+          monsterType = 'marleyan_rifleman';
+          archetype = 'ranged';
+          hp = 75;
+          radius = 20;
+          speed = 110;
+          name = 'Marleyan Heavy Rifleman';
+        } else {
+          // Pure Titan Swarmers
+          monsterType = 'crawler_titan';
+          archetype = 'swarmer';
+          hp = 44;
+          radius = 18;
+          speed = 185;
+          name = 'Pure Titan Crawler';
+        }
+      } else {
+        // Default JJK Theme
+        if (m === 0) {
+          // 1 Heavy Brute per chamber
+          monsterType = 'cursed_brute';
+          archetype = 'brute';
+          hp = 240;
+          radius = 28;
+          speed = 80;
+          name = 'Cursed Womb Brute';
+        } else if (m === 1 || m === 2) {
+          // 2 Ranged Snipers per chamber
+          monsterType = 'masked_ino';
+          archetype = 'ranged';
+          hp = 70;
+          radius = 20;
+          speed = 120;
+          name = 'Masked Ino Cursed Spirit';
+        }
       }
 
       const monster = new Monster({
@@ -274,37 +410,104 @@ function populateFloorMonsters(dungeon) {
 
       if (archetype === 'swarmer') {
         monster.onAttack = (target) => {
-          audio.playFlyHeadBuzz();
-          applyDamageToTarget(target, 12, monster.angle, 160, '-12 (CURSE BITE)', '#c084fc');
+          if (theme === 'cyberpunk') {
+            audio.playDroneHum();
+            applyDamageToTarget(target, 11, monster.angle, 140, '-11 (LASER TAZER)', '#06b6d4');
+          } else if (theme === 'aot') {
+            audio.playTitanThud();
+            applyDamageToTarget(target, 12, monster.angle, 150, '-12 (TITAN BITE)', '#22c55e');
+          } else {
+            audio.playFlyHeadBuzz();
+            applyDamageToTarget(target, 12, monster.angle, 160, '-12 (CURSE BITE)', '#c084fc');
+          }
         };
       } else if (archetype === 'ranged') {
         monster.onRangedAttack = (target) => {
-          audio.playFlyHeadBuzz();
-          cinematics.spawnProjectile({
-            type: 'bot_energy_orb',
-            x: monster.x,
-            y: monster.y,
-            vx: Math.cos(monster.angle) * 220,
-            vy: Math.sin(monster.angle) * 220,
-            damage: 18,
-            caster: monster,
-            color: '#a855f7',
-            radius: 9,
-            life: 2.5,
-            maxDist: 400
-          });
-          particles.spawnComicText(monster.x, monster.y - 24, 'CURSE ORB!', '#c084fc');
+          if (theme === 'cyberpunk') {
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_laser_bolt',
+              x: monster.x,
+              y: monster.y,
+              vx: Math.cos(monster.angle) * 340,
+              vy: Math.sin(monster.angle) * 340,
+              damage: 20,
+              caster: monster,
+              color: '#06b6d4',
+              radius: 10,
+              life: 2.0,
+              maxDist: 520
+            });
+            particles.spawnComicText(monster.x, monster.y - 24, 'LASER BOLT!', '#06b6d4');
+          } else if (theme === 'aot') {
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_laser_bolt',
+              x: monster.x,
+              y: monster.y,
+              vx: Math.cos(monster.angle) * 370,
+              vy: Math.sin(monster.angle) * 370,
+              damage: 22,
+              caster: monster,
+              color: '#ef4444',
+              radius: 9,
+              life: 2.2,
+              maxDist: 580
+            });
+            particles.spawnComicText(monster.x, monster.y - 24, 'SNIPER ROUND!', '#ef4444');
+          } else {
+            audio.playFlyHeadBuzz();
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: monster.x,
+              y: monster.y,
+              vx: Math.cos(monster.angle) * 220,
+              vy: Math.sin(monster.angle) * 220,
+              damage: 18,
+              caster: monster,
+              color: '#a855f7',
+              radius: 9,
+              life: 2.5,
+              maxDist: 450
+            });
+            particles.spawnComicText(monster.x, monster.y - 24, 'CURSE ORB!', '#c084fc');
+          }
         };
       } else if (archetype === 'brute') {
         monster.onBruteSlam = (target) => {
-          audio.playHammerSmash();
-          cinematics.addScreenShake(9);
-          particles.spawnDashBurst(monster.x, monster.y, 0, '#f97316');
-          particles.spawnComicText(monster.x, monster.y - 30, 'EARTH SLAM! 💥', '#f97316');
-          if (target) {
-            const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
-            if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
-              applyDamageToTarget(target, 38, monster.angle, 520, '-38 SLAM!', '#f97316');
+          if (theme === 'cyberpunk') {
+            audio.playCyberSlam();
+            cinematics.addScreenShake(10);
+            particles.spawnDashBurst(monster.x, monster.y, 0, '#ef4444');
+            particles.spawnComicText(monster.x, monster.y - 30, 'GORILLA SMASH! ⚡', '#06b6d4');
+            if (target) {
+              const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+              if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 40, monster.angle, 540, '-40 GORILLA SLAM!', '#06b6d4');
+              }
+            }
+          } else if (theme === 'aot') {
+            audio.playTitanThud();
+            audio.playArmorShatter();
+            cinematics.addScreenShake(11);
+            particles.spawnDashBurst(monster.x, monster.y, 0, '#38bdf8');
+            particles.spawnComicText(monster.x, monster.y - 30, 'CRYSTAL SMASH! 💎', '#38bdf8');
+            if (target) {
+              const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+              if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 42, monster.angle, 560, '-42 CRYSTAL SMASH!', '#38bdf8');
+              }
+            }
+          } else {
+            audio.playHammerSmash();
+            cinematics.addScreenShake(9);
+            particles.spawnDashBurst(monster.x, monster.y, 0, '#f97316');
+            particles.spawnComicText(monster.x, monster.y - 30, 'EARTH SLAM! 💥', '#f97316');
+            if (target) {
+              const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+              if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 38, monster.angle, 520, '-38 SLAM!', '#f97316');
+              }
             }
           }
         };
@@ -314,62 +517,672 @@ function populateFloorMonsters(dungeon) {
     }
   }
 
-  // In Boss Sanctum, spawn the Floor Guardian Boss!
+  // In Boss Sanctum, spawn the Floor Guardian Boss + Elite Escorts!
   if (dungeon.bossRoom) {
-    const boss = new Monster({
-      id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
-      type: 'finger_bearer',
-      name: 'Special Grade: Finger Bearer',
-      theme,
-      archetype: 'boss',
-      x: dungeon.bossRoom.centerX,
-      y: dungeon.bossRoom.centerY - 50,
-      hp: 850,
-      radius: 46,
-      speed: 90,
-      roomId: dungeon.bossRoom.id,
-      isActive: false // Dormant until player enters Boss Sanctum!
-    });
-
-    boss.onBossAttack = (target) => {
-      audio.playCleaverSlash();
-      cinematics.addScreenShake(6);
-      applyDamageToTarget(target, 28, boss.angle, 420, '-28 CURSE CLAW!', '#ef4444');
-    };
-
-    boss.onBossSpecial = (target) => {
-      audio.playCursedEnergyBeam();
-      cinematics.addScreenShake(12);
-      particles.spawnComicText(boss.x, boss.y - 50, 'CURSED ENERGY BEAM! ⚡', '#a855f7');
-      cinematics.spawnProjectile({
-        type: 'bot_energy_orb',
-        x: boss.x,
-        y: boss.y,
-        vx: Math.cos(boss.angle) * 360,
-        vy: Math.sin(boss.angle) * 360,
-        damage: 48,
-        caster: boss,
-        color: '#c084fc',
-        radius: 18,
-        life: 2.5,
-        maxDist: 800
+    if (theme === 'cyberpunk') {
+      const boss = new Monster({
+        id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+        type: 'adam_smasher_prototype',
+        name: 'Adam Smasher Prototype',
+        theme,
+        archetype: 'boss',
+        x: dungeon.bossRoom.centerX,
+        y: dungeon.bossRoom.centerY - 50,
+        hp: 1200,
+        radius: 48,
+        speed: 75,
+        roomId: dungeon.bossRoom.id,
+        isActive: false // Dormant until player enters Boss Sanctum!
       });
-    };
 
-    monsterManager.addMonster(boss);
+      boss.onPhase2Trigger = (b) => {
+        audio.playEnrageRoar();
+        cinematics.addScreenShake(18);
+        particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: SANDEVISTAN OVERCLOCK! ⚡', '#00ff88');
+        particles.spawnDashBurst(b.x, b.y, 0, '#00ff88');
+      };
+
+      boss.onBossStartDying = (b) => {
+        audio.playCoreOverload();
+        cinematics.addScreenShake(16);
+        particles.spawnComicText(b.x, b.y - 45, 'CRITICAL OVERLOAD: CORE MELTDOWN! 💥', '#ff003c');
+      };
+
+      // Boss Windup Telegraph Callbacks
+      boss.onBossWindup = (attackIndex, phase, duration) => {
+        if (attackIndex === 1) {
+          const text = phase === 2 ? '⚡ SANDEVISTAN BLINK SLAM! 🚨' : '⚠️ HYDRAULIC SLAM WINDUP!';
+          const col = phase === 2 ? '#00ff88' : '#f59e0b';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 2) {
+          const text = phase === 2 ? '🚀 FULL SALVO 8-MISSILE LOCK! 💥' : '⚠️ MICRO-MISSILE LOCK! 🚀';
+          const col = phase === 2 ? '#ff003c' : '#ef4444';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 3) {
+          const text = phase === 2 ? '⚡ LASER SWEEP ARRAY! ⚡' : '⚠️ ROTARY CANNON SPOOLING! ⚙️';
+          const col = phase === 2 ? '#00f0ff' : '#06b6d4';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        }
+      };
+
+      // Attack 1: Melee / Slam (Phase 1: Chrome Heavy Slam -> Phase 2: Sandevistan Blink Slam)
+      boss.onBossAttack1 = (target, phase) => {
+        if (phase === 2) {
+          // Phase 2 Upgraded: Blink dash right beside target followed by supersonic impact slam!
+          if (target) {
+            boss.x = target.x + Math.cos(boss.angle + Math.PI) * 60;
+            boss.y = target.y + Math.sin(boss.angle + Math.PI) * 60;
+          }
+          audio.playCyberSlam();
+          cinematics.addScreenShake(16);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#00ff88');
+          applyDamageToTarget(target, 48, boss.angle, 600, '-48 SUPERSONIC BLINK SLAM! ⚡', '#00ff88');
+        } else {
+          // Phase 1: Heavy Chrome Slam
+          audio.playCyberSlam();
+          cinematics.addScreenShake(8);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#ef4444');
+          applyDamageToTarget(target, 32, boss.angle, 450, '-32 CHROME SLAM!', '#ef4444');
+        }
+      };
+
+      // Attack 2: Missile Artillery (Phase 1: 4 Micro-Missiles -> Phase 2: 8 Full Salvo Apocalypse)
+      boss.onBossAttack2 = (target, phase) => {
+        audio.playMissileLaunch();
+        if (phase === 2) {
+          // Phase 2 Upgraded: 8-Missile Full Salvo Apocalypse
+          cinematics.addScreenShake(16);
+          particles.spawnComicText(boss.x, boss.y - 50, 'FULL SALVO APOCALYPSE! 🚀💥', '#ff003c');
+          for (let f = 0; f < 8; f++) {
+            const spreadAngle = boss.angle + (f - 3.5) * 0.28;
+            cinematics.spawnProjectile({
+              type: 'bot_micro_missile',
+              x: boss.x + Math.cos(spreadAngle) * 32,
+              y: boss.y + Math.sin(spreadAngle) * 32,
+              vx: Math.cos(spreadAngle) * 350,
+              vy: Math.sin(spreadAngle) * 350,
+              damage: 32,
+              caster: boss,
+              color: '#ff003c',
+              radius: 12,
+              life: 3.2,
+              maxDist: 900
+            });
+          }
+        } else {
+          // Phase 1: 4 Micro-Missile Barrage
+          cinematics.addScreenShake(10);
+          particles.spawnComicText(boss.x, boss.y - 50, 'MICRO-MISSILE BARRAGE! 🚀', '#f59e0b');
+          for (let f = -1.5; f <= 1.5; f += 1) {
+            const spreadAngle = boss.angle + f * 0.22;
+            cinematics.spawnProjectile({
+              type: 'bot_micro_missile',
+              x: boss.x + Math.cos(spreadAngle) * 30,
+              y: boss.y + Math.sin(spreadAngle) * 30,
+              vx: Math.cos(spreadAngle) * 310,
+              vy: Math.sin(spreadAngle) * 310,
+              damage: 26,
+              caster: boss,
+              color: '#ef4444',
+              radius: 12,
+              life: 3.0,
+              maxDist: 850
+            });
+          }
+        }
+      };
+
+      // Attack 3: Kinetic Cannon / Laser Sweep (Phase 1: 3-Burst -> Phase 2: 6-Bolt Laser Sweep Array)
+      boss.onBossAttack3 = (target, phase) => {
+        if (phase === 2) {
+          // Phase 2 Upgraded: 6-Bolt High-Density Laser Sweep Array
+          cinematics.addScreenShake(12);
+          particles.spawnComicText(boss.x, boss.y - 50, 'LASER SWEEP ARRAY! ⚡', '#00f0ff');
+          for (let b = 0; b < 6; b++) {
+            const sweepAngle = boss.angle + (b - 2.5) * 0.16;
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_laser_bolt',
+              x: boss.x + Math.cos(sweepAngle) * 28,
+              y: boss.y + Math.sin(sweepAngle) * 28,
+              vx: Math.cos(sweepAngle) * 480,
+              vy: Math.sin(sweepAngle) * 480,
+              damage: 28,
+              caster: boss,
+              color: '#00f0ff',
+              radius: 9,
+              life: 2.2,
+              maxDist: 800
+            });
+          }
+        } else {
+          // Phase 1: 3-Round Kinetic Gatling Burst
+          cinematics.addScreenShake(6);
+          particles.spawnComicText(boss.x, boss.y - 50, 'ROTARY BURST! ⚙️', '#06b6d4');
+          for (let b = -1; b <= 1; b++) {
+            const boltAngle = boss.angle + b * 0.1;
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_laser_bolt',
+              x: boss.x + Math.cos(boltAngle) * 26,
+              y: boss.y + Math.sin(boltAngle) * 26,
+              vx: Math.cos(boltAngle) * 430,
+              vy: Math.sin(boltAngle) * 430,
+              damage: 20,
+              caster: boss,
+              color: '#06b6d4',
+              radius: 8,
+              life: 2.0,
+              maxDist: 750
+            });
+          }
+        }
+      };
+
+      monsterManager.addMonster(boss);
+
+      // Spawn 3 Elite Escort guards with Adam Smasher (1 Cyberpsycho, 2 Drones)
+      const escorts = [
+        { type: 'maelstrom_cyberpsycho', archetype: 'brute', hp: 270, radius: 28, speed: 85, ox: -160, oy: 60, name: 'Cyberpsycho Vanguard' },
+        { type: 'arasaka_drone', archetype: 'swarmer', hp: 50, radius: 18, speed: 180, ox: 160, oy: -80, name: 'Arasaka Escort Drone' },
+        { type: 'arasaka_drone', archetype: 'swarmer', hp: 50, radius: 18, speed: 180, ox: -160, oy: -80, name: 'Arasaka Escort Drone' }
+      ];
+
+      for (let e = 0; e < escorts.length; e++) {
+        const esc = escorts[e];
+        const escortMonster = new Monster({
+          id: `boss_escort_${e}_${Date.now()}`,
+          type: esc.type,
+          name: esc.name,
+          theme,
+          archetype: esc.archetype,
+          x: dungeon.bossRoom.centerX + esc.ox,
+          y: dungeon.bossRoom.centerY + esc.oy,
+          hp: esc.hp,
+          radius: esc.radius,
+          speed: esc.speed,
+          roomId: dungeon.bossRoom.id,
+          isActive: false
+        });
+
+        if (esc.archetype === 'swarmer') {
+          escortMonster.onAttack = (target) => {
+            audio.playDroneHum();
+            applyDamageToTarget(target, 12, escortMonster.angle, 150, '-12 (LASER TAZER)', '#06b6d4');
+          };
+        } else if (esc.archetype === 'brute') {
+          escortMonster.onBruteSlam = (target) => {
+            audio.playCyberSlam();
+            cinematics.addScreenShake(9);
+            particles.spawnDashBurst(escortMonster.x, escortMonster.y, 0, '#ef4444');
+            if (target) {
+              applyDamageToTarget(target, 36, escortMonster.angle, 500, '-36 GORILLA SLAM!', '#06b6d4');
+            }
+          };
+        }
+
+        monsterManager.addMonster(escortMonster);
+      }
+    } else if (theme === 'aot') {
+      // Floor 3 Boss: Armored Titan (Reiner Braun Prototype)
+      const boss = new Monster({
+        id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+        type: 'armored_titan',
+        name: 'Armored Titan (Reiner Braun Prototype)',
+        theme,
+        archetype: 'boss',
+        x: dungeon.bossRoom.centerX,
+        y: dungeon.bossRoom.centerY - 50,
+        hp: 1450,
+        radius: 52,
+        speed: 75,
+        deathType: 'titan_evaporate',
+        roomId: dungeon.bossRoom.id,
+        isActive: false // Dormant until player enters Boss Sanctum!
+      });
+
+      boss.onPhase2Trigger = (b) => {
+        audio.playEnrageRoar();
+        audio.playTitanRoar();
+        cinematics.addScreenShake(20);
+        particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: ARMOR SHED & UNSTOPPABLE BLITZ! ⚠️', '#eab308');
+        particles.spawnDashBurst(b.x, b.y, 0, '#f59e0b');
+      };
+
+      boss.onBossStartDying = (b) => {
+        audio.playArmorShatter();
+        audio.playSteamHiss();
+        cinematics.addScreenShake(16);
+        particles.spawnComicText(b.x, b.y - 45, 'TITAN EVAPORATION... 💨', '#e2e8f0');
+      };
+
+      // Boss Windup Telegraph Callbacks
+      boss.onBossWindup = (attackIndex, phase, duration) => {
+        if (attackIndex === 1) {
+          const text = phase === 2 ? '⚡ DUAL CRYSTAL CROSS-SMASH! 💥' : '⚠️ HARDENED IRON FIST!';
+          const col = phase === 2 ? '#eab308' : '#f59e0b';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 2) {
+          const text = phase === 2 ? '⚡ SUPERSONIC WALL BLITZ! 💨' : '⚠️ BULL RUSH TACKLE! 💥';
+          const col = phase === 2 ? '#f97316' : '#ea580c';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 3) {
+          const text = phase === 2 ? '🔥 TITAN ROAR & STEAM WAVE! 🌊' : '⚠️ SCALDING STEAM VENT! 💨';
+          const col = phase === 2 ? '#ef4444' : '#fde047';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        }
+      };
+
+      // Attack 1: Melee / Fists (Phase 1: Hardened Fist -> Phase 2: Dual Crystal Cross-Smash)
+      boss.onBossAttack1 = (target, phase) => {
+        if (phase === 2) {
+          audio.playTitanThud();
+          audio.playArmorShatter();
+          cinematics.addScreenShake(16);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#fde047');
+          applyDamageToTarget(target, 52, boss.angle, 650, '-52 DUAL CRYSTAL CROSS-SMASH! 💥', '#fde047');
+        } else {
+          audio.playTitanThud();
+          cinematics.addScreenShake(9);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#f59e0b');
+          applyDamageToTarget(target, 34, boss.angle, 460, '-34 HARDENED FIST!', '#f59e0b');
+        }
+      };
+
+      // Attack 2: Charge / Bull Rush (Phase 1: Bull Rush -> Phase 2: Supersonic Wall Blitz)
+      boss.onBossAttack2 = (target, phase) => {
+        audio.playTitanThud();
+        if (phase === 2) {
+          boss.vx = Math.cos(boss.angle) * 440;
+          boss.vy = Math.sin(boss.angle) * 440;
+          cinematics.addScreenShake(18);
+          particles.spawnComicText(boss.x, boss.y - 50, 'SUPERSONIC WALL BLITZ! 💨', '#f97316');
+          for (let f = 0; f < 4; f++) {
+            const spreadAngle = boss.angle + (f - 1.5) * 0.28;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(spreadAngle) * 32,
+              y: boss.y + Math.sin(spreadAngle) * 32,
+              vx: Math.cos(spreadAngle) * 360,
+              vy: Math.sin(spreadAngle) * 360,
+              damage: 36,
+              caster: boss,
+              color: '#d97706',
+              radius: 14,
+              life: 2.8,
+              maxDist: 850
+            });
+          }
+          if (target) {
+            applyDamageToTarget(target, 48, boss.angle, 700, '-48 BLITZ CRASH!', '#f97316');
+          }
+        } else {
+          boss.vx = Math.cos(boss.angle) * 320;
+          boss.vy = Math.sin(boss.angle) * 320;
+          cinematics.addScreenShake(12);
+          particles.spawnComicText(boss.x, boss.y - 50, 'BULL RUSH! 💥', '#ea580c');
+          for (let f = -1; f <= 1; f += 2) {
+            const spreadAngle = boss.angle + f * 0.22;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(spreadAngle) * 30,
+              y: boss.y + Math.sin(spreadAngle) * 30,
+              vx: Math.cos(spreadAngle) * 310,
+              vy: Math.sin(spreadAngle) * 310,
+              damage: 28,
+              caster: boss,
+              color: '#b45309',
+              radius: 12,
+              life: 2.5,
+              maxDist: 750
+            });
+          }
+          if (target) {
+            applyDamageToTarget(target, 36, boss.angle, 550, '-36 TACKLE SLAM!', '#ea580c');
+          }
+        }
+      };
+
+      // Attack 3: AoE / Steam (Phase 1: Steam Vent -> Phase 2: Roar & 8-Direction Steam Wave)
+      boss.onBossAttack3 = (target, phase) => {
+        if (phase === 2) {
+          audio.playTitanRoar();
+          audio.playSteamHiss();
+          cinematics.addScreenShake(18);
+          particles.spawnComicText(boss.x, boss.y - 50, 'TITAN ROAR & STEAM WAVE! 🌊', '#fde047');
+          for (let k = 0; k < 8; k++) {
+            const kAngle = (k / 8) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 32,
+              y: boss.y + Math.sin(kAngle) * 32,
+              vx: Math.cos(kAngle) * 320,
+              vy: Math.sin(kAngle) * 320,
+              damage: 36,
+              caster: boss,
+              color: '#fef08a',
+              radius: 16,
+              life: 2.6,
+              maxDist: 800
+            });
+          }
+        } else {
+          audio.playSteamHiss();
+          cinematics.addScreenShake(9);
+          particles.spawnComicText(boss.x, boss.y - 50, 'SCALDING STEAM VENT! 💨', '#e2e8f0');
+          for (let k = 0; k < 4; k++) {
+            const kAngle = (k / 4) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 28,
+              y: boss.y + Math.sin(kAngle) * 28,
+              vx: Math.cos(kAngle) * 270,
+              vy: Math.sin(kAngle) * 270,
+              damage: 26,
+              caster: boss,
+              color: '#e2e8f0',
+              radius: 14,
+              life: 2.2,
+              maxDist: 600
+            });
+          }
+        }
+      };
+
+      monsterManager.addMonster(boss);
+
+      // Spawn 3 Elite Escort guards with Armored Titan (1 Hardened Brute, 2 Marleyan Riflemen)
+      const escorts = [
+        { type: 'hardened_brute', archetype: 'brute', hp: 280, radius: 30, speed: 85, ox: -160, oy: 60, name: 'Armored Vanguard Titan' },
+        { type: 'marleyan_rifleman', archetype: 'ranged', hp: 85, radius: 20, speed: 115, ox: 160, oy: -80, name: 'Marleyan Elite Sniper' },
+        { type: 'marleyan_rifleman', archetype: 'ranged', hp: 85, radius: 20, speed: 115, ox: -160, oy: -80, name: 'Marleyan Elite Sniper' }
+      ];
+
+      for (let e = 0; e < escorts.length; e++) {
+        const esc = escorts[e];
+        const escortMonster = new Monster({
+          id: `boss_escort_${e}_${Date.now()}`,
+          type: esc.type,
+          name: esc.name,
+          theme,
+          archetype: esc.archetype,
+          x: dungeon.bossRoom.centerX + esc.ox,
+          y: dungeon.bossRoom.centerY + esc.oy,
+          hp: esc.hp,
+          radius: esc.radius,
+          speed: esc.speed,
+          roomId: dungeon.bossRoom.id,
+          isActive: false
+        });
+
+        if (esc.archetype === 'ranged') {
+          escortMonster.onRangedAttack = (target) => {
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_laser_bolt',
+              x: escortMonster.x,
+              y: escortMonster.y,
+              vx: Math.cos(escortMonster.angle) * 370,
+              vy: Math.sin(escortMonster.angle) * 370,
+              damage: 22,
+              caster: escortMonster,
+              color: '#ef4444',
+              radius: 9,
+              life: 2.2,
+              maxDist: 580
+            });
+            particles.spawnComicText(escortMonster.x, escortMonster.y - 24, 'SNIPER SHOT!', '#ef4444');
+          };
+        } else if (esc.archetype === 'brute') {
+          escortMonster.onBruteSlam = (target) => {
+            audio.playTitanThud();
+            audio.playArmorShatter();
+            cinematics.addScreenShake(10);
+            particles.spawnDashBurst(escortMonster.x, escortMonster.y, 0, '#38bdf8');
+            particles.spawnComicText(escortMonster.x, escortMonster.y - 30, 'CRYSTAL SMASH! 💎', '#38bdf8');
+            if (target) {
+              const dist = Math.hypot(target.x - escortMonster.x, target.y - escortMonster.y);
+              if (dist <= escortMonster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 42, escortMonster.angle, 550, '-42 CRYSTAL SMASH!', '#38bdf8');
+              }
+            }
+          };
+        }
+
+        monsterManager.addMonster(escortMonster);
+      }
+    } else {
+      // Default JJK Boss: Special Grade Finger Bearer
+      const boss = new Monster({
+        id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+        type: 'finger_bearer',
+        name: 'Special Grade: Finger Bearer',
+        theme,
+        archetype: 'boss',
+        x: dungeon.bossRoom.centerX,
+        y: dungeon.bossRoom.centerY - 50,
+        hp: 950,
+        radius: 46,
+        speed: 95,
+        roomId: dungeon.bossRoom.id,
+        isActive: false // Dormant until player enters Boss Sanctum!
+      });
+
+      boss.onPhase2Trigger = (b) => {
+        audio.playEnrageRoar();
+        cinematics.addScreenShake(16);
+        particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: DOMAIN AWAKENING! ⚠️', '#c084fc');
+        particles.spawnDashBurst(b.x, b.y, 0, '#a855f7');
+      };
+
+      boss.onBossStartDying = (b) => {
+        audio.playCleaverSlash();
+        cinematics.addScreenShake(12);
+        particles.spawnComicText(b.x, b.y - 45, 'CURSE DISSOLUTION... 🌀', '#c084fc');
+      };
+
+      // Boss Windup Telegraph Callbacks
+      boss.onBossWindup = (attackIndex, phase, duration) => {
+        if (attackIndex === 1) {
+          const text = phase === 2 ? '⚡ BLACK FLASH TWIN CLAWS! 🩸' : '⚠️ CURSE CLAW WINDUP!';
+          const col = phase === 2 ? '#dc2626' : '#ef4444';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 2) {
+          const text = phase === 2 ? '🌌 TRIPLE DIVERGENT BEAMS! ⚡' : '⚠️ CURSED BEAM CHARGING! ⚡';
+          const col = phase === 2 ? '#9333ea' : '#c084fc';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 3) {
+          const text = phase === 2 ? '🌀 DOMAIN MAELSTROM 12-ORB NOVA! 🌌' : '⚠️ 4-WAY CURSED SPIKE STOMP! 💥';
+          const col = phase === 2 ? '#7e22ce' : '#a855f7';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        }
+      };
+
+      // Attack 1: Melee / Claws (Phase 1: Curse Claw Swipe -> Phase 2: Black Flash Twin-Claw Cross)
+      boss.onBossAttack1 = (target, phase) => {
+        if (phase === 2) {
+          // Phase 2 Upgraded: Black Flash Twin-Claw Cross Strike
+          audio.playBlackFlash();
+          cinematics.addScreenShake(15);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#dc2626');
+          particles.spawnComicText(boss.x, boss.y - 35, 'BLACK FLASH! ⚡🩸', '#000000');
+          applyDamageToTarget(target, 46, boss.angle, 600, '-46 BLACK FLASH CROSS CLAW!', '#dc2626');
+        } else {
+          // Phase 1: Cursed Claw Swipe
+          audio.playCleaverSlash();
+          cinematics.addScreenShake(6);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#ef4444');
+          applyDamageToTarget(target, 26, boss.angle, 420, '-26 CURSE CLAW!', '#ef4444');
+        }
+      };
+
+      // Attack 2: Ranged Beams (Phase 1: Single Beam -> Phase 2: Triple Divergent Cursed Beams)
+      boss.onBossAttack2 = (target, phase) => {
+        audio.playCursedEnergyBeam();
+        if (phase === 2) {
+          // Phase 2 Upgraded: Triple Divergent Cursed Beams
+          cinematics.addScreenShake(14);
+          particles.spawnComicText(boss.x, boss.y - 50, 'TRIPLE DIVERGENT BEAMS! 🌌', '#9333ea');
+          for (let b = -1; b <= 1; b++) {
+            const beamAngle = boss.angle + b * 0.35;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(beamAngle) * 32,
+              y: boss.y + Math.sin(beamAngle) * 32,
+              vx: Math.cos(beamAngle) * 420,
+              vy: Math.sin(beamAngle) * 420,
+              damage: 42,
+              caster: boss,
+              color: '#9333ea',
+              radius: 18,
+              life: 2.6,
+              maxDist: 850
+            });
+          }
+        } else {
+          // Phase 1: Single Focused Cursed Energy Beam
+          cinematics.addScreenShake(8);
+          particles.spawnComicText(boss.x, boss.y - 50, 'CURSED ENERGY BEAM! ⚡', '#c084fc');
+          cinematics.spawnProjectile({
+            type: 'bot_energy_orb',
+            x: boss.x + Math.cos(boss.angle) * 30,
+            y: boss.y + Math.sin(boss.angle) * 30,
+            vx: Math.cos(boss.angle) * 370,
+            vy: Math.sin(boss.angle) * 370,
+            damage: 34,
+            caster: boss,
+            color: '#c084fc',
+            radius: 18,
+            life: 2.5,
+            maxDist: 800
+          });
+        }
+      };
+
+      // Attack 3: Ground Stomp / AoE Nova (Phase 1: 4-Way Stomp -> Phase 2: Domain 12-Orb Maelstrom)
+      boss.onBossAttack3 = (target, phase) => {
+        if (phase === 2) {
+          // Phase 2 Upgraded: Domain Expansion 12-Orb Omnidirectional Maelstrom
+          audio.playDomainShockwave();
+          cinematics.addScreenShake(18);
+          particles.spawnComicText(boss.x, boss.y - 50, 'DOMAIN EXPANSION MAELSTROM! 🌌', '#7e22ce');
+          for (let k = 0; k < 12; k++) {
+            const kAngle = (k / 12) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 32,
+              y: boss.y + Math.sin(kAngle) * 32,
+              vx: Math.cos(kAngle) * 290,
+              vy: Math.sin(kAngle) * 290,
+              damage: 38,
+              caster: boss,
+              color: '#7e22ce',
+              radius: 15,
+              life: 2.8,
+              maxDist: 750
+            });
+          }
+        } else {
+          // Phase 1: 4-Way Cursed Spike Ground Stomp
+          audio.playCursedStomp();
+          cinematics.addScreenShake(10);
+          particles.spawnComicText(boss.x, boss.y - 50, 'CURSED SPIKE STOMP! 💥', '#a855f7');
+          for (let k = 0; k < 4; k++) {
+            const kAngle = (k / 4) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 28,
+              y: boss.y + Math.sin(kAngle) * 28,
+              vx: Math.cos(kAngle) * 250,
+              vy: Math.sin(kAngle) * 250,
+              damage: 28,
+              caster: boss,
+              color: '#a855f7',
+              radius: 14,
+              life: 2.2,
+              maxDist: 550
+            });
+          }
+        }
+      };
+
+      monsterManager.addMonster(boss);
+
+      // Spawn 3 Elite Escort guards with the Boss (1 Brute, 2 Masked Inos)
+      const escorts = [
+        { type: 'cursed_brute', archetype: 'brute', hp: 260, radius: 28, speed: 85, ox: -160, oy: 60, name: 'Elite Womb Guard' },
+        { type: 'masked_ino', archetype: 'ranged', hp: 80, radius: 20, speed: 125, ox: 160, oy: -80, name: 'Elite Ino Archer' },
+        { type: 'masked_ino', archetype: 'ranged', hp: 80, radius: 20, speed: 125, ox: -160, oy: -80, name: 'Elite Ino Archer' }
+      ];
+
+      for (let e = 0; e < escorts.length; e++) {
+        const esc = escorts[e];
+        const escortMonster = new Monster({
+          id: `boss_escort_${e}_${Date.now()}`,
+          type: esc.type,
+          name: esc.name,
+          theme,
+          archetype: esc.archetype,
+          x: dungeon.bossRoom.centerX + esc.ox,
+          y: dungeon.bossRoom.centerY + esc.oy,
+          hp: esc.hp,
+          radius: esc.radius,
+          speed: esc.speed,
+          roomId: dungeon.bossRoom.id,
+          isActive: false
+        });
+
+        if (esc.archetype === 'ranged') {
+          escortMonster.onRangedAttack = (target) => {
+            audio.playFlyHeadBuzz();
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: escortMonster.x,
+              y: escortMonster.y,
+              vx: Math.cos(escortMonster.angle) * 240,
+              vy: Math.sin(escortMonster.angle) * 240,
+              damage: 22,
+              caster: escortMonster,
+              color: '#ef4444',
+              radius: 10,
+              life: 2.5,
+              maxDist: 500
+            });
+          };
+        } else if (esc.archetype === 'brute') {
+          escortMonster.onBruteSlam = (target) => {
+            audio.playHammerSmash();
+            cinematics.addScreenShake(8);
+            particles.spawnDashBurst(escortMonster.x, escortMonster.y, 0, '#ef4444');
+            if (target) {
+              applyDamageToTarget(target, 34, escortMonster.angle, 480, '-34 SLAM!', '#ef4444');
+            }
+          };
+        }
+
+        monsterManager.addMonster(escortMonster);
+      }
+    }
   }
 
-  // In Treasure Vault, spawn JJK theme-locked loot!
+  // In Treasure Vault, spawn theme-locked equipment across different slots!
   if (dungeon.treasureRoom) {
-    const jjkVaultLoot = [
-      ITEM_CATALOG['sukuna_cleaver'],
-      ITEM_CATALOG['sukuna_kamutoke'],
-      ITEM_CATALOG['sukuna_hiten'],
-      ITEM_CATALOG['sukuna_finger']
-    ];
-    jjkVaultLoot.forEach((item, idx) => {
-      if (!item) return;
-      const lx = dungeon.treasureRoom.centerX + (idx - 1.5) * 44;
+    const slots = ['weapon', 'chest', 'helmet', 'offhand'];
+    const chosenItems = [];
+    const usedIds = [];
+    for (const s of slots) {
+      const item = getRandomDungeonLoot(dungeon.themeKey, {
+        slot: s,
+        minRarity: 'EPIC',
+        excludeIds: usedIds
+      });
+      if (item) {
+        chosenItems.push(item);
+        usedIds.push(item.id);
+      }
+    }
+    chosenItems.forEach((item, idx) => {
+      const lx = dungeon.treasureRoom.centerX + (idx - 1.5) * 48;
       const ly = dungeon.treasureRoom.centerY;
       const lootObj = new GroundLoot(item, lx, ly, `vault_loot_${idx}_${Date.now()}`);
       groundItems.set(lootObj.id, lootObj);
@@ -382,8 +1195,9 @@ function startFloorDescent(floorNumber, broadcast = true) {
   audio.playDescentFanfare();
   cinematics.addScreenShake(10);
 
-  // Theme 1: Jujutsu Kaisen
-  const themeKey = 'jjk';
+  // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, subsequent cycle
+  const themePool = ['jjk', 'cyberpunk', 'aot'];
+  const themeKey = themePool[(floorNumber - 1) % themePool.length];
   currentDungeon = new Dungeon({ floorNumber, theme: themeKey }).generate();
 
   // Teleport player to Spawn Room Center
@@ -422,9 +1236,101 @@ function startFloorDescent(floorNumber, broadcast = true) {
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
 }
 
+window.startFloorDescent = startFloorDescent;
+
 readyCircle.onDescentTriggered = () => {
   startFloorDescent(1);
 };
+
+function returnToLobby(broadcast = true) {
+  currentFloor = 0;
+  currentDungeon = null;
+  monsterManager.clear();
+  groundItems.clear();
+
+  // Re-spawn batch 1 demo gear in lobby
+  batch1Loot.forEach((loot) => groundItems.set(loot.id, loot));
+
+  player.x = 0;
+  player.y = 0;
+  player.vx = 0;
+  player.vy = 0;
+
+  const hudFloor = document.getElementById('hud-floor');
+  if (hudFloor) {
+    hudFloor.textContent = '0 (LOBBY)';
+    hudFloor.style.color = '#38bdf8';
+    hudFloor.style.textShadow = 'none';
+  }
+
+  audio.playDescentFanfare();
+  particles.spawnComicText(player.x, player.y - 40, 'RETURNED TO BASE CAMP! 🏕️', '#38bdf8');
+
+  if (broadcast && network.isHost) {
+    network.broadcast({
+      type: 'RETURN_TO_LOBBY'
+    });
+  }
+
+  broadcastMyState();
+}
+
+window.returnToLobby = returnToLobby;
+
+// --- FLOOR SELECTOR MODAL LOGIC ---
+const floorModal = document.getElementById('floor-modal');
+const btnFloorBadge = document.getElementById('btn-floor-badge');
+const btnCloseFloorModal = document.getElementById('btn-close-floor-modal');
+
+function openFloorModal() {
+  if (floorModal) {
+    floorModal.classList.remove('hidden');
+    audio.playSwing();
+  }
+}
+
+function closeFloorModal() {
+  if (floorModal) {
+    floorModal.classList.add('hidden');
+    audio.playFootstep();
+  }
+}
+
+function toggleFloorModal() {
+  if (!floorModal) return;
+  if (floorModal.classList.contains('hidden')) {
+    openFloorModal();
+  } else {
+    closeFloorModal();
+  }
+}
+
+window.openFloorModal = openFloorModal;
+window.closeFloorModal = closeFloorModal;
+window.toggleFloorModal = toggleFloorModal;
+
+if (btnFloorBadge) {
+  btnFloorBadge.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFloorModal();
+  });
+}
+
+if (btnCloseFloorModal) {
+  btnCloseFloorModal.addEventListener('click', closeFloorModal);
+}
+
+document.querySelectorAll('.floor-warp-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const targetFloor = parseInt(btn.getAttribute('data-floor'), 10);
+    closeFloorModal();
+    if (targetFloor === 0) {
+      returnToLobby(true);
+    } else {
+      startFloorDescent(targetFloor, true);
+    }
+  });
+});
 
 // --- INVENTORY UI & GROUND LOOT TRADING ---
 const invModal = document.getElementById('inventory-modal');
@@ -990,6 +1896,8 @@ network.onMessageReceived = (fromPeerId, msg) => {
       hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
     }
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
+  } else if (msg.type === 'RETURN_TO_LOBBY') {
+    returnToLobby(false);
   } else if (msg.type === 'ROOM_TRANSITION') {
     if (currentDungeon) {
       const room = currentDungeon.rooms.find(r => r.id === msg.roomId);
@@ -1470,7 +2378,8 @@ function gameLoop(now) {
   const modalsOpen =
     !wardrobeModal.classList.contains('hidden') ||
     !lobbyModal.classList.contains('hidden') ||
-    !invModal.classList.contains('hidden');
+    !invModal.classList.contains('hidden') ||
+    (floorModal && !floorModal.classList.contains('hidden'));
 
   // Inventory toggle hotkeys: I or Tab
   if (input.justPressedI || (input.keys.tab && !input.tabHandled)) {
@@ -1484,6 +2393,7 @@ function gameLoop(now) {
     if (!invModal.classList.contains('hidden')) closeInventory();
     if (!wardrobeModal.classList.contains('hidden')) closeWardrobe();
     if (!lobbyModal.classList.contains('hidden')) lobbyModal.classList.add('hidden');
+    if (floorModal && !floorModal.classList.contains('hidden')) closeFloorModal();
   }
 
   // Handle Shield Blocking
@@ -1541,6 +2451,7 @@ function gameLoop(now) {
     dummy.update(worldDt, [player, ...network.remotePlayers.values()]);
     readyCircle.update(worldDt, player, network.remotePlayers);
     wardrobeStation.update(worldDt);
+    floorStation.update(worldDt);
   } else if (currentFloor >= 1 && currentDungeon) {
     // 1. Check Door Transitions
     const doorTrans = currentDungeon.checkDoorTransition(player.x, player.y, player.radius || 22);
@@ -1555,12 +2466,17 @@ function gameLoop(now) {
 
       // Check if targetRoom has monsters and is not cleared -> trigger combat lockdown!
       if (!doorTrans.targetRoom.isCleared) {
-        const mobsInRoom = monsterManager.getMonstersInRoom(doorTrans.targetRoom.id);
+        const mobsInRoom = getAliveMonstersInChamber(doorTrans.targetRoom);
         if (mobsInRoom.length > 0) {
           doorTrans.targetRoom.isLocked = true;
           audio.playDoorLock();
           cinematics.addScreenShake(12);
-          particles.spawnComicText(player.x, player.y - 45, 'ROOM LOCKED! DEFEAT ALL CURSES! ⚔️', '#ef4444');
+          const isCyber = currentDungeon && currentDungeon.themeKey === 'cyberpunk';
+          const isAot = currentDungeon && currentDungeon.themeKey === 'aot';
+          let lockText = 'ROOM LOCKED! DEFEAT ALL CURSES! ⚔️';
+          if (isCyber) lockText = 'SECTOR LOCKDOWN! NEUTRALIZE HOSTILES! 🚨';
+          else if (isAot) lockText = 'WALL BREACHED! EXTERMINATE ALL TITANS! ⚔️';
+          particles.spawnComicText(player.x, player.y - 45, lockText, '#ef4444');
           monsterManager.activateRoom(doorTrans.targetRoom.id);
         } else {
           doorTrans.targetRoom.isCleared = true;
@@ -1577,16 +2493,36 @@ function gameLoop(now) {
       else network.sendToHost(transMsg);
     }
 
-    // 2. Check Room Lockdown Completion
-    if (currentDungeon.currentRoom && currentDungeon.currentRoom.isLocked) {
-      const remainingMobs = monsterManager.getMonstersInRoom(currentDungeon.currentRoom.id);
-      if (remainingMobs.length === 0) {
+    // 2. Enforce Room Lockdown & Clearance: ALL monsters must be dead before doors/portal unlock!
+    if (currentDungeon.currentRoom && !currentDungeon.currentRoom.isCleared &&
+        currentDungeon.currentRoom.type !== 'spawn' && currentDungeon.currentRoom.type !== 'treasure') {
+      const aliveMobsInRoom = getAliveMonstersInChamber(currentDungeon.currentRoom);
+      if (aliveMobsInRoom.length > 0) {
+        if (!currentDungeon.currentRoom.isLocked) {
+          currentDungeon.currentRoom.isLocked = true;
+          audio.playDoorLock();
+          cinematics.addScreenShake(12);
+          const isCyber = currentDungeon && currentDungeon.themeKey === 'cyberpunk';
+          const isAot = currentDungeon && currentDungeon.themeKey === 'aot';
+          let lockText = 'ROOM LOCKED! DEFEAT ALL CURSES! ⚔️';
+          if (isCyber) lockText = 'SECTOR LOCKDOWN! NEUTRALIZE HOSTILES! 🚨';
+          else if (isAot) lockText = 'WALL BREACHED! EXTERMINATE ALL TITANS! ⚔️';
+          particles.spawnComicText(player.x, player.y - 45, lockText, '#ef4444');
+          monsterManager.activateRoom(currentDungeon.currentRoom.id);
+        }
+      } else {
+        // Every single mob in this room is dead!
+        const isCyber = currentDungeon && currentDungeon.themeKey === 'cyberpunk';
+        const isAot = currentDungeon && currentDungeon.themeKey === 'aot';
         currentDungeon.currentRoom.isLocked = false;
         currentDungeon.currentRoom.isCleared = true;
         audio.playDoorUnlock();
         audio.playRoomClear();
         cinematics.addScreenShake(8);
-        particles.spawnComicText(player.x, player.y - 45, 'ROOM CLEARED! ✨', '#00ff88');
+        let clearText = 'ROOM CLEARED! ✨';
+        if (isCyber) clearText = 'SECTOR CLEARED! ⚡';
+        else if (isAot) clearText = 'DISTRICT SECURED! 🛡️';
+        particles.spawnComicText(player.x, player.y - 45, clearText, '#00ff88');
 
         if (currentDungeon.currentRoom.type === 'combat') {
           spawnRoomReward(currentDungeon.currentRoom);
@@ -1595,6 +2531,16 @@ function gameLoop(now) {
             currentDungeon.exitPortal.isActive = true;
           }
           audio.playDescentFanfare();
+          let clearBannerTitle = 'SANCTUM CLEARED!';
+          if (isCyber) clearBannerTitle = 'ARASAKA SUBLEVEL CLEARED!';
+          else if (isAot) clearBannerTitle = 'WALL MARIA DISTRICT LIBERATED!';
+          currentDungeon.activeBanner = {
+            title: clearBannerTitle,
+            subtitle: 'DESCENT PORTAL UNLOCKED • STEP TO DESCEND',
+            color: '#00ff88',
+            timer: 4.5,
+            maxTimer: 4.5
+          };
         }
 
         const clearMsg = { type: 'ROOM_CLEARED', roomId: currentDungeon.currentRoom.id };
@@ -1606,11 +2552,35 @@ function gameLoop(now) {
     currentDungeon.update(worldDt);
     monsterManager.update(worldDt, [player, ...network.remotePlayers.values()], currentDungeon, network.isHost || !network.isConnected);
 
-    // Check Exit Portal trigger
+    // Check Exit Portal trigger with lobby-style countdown
     if (currentDungeon.exitPortal && currentDungeon.exitPortal.isActive) {
-      const distToPortal = Math.hypot(player.x - currentDungeon.exitPortal.x, player.y - currentDungeon.exitPortal.y);
-      if (distToPortal <= (player.radius || 22) + currentDungeon.exitPortal.radius) {
-        startFloorDescent(currentFloor + 1);
+      const portal = currentDungeon.exitPortal;
+      const distToPortal = Math.hypot(player.x - portal.x, player.y - portal.y);
+      const localInside = distToPortal <= portal.radius;
+
+      // Check all connected remote party members
+      let allRemotesInside = true;
+      for (const [_, remote] of network.remotePlayers.entries()) {
+        const rDist = Math.hypot(remote.x - portal.x, remote.y - portal.y);
+        if (rDist > portal.radius) {
+          allRemotesInside = false;
+          break;
+        }
+      }
+
+      portal.allReady = localInside && allRemotesInside;
+
+      if (portal.allReady) {
+        portal.isCountingDown = true;
+        portal.countdown = (portal.countdown !== undefined ? portal.countdown : 3.0) - worldDt;
+        if (portal.countdown <= 0) {
+          portal.countdown = 0;
+          portal.isCountingDown = false;
+          startFloorDescent(currentFloor + 1);
+        }
+      } else {
+        portal.isCountingDown = false;
+        portal.countdown = 3.0; // reset countdown if someone steps out
       }
     }
   }
@@ -1710,6 +2680,29 @@ function gameLoop(now) {
           cinematics.addScreenShake(3);
           const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage}`);
           particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#ef4444'));
+          broadcastMyState();
+        }
+        return;
+      }
+      if (proj.type === 'bot_laser_bolt') {
+        const res = player.takeDamage(proj.damage || 20, Math.atan2(proj.vy || 0, proj.vx || 0), 220);
+        if (res) {
+          audio.playBonk();
+          cinematics.addScreenShake(5);
+          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (LASER!)`);
+          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#06b6d4'));
+          broadcastMyState();
+        }
+        return;
+      }
+      if (proj.type === 'bot_micro_missile') {
+        const res = player.takeDamage(proj.damage || 28, Math.atan2(proj.vy || 0, proj.vx || 0), 480);
+        if (res) {
+          audio.playHammerSmash();
+          cinematics.addScreenShake(10);
+          particles.spawnDashBurst(player.x, player.y, 0, '#ef4444');
+          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (MISSILE BLAST! 🚀)`);
+          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#f59e0b'));
           broadcastMyState();
         }
         return;
@@ -1905,13 +2898,20 @@ function gameLoop(now) {
     }
   }
 
-  // [E] Key interactions (Pick up loot OR Open Mirror)
+  // [E] Key interactions (Pick up loot OR Open Mirror OR Open Floor Gateway)
   if (input.justPressedE && !modalsOpen) {
-    if (wardrobeStation.isPlayerNearby(player)) {
+    if (currentFloor === 0 && floorStation.isPlayerNearby(player)) {
+      openFloorModal();
+    } else if (currentFloor === 0 && wardrobeStation.isPlayerNearby(player)) {
       openWardrobe();
     } else {
       tryPickupNearbyLoot();
     }
+  }
+
+  // [F] Key: Toggle Floor Selection Modal anytime for instant level testing!
+  if (input.justPressedF && !modalsOpen) {
+    toggleFloorModal();
   }
 
   // [Q] Key: Active ability (Checks for Full Set Ultimate first, then Base Chest ability)
@@ -2085,15 +3085,9 @@ function gameLoop(now) {
   const shake = cinematics.getShakeOffset();
   renderer.clear();
 
-  let targetCamX = player.x;
-  let targetCamY = player.y;
-
-  if (currentFloor >= 1 && currentDungeon && currentDungeon.currentRoom) {
-    // Smooth Isaac-style camera centered on active room with slight dynamic player sway
-    const cr = currentDungeon.currentRoom;
-    targetCamX = cr.centerX + (player.x - cr.centerX) * 0.22;
-    targetCamY = cr.centerY + (player.y - cr.centerY) * 0.22;
-  }
+  // Camera directly follows each individual player with screen shake
+  const targetCamX = player.x;
+  const targetCamY = player.y;
 
   renderer.beginCamera(targetCamX + shake.x, targetCamY + shake.y);
 
@@ -2112,6 +3106,9 @@ function gameLoop(now) {
 
     // Wardrobe Station
     wardrobeStation.draw(renderer.ctx, player);
+
+    // Floor Selector Gateway Station
+    floorStation.draw(renderer.ctx, player);
 
     // Training Dummy / Combat Automaton
     dummy.draw(renderer.ctx, Math.hypot(player.x - dummy.x, player.y - dummy.y) <= 180);
@@ -2148,7 +3145,9 @@ function gameLoop(now) {
   // Screen-space UI overlays for procedural dungeon
   if (currentFloor >= 1 && currentDungeon) {
     renderer.drawRoomBanner(currentDungeon, renderer.width, renderer.height);
-    renderer.drawBossHUD(monsterManager.getBoss(), renderer.width);
+    if (currentDungeon.currentRoom && currentDungeon.currentRoom.type === 'boss') {
+      renderer.drawBossHUD(monsterManager.getBoss(), renderer.width);
+    }
     renderer.drawMinimap(currentDungeon, renderer.width, renderer.height);
   }
 

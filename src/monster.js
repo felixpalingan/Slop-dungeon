@@ -41,6 +41,26 @@ export class Monster {
     this.windupDuration = options.windupDuration || 0.4;
     this.windupTimer = 0;
 
+    // Boss Multi-Phase & Custom Death Animation states
+    this.phase = 1; // 1 = Standard, 2 = Enraged (HP <= 50%)
+    this.phaseTransitionTriggered = false;
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.deathDuration = options.deathDuration || 2.0;
+    this.deathType = options.deathType || (this.type === 'adam_smasher_prototype' ? 'core_detonation' : (this.type === 'finger_bearer' ? 'curse_vaporize' : (this.type === 'armored_titan' ? 'titan_evaporate' : 'default')));
+    this.specialCooldownTimer = 2.0;
+    this.isPreparingSpecial = false;
+    this.afterImages = [];
+
+    // Boss 3-Attack Pattern Rotation & Telegraph states
+    this.bossAttackIndex = 0;
+    this.bossActionCooldown = 1.4;
+    this.chosenAttack = 1;
+    this.onBossAttack1 = null; // (player, phase) => {}
+    this.onBossAttack2 = null; // (player, phase) => {}
+    this.onBossAttack3 = null; // (player, phase) => {}
+    this.onBossWindup = null;  // (attackType, phase, duration) => {}
+
     // Visual & animation properties
     this.animTime = Math.random() * 10;
     this.hitFlashTimer = 0;
@@ -53,10 +73,21 @@ export class Monster {
   }
 
   takeHit(damage = 10, hitAngle = 0, knockback = 280, isCrit = false, attacker = null) {
-    if (this.isDead) return { damage: 0, isDead: true };
+    if (this.isDead || this.isDying) return { damage: 0, isDead: this.isDead };
 
     this.hp = Math.max(0, this.hp - damage);
     this.hitFlashTimer = 0.18;
+
+    // Phase 2 Enrage Check (Bosses enter Phase 2 at HP <= 50%)
+    if (this.archetype === 'boss' && this.hp <= this.maxHp * 0.5 && !this.phaseTransitionTriggered) {
+      this.phase = 2;
+      this.phaseTransitionTriggered = true;
+      const speedMult = (this.type === 'adam_smasher_prototype' || this.type === 'armored_titan') ? 1.35 : 1.25;
+      this.baseSpeed *= speedMult;
+      if (this.onPhase2Trigger) {
+        this.onPhase2Trigger(this);
+      }
+    }
 
     // Apply knockback
     if (knockback > 0) {
@@ -65,8 +96,26 @@ export class Monster {
     }
 
     if (this.hp <= 0) {
-      this.isDead = true;
       this.hp = 0;
+      if (this.archetype === 'boss' && !this.isDying) {
+        this.isDying = true;
+        this.deathTimer = this.deathDuration;
+        this.vx = 0;
+        this.vy = 0;
+        this.knockbackVx = 0;
+        this.knockbackVy = 0;
+        if (this.onBossStartDying) {
+          this.onBossStartDying(this);
+        }
+        return {
+          damage,
+          isDead: false,
+          isCrit,
+          remainingHp: 0
+        };
+      } else {
+        this.isDead = true;
+      }
     }
 
     // Awaken immediately if hit
@@ -102,6 +151,20 @@ export class Monster {
 
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer = Math.max(0, this.hitFlashTimer - dt);
+    }
+
+    // Boss custom dying animation sequence
+    if (this.isDying) {
+      this.deathTimer -= dt;
+      this.vx = 0;
+      this.vy = 0;
+      this.knockbackVx = 0;
+      this.knockbackVy = 0;
+      if (this.deathTimer <= 0) {
+        this.isDying = false;
+        this.isDead = true;
+      }
+      return;
     }
 
     if (this.isDead) return;
@@ -164,9 +227,10 @@ export class Monster {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // Resolve collision against dungeon walls
+    // Resolve collision against dungeon walls (constrained strictly to this monster's own room)
     if (dungeon && dungeon.resolveCircleCollision) {
-      const col = dungeon.resolveCircleCollision(this.x, this.y, this.radius);
+      const monsterRoom = (this.roomId && dungeon.rooms) ? dungeon.rooms.find(r => r.id === this.roomId) : dungeon.currentRoom;
+      const col = dungeon.resolveCircleCollision(this.x, this.y, this.radius, monsterRoom, true);
       this.x = col.x;
       this.y = col.y;
     }
@@ -245,18 +309,111 @@ export class Monster {
   }
 
   updateBoss(dt, player, dist) {
+    if (this.isDying) {
+      this.vx = 0;
+      this.vy = 0;
+      return;
+    }
+
+    // Sandevistan / Berserk after-images in Phase 2 for Adam Smasher and Armored Titan
+    if (this.phase === 2) {
+      if (this.type === 'adam_smasher_prototype' && Math.random() < 0.4) {
+        this.afterImages.push({
+          x: this.x,
+          y: this.y,
+          angle: this.angle,
+          alpha: 0.65,
+          color: '#00ff88'
+        });
+      } else if (this.type === 'armored_titan' && Math.random() < 0.4) {
+        this.afterImages.push({
+          x: this.x,
+          y: this.y,
+          angle: this.angle,
+          alpha: 0.65,
+          color: '#f59e0b'
+        });
+      }
+    }
+
+    // Decay after-images
+    for (let i = this.afterImages.length - 1; i >= 0; i--) {
+      this.afterImages[i].alpha -= dt * 2.2;
+      if (this.afterImages[i].alpha <= 0) {
+        this.afterImages.splice(i, 1);
+      }
+    }
+
+    // Facing player
+    this.angle = Math.atan2(player.y - this.y, player.x - this.x);
+
+    // If currently winding up an attack
     if (this.windupTimer > 0) {
       this.vx = 0;
       this.vy = 0;
       this.windupTimer -= dt;
       if (this.windupTimer <= 0) {
-        if (this.onBossSpecial) this.onBossSpecial(player);
-        this.attackCooldownTimer = this.attackCooldown;
+        // Trigger the chosen attack (1 = Melee/Slam, 2 = Ranged/Barrage, 3 = AoE/Burst)
+        if (this.chosenAttack === 1) {
+          if (this.onBossAttack1) {
+            this.onBossAttack1(player, this.phase);
+          } else if (this.phase === 2 && this.onBossPhase2Attack) {
+            this.onBossPhase2Attack(player);
+          } else if (this.onBossAttack) {
+            this.onBossAttack(player);
+          }
+        } else if (this.chosenAttack === 2) {
+          if (this.onBossAttack2) {
+            this.onBossAttack2(player, this.phase);
+          } else if (this.phase === 2 && this.onBossPhase2Special) {
+            this.onBossPhase2Special(player);
+          } else if (this.onBossSpecial) {
+            this.onBossSpecial(player);
+          }
+        } else if (this.chosenAttack === 3) {
+          if (this.onBossAttack3) {
+            this.onBossAttack3(player, this.phase);
+          } else if (this.phase === 2 && this.onBossPhase2Special) {
+            this.onBossPhase2Special(player);
+          } else if (this.onBossSpecial) {
+            this.onBossSpecial(player);
+          }
+        }
+
+        // Set cooldown after attack (Phase 2 is faster and more relentless)
+        this.bossActionCooldown = this.phase === 2 ? 0.9 + Math.random() * 0.4 : 1.5 + Math.random() * 0.5;
       }
       return;
     }
 
-    if (dist > this.attackRange) {
+    // Count down action cooldown
+    this.bossActionCooldown = (this.bossActionCooldown || 1.4) - dt;
+
+    if (this.bossActionCooldown <= 0) {
+      // Pick next attack in sequence (1, 2, 3)
+      let nextAttack = (this.bossAttackIndex % 3) + 1;
+      this.bossAttackIndex++;
+
+      // If player is distant (> 200px) and next attack was melee (1),
+      // bias towards ranged (2) or AoE (3)
+      if (dist > 200 && nextAttack === 1 && Math.random() < 0.65) {
+        nextAttack = 2;
+      }
+
+      this.chosenAttack = nextAttack;
+      const windupBase = this.phase === 2 ? 0.4 : 0.65;
+      this.windupTimer = windupBase;
+
+      // Notify windup for telegraph effects
+      if (this.onBossWindup) {
+        this.onBossWindup(nextAttack, this.phase, this.windupTimer);
+      }
+      return;
+    }
+
+    // Normal movement towards player
+    const minFollowDist = this.chosenAttack === 2 ? 140 : 55;
+    if (dist > minFollowDist) {
       const dirX = Math.cos(this.angle);
       const dirY = Math.sin(this.angle);
       this.vx = dirX * this.baseSpeed;
@@ -264,10 +421,6 @@ export class Monster {
     } else {
       this.vx = 0;
       this.vy = 0;
-      if (this.attackCooldownTimer <= 0) {
-        this.attackCooldownTimer = this.attackCooldown;
-        if (this.onBossAttack) this.onBossAttack(player);
-      }
     }
   }
 

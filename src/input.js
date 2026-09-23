@@ -16,7 +16,8 @@ export class InputManager {
       i: false,
       t: false,
       tab: false,
-      r: false
+      r: false,
+      f: false
     };
 
     this.mouse = {
@@ -32,6 +33,7 @@ export class InputManager {
     this.justPressedI = false;
     this.justPressedT = false;
     this.justPressedR = false;
+    this.justPressedF = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
 
@@ -65,6 +67,10 @@ export class InputManager {
         if (!this.keys.r && !e.repeat) this.justPressedR = true;
         this.keys.r = true;
       }
+      if (key === 'f') {
+        if (!this.keys.f && !e.repeat) this.justPressedF = true;
+        this.keys.f = true;
+      }
       if (key === 'tab') {
         e.preventDefault();
         this.keys.tab = true;
@@ -86,6 +92,7 @@ export class InputManager {
       if (key === 't') this.keys.t = false;
       if (key === 'i') this.keys.i = false;
       if (key === 'r') this.keys.r = false;
+      if (key === 'f') this.keys.f = false;
       if (key === 'tab') this.keys.tab = false;
       if (e.code === 'ShiftLeft' || key === 'shift') this.keys.shift = false;
     });
@@ -146,6 +153,7 @@ export class InputManager {
     this.justPressedT = false;
     this.justPressedI = false;
     this.justPressedR = false;
+    this.justPressedF = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
   }

@@ -739,3 +739,58 @@ export const ITEM_CATALOG = {
     desc: 'Hydraulic titanium arm prosthetics. Right-click unleashes a heavy cybernetic piston punch with forward lunge and high knockback.'
   }
 };
+
+/**
+ * Selects a random equipment or weapon suitable for dungeon drops.
+ * Supports theme awareness (JJK, Cyberpunk, Berserk, AoT, standard),
+ * rarity weights, and prevents repetitive drops like Sukuna's Finger.
+ */
+export function getRandomDungeonLoot(themeKey = 'jjk', options = {}) {
+  const {
+    slot = null,
+    minRarity = null,
+    guaranteeTheme = false,
+    excludeIds = []
+  } = options;
+
+  const rarityWeights = {
+    'COMMON': 1,
+    'RARE': 2,
+    'EPIC': 3,
+    'LEGENDARY': 4,
+    'MYTHIC': 5
+  };
+
+  const themeSets = {
+    'jjk': ['gojo', 'sukuna', 'toji'],
+    'cyberpunk': ['david'],
+    'berserk': ['guts'],
+    'aot': ['levi']
+  };
+
+  const targetSets = themeSets[themeKey] || ['gojo', 'sukuna', 'toji'];
+  const allItems = Object.values(ITEM_CATALOG);
+
+  let pool = allItems.filter(item => {
+    if (excludeIds.includes(item.id)) return false;
+    if (slot && item.slot !== slot) return false;
+    if (minRarity && (rarityWeights[item.rarity] || 0) < (rarityWeights[minRarity] || 0)) return false;
+
+    if (guaranteeTheme) {
+      return item.set && targetSets.includes(item.set);
+    }
+
+    // 75% bias towards active anime theme items or standard dungeon items
+    if (item.set && targetSets.includes(item.set)) return true;
+    if (!item.set) return true;
+    return false;
+  });
+
+  if (pool.length === 0) {
+    pool = allItems.filter(item => !excludeIds.includes(item.id));
+    if (pool.length === 0) pool = allItems;
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+

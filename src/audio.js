@@ -1517,4 +1517,463 @@ export class AudioManager {
       console.warn('Audio error in Room Clear Fanfare:', e);
     }
   }
+
+  /**
+   * Arasaka Security Drone: High-frequency servo/propeller hum
+   */
+  playDroneHum() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.setValueAtTime(480, now + 0.04);
+      osc.frequency.setValueAtTime(390, now + 0.08);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } catch (e) {
+      console.warn('Audio error in Drone Hum:', e);
+    }
+  }
+
+  /**
+   * Tyger Claw Sniper: Cybernetic high-velocity laser shot
+   */
+  playLaserShot() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1800, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.09);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch (e) {
+      console.warn('Audio error in Laser Shot:', e);
+    }
+  }
+
+  /**
+   * Adam Smasher Micro-Missile Launch whoosh
+   */
+  playMissileLaunch() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.linearRampToValueAtTime(620, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.32);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    } catch (e) {
+      console.warn('Audio error in Missile Launch:', e);
+    }
+  }
+
+  /**
+   * Maelstrom Cyberpsycho / Adam Smasher: Hydraulic heavy cyber slam
+   */
+  playCyberSlam() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.28);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch (e) {
+      console.warn('Audio error in Cyber Slam:', e);
+    }
+  }
+
+  /**
+   * Boss Phase 2 Transition: Demonic Enrage Roar
+   */
+  playEnrageRoar() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.linearRampToValueAtTime(180, now + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.85);
+
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(55, now);
+      sub.frequency.exponentialRampToValueAtTime(30, now + 0.85);
+
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+      osc.connect(gain);
+      sub.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      sub.start(now);
+      osc.stop(now + 0.9);
+      sub.stop(now + 0.9);
+    } catch (e) {
+      console.warn('Audio error in Enrage Roar:', e);
+    }
+  }
+
+  /**
+   * Finger Bearer: Domain Expansion Shockwave
+   */
+  playDomainShockwave() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.65);
+
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.7);
+    } catch (e) {
+      console.warn('Audio error in Domain Shockwave:', e);
+    }
+  }
+
+  /**
+   * Adam Smasher: Catastrophic Core Overload & Explosion
+   */
+  playCoreOverload() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High-pitched warning alarm rising
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(2400, now + 0.6);
+      osc.frequency.linearRampToValueAtTime(100, now + 1.2);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.linearRampToValueAtTime(0.6, now + 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 1.4);
+    } catch (e) {
+      console.warn('Audio error in Core Overload:', e);
+    }
+  }
+
+  /**
+   * Finger Bearer Phase 2: Black Flash Impact
+   */
+  playBlackFlash() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.25);
+
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(90, now);
+      sub.frequency.exponentialRampToValueAtTime(28, now + 0.35);
+
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc.connect(gain);
+      sub.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      sub.start(now);
+      osc.stop(now + 0.35);
+      sub.stop(now + 0.35);
+    } catch (e) {
+      console.warn('Audio error in Black Flash:', e);
+    }
+  }
+
+  /**
+   * Finger Bearer: Cursed Energy Beam charging and fire
+   */
+  playCursedEnergyBeam() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.45);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.45);
+    } catch (e) {
+      console.warn('Audio error in Cursed Energy Beam:', e);
+    }
+  }
+
+  /**
+   * Finger Bearer: Cursed Ground Eruption Stomp
+   */
+  playCursedStomp() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(80, now);
+      sub.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+      osc.connect(gain);
+      sub.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      sub.start(now);
+      osc.stop(now + 0.4);
+      sub.stop(now + 0.4);
+    } catch (e) {
+      console.warn('Audio error in Cursed Stomp:', e);
+    }
+  }
+
+  /**
+   * Armored Titan: Sub-bass guttural titan roar
+   */
+  playTitanRoar() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.linearRampToValueAtTime(140, now + 0.25);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.9);
+
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(50, now);
+      sub.frequency.exponentialRampToValueAtTime(24, now + 0.9);
+
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+
+      osc.connect(gain);
+      sub.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      sub.start(now);
+      osc.stop(now + 0.95);
+      sub.stop(now + 0.95);
+    } catch (e) {
+      console.warn('Audio error in Titan Roar:', e);
+    }
+  }
+
+  /**
+   * Armored Titan: Scalding high-pressure steam hiss vent
+   */
+  playSteamHiss() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // White noise buffer for steam
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.6);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = this.ctx.createBufferSource();
+      whiteNoise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1200, now);
+      filter.frequency.linearRampToValueAtTime(2400, now + 0.3);
+      filter.frequency.exponentialRampToValueAtTime(600, now + 0.6);
+      filter.Q.setValueAtTime(1.8, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      whiteNoise.start(now);
+      whiteNoise.stop(now + 0.6);
+    } catch (e) {
+      console.warn('Audio error in Steam Hiss:', e);
+    }
+  }
+
+  /**
+   * Armored Titan: Crystalline hardening armor fracture & glass shatter
+   */
+  playArmorShatter() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const osc3 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(2400, now);
+      osc1.frequency.exponentialRampToValueAtTime(450, now + 0.4);
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(3600, now);
+      osc2.frequency.exponentialRampToValueAtTime(800, now + 0.35);
+
+      osc3.type = 'sawtooth';
+      osc3.frequency.setValueAtTime(1200, now);
+      osc3.frequency.exponentialRampToValueAtTime(120, now + 0.5);
+
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      osc3.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc3.start(now);
+      osc1.stop(now + 0.5);
+      osc2.stop(now + 0.5);
+      osc3.stop(now + 0.5);
+    } catch (e) {
+      console.warn('Audio error in Armor Shatter:', e);
+    }
+  }
+
+  /**
+   * Giant titan footstep / heavy ground impact
+   */
+  playTitanThud() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.28);
+
+      gain.gain.setValueAtTime(0.55, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch (e) {
+      console.warn('Audio error in Titan Thud:', e);
+    }
+  }
 }

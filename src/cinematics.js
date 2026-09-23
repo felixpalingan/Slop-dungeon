@@ -795,6 +795,79 @@ export class CinematicManager {
           ctx.arc(1, 0, 2, 0, Math.PI * 2);
           ctx.fill();
         }
+      } else if (proj.type === 'bot_laser_bolt') {
+        // Cyberpunk: Tyger Claw High-Velocity Laser Bolt
+        const moveAngle = Math.atan2(proj.vy, proj.vx);
+        ctx.rotate(moveAngle);
+
+        // Outer cyan laser glow
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 16;
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-20, 0);
+        ctx.stroke();
+
+        // Inner white-hot laser core
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(12, 0);
+        ctx.lineTo(-14, 0);
+        ctx.stroke();
+
+        // High-energy pink plasma discharge tip
+        ctx.fillStyle = '#ec4899';
+        ctx.shadowColor = '#ec4899';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(12, 0, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (proj.type === 'bot_micro_missile') {
+        // Cyberpunk: Adam Smasher Micro-Missile
+        const moveAngle = Math.atan2(proj.vy, proj.vx);
+        ctx.rotate(moveAngle);
+
+        // Fiery exhaust trail
+        const flameLen = 14 + Math.random() * 8;
+        ctx.fillStyle = '#f59e0b';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.moveTo(-7, -2.5);
+        ctx.lineTo(-7 - flameLen, 0);
+        ctx.lineTo(-7, 2.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stabilizer tail fins
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(-5, -3);
+        ctx.lineTo(-8, -6.5);
+        ctx.lineTo(-3, -3);
+        ctx.moveTo(-5, 3);
+        ctx.lineTo(-8, 6.5);
+        ctx.lineTo(-3, 3);
+        ctx.fill();
+
+        // Titanium missile fuselage
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-7, -3, 14, 6);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-7, -3, 14, 6);
+
+        // Red high-explosive warhead cone
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(7, -3);
+        ctx.lineTo(13, 0);
+        ctx.lineTo(7, 3);
+        ctx.closePath();
+        ctx.fill();
       }
 
       ctx.restore();

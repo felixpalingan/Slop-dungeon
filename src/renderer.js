@@ -1526,12 +1526,9 @@ export class Renderer {
       ctx.roundRect(radius * 0.2, -7, radius * 0.55, 14, [4]);
       ctx.fill();
 
-      // Visor glowing slit
+      // Visor slit
       ctx.fillStyle = isRolling ? '#ffffff' : (isAttacking ? '#ff3366' : '#00f0ff');
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = 8;
       ctx.fillRect(radius * 0.45, -4, 4, 8);
-      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
@@ -1546,8 +1543,6 @@ export class Renderer {
         const starX = Math.cos(starAngle) * 16;
         const starY = Math.sin(starAngle) * 6;
         ctx.fillStyle = '#fde047';
-        ctx.shadowColor = '#eab308';
-        ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(starX, starY, 4, 0, Math.PI * 2);
         ctx.fill();
@@ -1564,10 +1559,7 @@ export class Renderer {
     ctx.font = '600 12px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 4;
     ctx.fillText(name, 0, -6);
-    ctx.shadowBlur = 0;
 
     const barWidth = 36;
     const barHeight = 4;
@@ -1589,10 +1581,7 @@ export class Renderer {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(-barWidth / 2, barHeight + 2, barWidth, 3);
       ctx.fillStyle = entity.isOdmMode ? '#10b981' : '#34d399';
-      ctx.shadowColor = entity.isOdmMode ? '#10b981' : 'transparent';
-      ctx.shadowBlur = entity.isOdmMode ? 6 : 0;
       ctx.fillRect(-barWidth / 2, barHeight + 2, barWidth * gasPct, 3);
-      ctx.shadowBlur = 0;
 
       // Small ODM indicator text
       ctx.font = '800 7px "JetBrains Mono", monospace';
@@ -1612,10 +1601,7 @@ export class Renderer {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(-barWidth / 2, barY, barWidth, 3);
       ctx.fillStyle = isReloading ? '#f59e0b' : '#ef4444';
-      ctx.shadowColor = isReloading ? '#f59e0b' : '#ef4444';
-      ctx.shadowBlur = isReloading ? 6 : 0;
       ctx.fillRect(-barWidth / 2, barY, barWidth * (isReloading ? (1 - entity.shotgunReloadTimer / 1.4) : ammoPct), 3);
-      ctx.shadowBlur = 0;
 
       ctx.font = '800 7px "JetBrains Mono", monospace';
       ctx.fillStyle = isReloading ? '#f59e0b' : '#94a3b8';
@@ -1630,10 +1616,7 @@ export class Renderer {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(-barWidth / 2, sandvBarY, barWidth, 3);
       ctx.fillStyle = '#00ff88';
-      ctx.shadowColor = '#00ff88';
-      ctx.shadowBlur = 8;
       ctx.fillRect(-barWidth / 2, sandvBarY, barWidth * sandPct, 3);
-      ctx.shadowBlur = 0;
 
       ctx.font = '800 7px "JetBrains Mono", monospace';
       ctx.fillStyle = '#00ff88';
@@ -1704,34 +1687,180 @@ export class Renderer {
           ctx.strokeStyle = theme.floorGridColor;
           ctx.lineWidth = 1;
           ctx.strokeRect(fx, fy, tileSize, tileSize);
+
+          // Cyberpunk: PCB circuit nodes and data lines on floor tiles
+          if (theme.id === 'cyberpunk') {
+            const hash = Math.abs(Math.sin(c * 12.9898 + r * 78.233) * 43758.5453) % 1;
+            if (hash > 0.72) {
+              ctx.strokeStyle = 'rgba(6, 182, 212, 0.16)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(fx + 12, fy + tileSize / 2);
+              ctx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
+              ctx.lineTo(fx + tileSize / 2, fy + tileSize - 12);
+              ctx.stroke();
+
+              ctx.fillStyle = 'rgba(6, 182, 212, 0.3)';
+              ctx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
+            }
+          }
+
+          // Attack on Titan: Weathered cobblestone cracks & moss veins on Wall Maria stones
+          if (theme.id === 'aot') {
+            const hash = Math.abs(Math.sin(c * 17.13 + r * 91.27) * 43758.5453) % 1;
+            if (hash > 0.68) {
+              ctx.strokeStyle = 'rgba(22, 101, 52, 0.25)';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.moveTo(fx + 6, fy + tileSize - 8);
+              ctx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
+              ctx.lineTo(fx + tileSize - 8, fy + 8);
+              ctx.stroke();
+
+              ctx.fillStyle = 'rgba(22, 101, 52, 0.3)';
+              ctx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
+            }
+          }
         }
       }
 
-      // 2. Draw 4 Perimeter Walls with 3D Bevels
-      const wallThick = 54;
-      ctx.fillStyle = theme.wallColor;
+      // 2. Draw Asymmetric Top-Down Walls with Door Openings
+      const northWallH = 72; // Tall/wide front-facing North wall
+      const sideWallW = 28;  // Thin border curb for West, East, South
 
-      // Top Wall (North)
-      ctx.fillRect(minX, minY, rw, wallThick);
-      // Bottom Wall (South)
-      ctx.fillRect(minX, maxY - wallThick, rw, wallThick);
-      // Left Wall (West)
-      ctx.fillRect(minX, minY, wallThick, rh);
-      // Right Wall (East)
-      ctx.fillRect(maxX - wallThick, minY, wallThick, rh);
+      const northDoor = room.doors.find(d => d.dir === 'north');
+      const southDoor = room.doors.find(d => d.dir === 'south');
+      const westDoor = room.doors.find(d => d.dir === 'west');
+      const eastDoor = room.doors.find(d => d.dir === 'east');
 
-      // 3D Bevel Slab & Highlights
-      ctx.fillStyle = theme.wallTopColor;
-      ctx.fillRect(minX, minY, rw, 14);
-      ctx.fillRect(minX, maxY - wallThick, rw, 14);
-      ctx.fillRect(minX, minY, 14, rh);
-      ctx.fillRect(maxX - 14, minY, 14, rh);
+      // --- NORTH WALL (Top: wide 72px with vertical stone face, mortar lines, top ledge, and shadow) ---
+      const northSections = [];
+      if (northDoor) {
+        northSections.push([minX, room.centerX - 64]);
+        northSections.push([room.centerX + 64, maxX]);
+      } else {
+        northSections.push([minX, maxX]);
+      }
 
-      ctx.fillStyle = theme.wallBevelColor;
-      ctx.fillRect(minX, minY + 12, rw, 2);
-      ctx.fillRect(minX, maxY - wallThick + 12, rw, 2);
+      for (const [sx, ex] of northSections) {
+        if (ex <= sx) continue;
+        const sw = ex - sx;
 
-      // Outer outline
+        // Front-facing vertical stone face (lower 54px: minY + 18 to minY + 72)
+        ctx.fillStyle = theme.wallColor;
+        ctx.fillRect(sx, minY + 18, sw, 54);
+
+        // Horizontal brick mortar line
+        ctx.strokeStyle = theme.wallStrokeColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(sx, minY + 45);
+        ctx.lineTo(ex, minY + 45);
+        ctx.stroke();
+
+        // Vertical brick mortar ticks
+        const brickW = 48;
+        const startBrick = Math.floor(sx / brickW) * brickW;
+        ctx.beginPath();
+        for (let bx = startBrick; bx <= ex; bx += brickW) {
+          if (bx >= sx && bx <= ex) {
+            ctx.moveTo(bx, minY + 18);
+            ctx.lineTo(bx, minY + 45);
+          }
+          const altBx = bx + brickW / 2;
+          if (altBx >= sx && altBx <= ex) {
+            ctx.moveTo(altBx, minY + 45);
+            ctx.lineTo(altBx, minY + 72);
+          }
+        }
+        ctx.stroke();
+
+        // Top ledge (top 18px: minY to minY + 18)
+        ctx.fillStyle = theme.wallTopColor;
+        ctx.fillRect(sx, minY, sw, 18);
+
+        // Top ledge highlight bevel
+        ctx.fillStyle = theme.wallBevelColor;
+        ctx.fillRect(sx, minY + 16, sw, 2);
+
+        // Ambient occlusion drop shadow cast down onto the floor
+        const shadowGrad = ctx.createLinearGradient(0, minY + 72, 0, minY + 86);
+        shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+        shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = shadowGrad;
+        ctx.fillRect(sx, minY + 72, sw, 14);
+      }
+
+      // --- SOUTH WALL (Bottom: thin 28px curb at maxY - 28) ---
+      const southSections = [];
+      if (southDoor) {
+        southSections.push([minX, room.centerX - 64]);
+        southSections.push([room.centerX + 64, maxX]);
+      } else {
+        southSections.push([minX, maxX]);
+      }
+
+      for (const [sx, ex] of southSections) {
+        if (ex <= sx) continue;
+        const sw = ex - sx;
+
+        ctx.fillStyle = theme.wallColor;
+        ctx.fillRect(sx, maxY - sideWallW, sw, sideWallW);
+
+        ctx.fillStyle = theme.wallTopColor;
+        ctx.fillRect(sx, maxY - sideWallW, sw, 8);
+
+        ctx.fillStyle = theme.wallBevelColor;
+        ctx.fillRect(sx, maxY - sideWallW + 7, sw, 1.5);
+      }
+
+      // --- WEST WALL (Left: thin 28px curb from minY + 72 down to maxY - 28) ---
+      const westSections = [];
+      if (westDoor) {
+        westSections.push([minY + northWallH, room.centerY - 64]);
+        westSections.push([room.centerY + 64, maxY - sideWallW]);
+      } else {
+        westSections.push([minY + northWallH, maxY - sideWallW]);
+      }
+
+      for (const [sy, ey] of westSections) {
+        if (ey <= sy) continue;
+        const sh = ey - sy;
+
+        ctx.fillStyle = theme.wallColor;
+        ctx.fillRect(minX, sy, sideWallW, sh);
+
+        ctx.fillStyle = theme.wallTopColor;
+        ctx.fillRect(minX, sy, 8, sh);
+
+        ctx.fillStyle = theme.wallBevelColor;
+        ctx.fillRect(minX + 7, sy, 1.5, sh);
+      }
+
+      // --- EAST WALL (Right: thin 28px curb from minY + 72 down to maxY - 28) ---
+      const eastSections = [];
+      if (eastDoor) {
+        eastSections.push([minY + northWallH, room.centerY - 64]);
+        eastSections.push([room.centerY + 64, maxY - sideWallW]);
+      } else {
+        eastSections.push([minY + northWallH, maxY - sideWallW]);
+      }
+
+      for (const [sy, ey] of eastSections) {
+        if (ey <= sy) continue;
+        const sh = ey - sy;
+
+        ctx.fillStyle = theme.wallColor;
+        ctx.fillRect(maxX - sideWallW, sy, sideWallW, sh);
+
+        ctx.fillStyle = theme.wallTopColor;
+        ctx.fillRect(maxX - 8, sy, 8, sh);
+
+        ctx.fillStyle = theme.wallBevelColor;
+        ctx.fillRect(maxX - 8, sy, 1.5, sh);
+      }
+
+      // Outer room outline (clean pixel frame)
       ctx.strokeStyle = theme.wallStrokeColor;
       ctx.lineWidth = 2;
       ctx.strokeRect(minX, minY, rw, rh);
@@ -1746,40 +1875,7 @@ export class Renderer {
         this.drawTorch(torch.x, torch.y, time, torch.color, torch.glow);
       }
 
-      // 5. Draw Destructible Containers inside this room
-      for (const container of room.containers) {
-        if (container.isBroken) continue;
-        ctx.save();
-        ctx.translate(container.x, container.y);
-
-        // Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(0, 10, 16, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Pot body
-        const potColor = theme.id === 'jjk' ? '#581c87' : (theme.id === 'cyberpunk' ? '#0e7490' : '#78350f');
-        const rimColor = theme.id === 'jjk' ? '#c084fc' : (theme.id === 'cyberpunk' ? '#22d3ee' : '#f59e0b');
-
-        ctx.fillStyle = potColor;
-        ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = rimColor;
-        ctx.beginPath();
-        ctx.arc(0, -6, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Talisman tag
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(-3, -1, 6, 8);
-
-        ctx.restore();
-      }
-
-      // 6. Draw Exit Descent Portal (in Boss Sanctum)
+      // 5. Draw Exit Descent Portal (in Boss Sanctum)
       if (room.type === 'boss' && dungeon.exitPortal) {
         this.drawExitPortal(ctx, dungeon.exitPortal, theme);
       }
@@ -1788,96 +1884,182 @@ export class Renderer {
 
   /**
    * Renders chamber doors with Isaac-style open and locked states
+   * Flush inside the wall layer without protruding outside
    */
   drawDoor(ctx, room, door, theme, time) {
     ctx.save();
     const isLocked = room.isLocked;
     const isBoss = door.isBoss;
     const isTreasure = door.isTreasure;
-    const isHoriz = door.dir === 'north' || door.dir === 'south';
 
+    const dx = door.x;
+    const dy = door.y;
     const dw = door.width;
     const dh = door.height;
-    const dx = door.x - dw / 2;
-    const dy = door.y - dh / 2;
+    const cx = door.centerX || (dx + dw / 2);
+    const cy = door.centerY || (dy + dh / 2);
 
-    // Doorway opening background (depth threshold)
-    ctx.fillStyle = isLocked ? '#120f1a' : theme.floorAltColor;
-    ctx.fillRect(dx, dy, dw, dh);
-
-    // Stone Frame Pillars
+    // Frame styling
     const frameColor = isBoss ? '#450a0a' : (isTreasure ? '#78350f' : theme.wallTopColor);
     const trimColor = isBoss ? '#ef4444' : (isTreasure ? '#f59e0b' : theme.wallBevelColor);
 
-    ctx.strokeStyle = frameColor;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(dx, dy, dw, dh);
+    if (door.dir === 'north') {
+      // NORTH DOOR: Flush inside the 72px tall North wall
+      // Doorway threshold background
+      ctx.fillStyle = isLocked ? '#0e0b17' : theme.floorAltColor;
+      ctx.fillRect(dx, dy, dw, dh);
 
-    if (isLocked) {
-      // --- LOCKED DOOR: Heavy Portcullis Grates & Cursed Lock ---
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-
-      if (isHoriz) {
-        for (let b = 14; b < dw - 10; b += 16) {
-          ctx.beginPath();
-          ctx.moveTo(dx + b, dy);
-          ctx.lineTo(dx + b, dy + dh);
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.moveTo(dx, dy + dh / 2);
-        ctx.lineTo(dx + dw, dy + dh / 2);
-        ctx.stroke();
-      } else {
-        for (let b = 14; b < dh - 10; b += 16) {
-          ctx.beginPath();
-          ctx.moveTo(dx, dy + b);
-          ctx.lineTo(dx + dw, dy + b);
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.moveTo(dx + dw / 2, dy);
-        ctx.lineTo(dx + dw / 2, dy + dh);
-        ctx.stroke();
+      // Floor flagstone grid inside threshold if open
+      if (!isLocked) {
+        ctx.strokeStyle = theme.floorGridColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(dx, dy, dw, dh);
       }
 
-      // Central Lock Emblem
-      const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#a855f7');
-      const pulse = 1 + Math.sin(time * 6) * 0.15;
+      // Stone door jamb pillars on left and right
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(dx, dy, 12, dh);
+      ctx.fillRect(dx + dw - 12, dy, 12, dh);
 
-      ctx.save();
-      ctx.translate(door.x, door.y);
-      ctx.scale(pulse, pulse);
-
-      ctx.fillStyle = emblemCol;
-      ctx.shadowColor = emblemCol;
-      ctx.shadowBlur = 12;
-
-      ctx.beginPath();
-      ctx.arc(0, 0, 11, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.font = '900 11px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowBlur = 0;
-      ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 4);
-      ctx.restore();
-    } else {
-      // --- OPEN DOOR: Atmospheric Archway & Runes ---
-      ctx.strokeStyle = trimColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(dx + 2, dy + 2, dw - 4, dh - 4);
-
-      // Directional arrow / room symbol
-      ctx.font = '900 11px sans-serif';
-      ctx.textAlign = 'center';
+      // Top lintel arch
+      ctx.fillRect(dx, dy, dw, 14);
       ctx.fillStyle = trimColor;
-      ctx.shadowColor = trimColor;
-      ctx.shadowBlur = 8;
-      const symbol = isBoss ? '💀' : (isTreasure ? '★' : (isHoriz ? (door.dir === 'north' ? '▲' : '▼') : (door.dir === 'west' ? '◀' : '▶')));
-      ctx.fillText(symbol, door.x, door.y + 4);
+      ctx.fillRect(dx, dy + 12, dw, 2);
+
+      if (isLocked) {
+        // Locked: Heavy iron portcullis bars
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        for (let bx = dx + 20; bx <= dx + dw - 20; bx += 14) {
+          ctx.beginPath();
+          ctx.moveTo(bx, dy + 14);
+          ctx.lineTo(bx, dy + dh);
+          ctx.stroke();
+        }
+        // Horizontal crossbars
+        ctx.beginPath();
+        ctx.moveTo(dx + 12, dy + 32);
+        ctx.lineTo(dx + dw - 12, dy + 32);
+        ctx.moveTo(dx + 12, dy + 52);
+        ctx.lineTo(dx + dw - 12, dy + 52);
+        ctx.stroke();
+
+        // Pulsing lock seal (Clean solid emblem, no glow)
+        const pulse = 1 + Math.sin(time * 6) * 0.12;
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = emblemCol;
+        ctx.beginPath();
+        ctx.arc(0, 0, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.font = '900 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 4);
+        ctx.restore();
+      } else {
+        // Open: Directional rune
+        ctx.font = '900 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = trimColor;
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : '▲');
+        ctx.fillText(symbol, cx, cy + 5);
+      }
+    } else if (door.dir === 'south') {
+      // SOUTH DOOR: Flush inside thin 28px South curb
+      ctx.fillStyle = isLocked ? '#0e0b17' : theme.floorAltColor;
+      ctx.fillRect(dx, dy, dw, dh);
+
+      // Posts on left and right
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(dx, dy, 10, dh);
+      ctx.fillRect(dx + dw - 10, dy, 10, dh);
+
+      if (isLocked) {
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        for (let bx = dx + 18; bx <= dx + dw - 18; bx += 14) {
+          ctx.beginPath();
+          ctx.moveTo(bx, dy);
+          ctx.lineTo(bx, dy + dh);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(dx + 10, dy + dh / 2);
+        ctx.lineTo(dx + dw - 10, dy + dh / 2);
+        ctx.stroke();
+
+        const pulse = 1 + Math.sin(time * 6) * 0.12;
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = emblemCol;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '900 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 3);
+        ctx.restore();
+      } else {
+        ctx.font = '900 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = trimColor;
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : '▼');
+        ctx.fillText(symbol, cx, cy + 4);
+      }
+    } else {
+      // WEST OR EAST DOOR: Flush inside thin 28px side curb
+      ctx.fillStyle = isLocked ? '#0e0b17' : theme.floorAltColor;
+      ctx.fillRect(dx, dy, dw, dh);
+
+      // Posts on top and bottom
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(dx, dy, dw, 10);
+      ctx.fillRect(dx, dy + dh - 10, dw, 10);
+
+      if (isLocked) {
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        for (let by = dy + 18; by <= dy + dh - 18; by += 14) {
+          ctx.beginPath();
+          ctx.moveTo(dx, by);
+          ctx.lineTo(dx + dw, by);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(dx + dw / 2, dy + 10);
+        ctx.lineTo(dx + dw / 2, dy + dh - 10);
+        ctx.stroke();
+
+        const pulse = 1 + Math.sin(time * 6) * 0.12;
+        const emblemCol = isBoss ? '#ef4444' : (isTreasure ? '#fbbf24' : '#c084fc');
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = emblemCol;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '900 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(isBoss ? '💀' : (isTreasure ? '★' : '🔒'), 0, 3);
+        ctx.restore();
+      } else {
+        ctx.font = '900 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = trimColor;
+        const symbol = isBoss ? '💀' : (isTreasure ? '★' : (door.dir === 'west' ? '◀' : '▶'));
+        ctx.fillText(symbol, cx, cy + 4);
+      }
     }
 
     ctx.restore();
@@ -1892,33 +2074,83 @@ export class Renderer {
     p.pulseAngle = (p.pulseAngle || 0) + 0.025;
 
     if (p.isActive) {
-      const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, p.radius * 1.6);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, theme.torchColor);
-      grad.addColorStop(0.7, theme.wallBevelColor);
+      // Portal floor aura
+      const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, p.radius * 1.5);
+      grad.addColorStop(0, p.isCountingDown ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 255, 255, 0.2)');
+      grad.addColorStop(0.4, theme.torchColor);
+      grad.addColorStop(0.8, theme.wallBevelColor);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(0, 0, p.radius * 1.6, 0, Math.PI * 2);
+      ctx.arc(0, 0, p.radius * 1.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.rotate(p.pulseAngle);
-      ctx.strokeStyle = '#ffffff';
+      // Outer boundary ring
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = p.isCountingDown ? '#00ff88' : theme.torchColor;
       ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Inner dashed ring
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius * 0.7, 0, Math.PI * 2);
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = p.isCountingDown ? 'rgba(0, 255, 136, 0.7)' : 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Rotating runic swirl arcs
+      ctx.save();
+      ctx.rotate(p.pulseAngle);
+      ctx.strokeStyle = p.isCountingDown ? '#00ff88' : '#ffffff';
+      ctx.lineWidth = 2.5;
       for (let r = 0; r < 4; r++) {
         ctx.beginPath();
-        ctx.arc(0, 0, 12 + r * 6, r, r + Math.PI);
+        ctx.arc(0, 0, 16 + r * 8, r * 1.5, r * 1.5 + Math.PI * 0.75);
         ctx.stroke();
       }
+      ctx.restore();
 
-      ctx.rotate(-p.pulseAngle);
-      ctx.font = '900 11px "Outfit", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = theme.torchColor;
-      ctx.shadowBlur = 12;
-      ctx.fillText('▼ STEP TO DESCEND ▼', 0, -p.radius - 16);
+      // Countdown progress ring
+      if (p.isCountingDown) {
+        const countdownVal = p.countdown !== undefined ? p.countdown : 3.0;
+        const progress = Math.max(0, Math.min(1, 1 - (countdownVal / 3.0)));
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius + 6, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Big countdown text in the center
+        const countDisplay = Math.ceil(countdownVal);
+        ctx.font = '900 20px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`DESCENDING IN ${countDisplay}...`, 0, 0);
+
+        ctx.font = '600 11px "Outfit", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('STAND STILL TO DESCEND', 0, p.radius + 20);
+      } else {
+        // Idle waiting instructions
+        ctx.font = '800 13px "Outfit", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('STAND HERE TO DESCEND', 0, -7);
+
+        ctx.font = '600 10px "Outfit", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('All party members must gather (3s)', 0, 11);
+
+        ctx.font = '800 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = theme.torchColor;
+        ctx.fillText('▼ PORTAL READY ▼', 0, -p.radius - 14);
+      }
     } else {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.beginPath();
@@ -1933,8 +2165,9 @@ export class Renderer {
 
       ctx.font = '800 9px "Outfit", sans-serif';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillStyle = '#64748b';
-      ctx.fillText('🔒 DEFEAT GUARDIAN', 0, 3);
+      ctx.fillText('🔒 DEFEAT GUARDIAN', 0, 0);
     }
 
     ctx.restore();
@@ -1949,29 +2182,29 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
 
-    const mapW = 145;
-    const mapH = 105;
-    const mapX = screenWidth - mapW - 20;
-    const mapY = 20;
+    const mapW = 154;
+    const mapH = 104;
+    const mapX = screenWidth - mapW - 16;
+    const mapY = 52;
 
-    // Card background
-    ctx.fillStyle = 'rgba(8, 10, 16, 0.84)';
+    // Card background (Clean dark card)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
     ctx.fillRect(mapX, mapY, mapW, mapH);
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.85)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(mapX, mapY, mapW, mapH);
 
     // Header label
-    ctx.font = '900 9px "Outfit", sans-serif';
+    ctx.font = '800 8.5px "Outfit", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('MAP', mapX + 8, mapY + 14);
+    ctx.fillText('DUNGEON MAP', mapX + 8, mapY + 13);
 
     // Current floor tag
-    ctx.font = '800 8px "JetBrains Mono", monospace';
+    ctx.font = '700 8.5px "JetBrains Mono", monospace';
     ctx.textAlign = 'right';
-    ctx.fillStyle = dungeon.theme.torchColor;
-    ctx.fillText(`FL.${dungeon.floorNumber}`, mapX + mapW - 8, mapY + 14);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`FL.${dungeon.floorNumber}`, mapX + mapW - 8, mapY + 13);
 
     // Calculate grid bounds
     let minGx = 0, maxGx = 0, minGy = 0, maxGy = 0;
@@ -1985,91 +2218,84 @@ export class Renderer {
     const gridSpanX = maxGx - minGx + 1;
     const gridSpanY = maxGy - minGy + 1;
 
-    const cellW = 18;
-    const cellH = 12;
-    const gap = 4;
+    const cellW = 20;
+    const cellH = 14;
+    const gap = 5;
     const totalGridW = gridSpanX * (cellW + gap) - gap;
     const totalGridH = gridSpanY * (cellH + gap) - gap;
 
     const originX = mapX + (mapW - totalGridW) / 2;
     const originY = mapY + 22 + (mapH - 22 - totalGridH) / 2;
 
-    const visitedIds = new Set(dungeon.rooms.filter(r => r.hasVisited).map(r => r.id));
-
-    // Draw connecting door lines between visited rooms
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.lineWidth = 1.5;
+    // Draw connecting door lines between all connected rooms (full layout visibility)
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+    ctx.lineWidth = 2;
     for (const room of dungeon.rooms) {
-      if (!room.hasVisited) continue;
       const rx = originX + (room.gridX - minGx) * (cellW + gap) + cellW / 2;
       const ry = originY + (room.gridY - minGy) * (cellH + gap) + cellH / 2;
 
       for (const door of room.doors) {
         const neighbor = dungeon.rooms.find(x => x.id === door.targetRoomId);
-        if (neighbor && neighbor.hasVisited) {
+        if (neighbor && neighbor.id > room.id) {
           const nx = originX + (neighbor.gridX - minGx) * (cellW + gap) + cellW / 2;
           const ny = originY + (neighbor.gridY - minGy) * (cellH + gap) + cellH / 2;
           ctx.beginPath();
           ctx.moveTo(rx, ry);
-          ctx.lineTo((rx + nx) / 2, (ry + ny) / 2);
+          ctx.lineTo(nx, ny);
           ctx.stroke();
         }
       }
     }
 
-    // Draw room boxes
+    // Draw room boxes for all rooms in layout
     for (const room of dungeon.rooms) {
       const isCurrent = dungeon.currentRoom && dungeon.currentRoom.id === room.id;
       const rx = originX + (room.gridX - minGx) * (cellW + gap);
       const ry = originY + (room.gridY - minGy) * (cellH + gap);
 
-      const isDiscovered = room.hasVisited || room.doors.some(d => visitedIds.has(d.targetRoomId));
-      if (!isDiscovered) continue;
-
-      if (room.hasVisited) {
-        if (room.type === 'boss') {
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
-          ctx.strokeStyle = '#ef4444';
-        } else if (room.type === 'treasure') {
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.45)';
-          ctx.strokeStyle = '#f59e0b';
-        } else if (room.type === 'spawn') {
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
-          ctx.strokeStyle = '#38bdf8';
-        } else {
-          ctx.fillStyle = room.isCleared ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.2)';
-          ctx.strokeStyle = room.isCleared ? '#64748b' : '#94a3b8';
-        }
-
-        ctx.lineWidth = 1;
-        ctx.fillRect(rx, ry, cellW, cellH);
-        ctx.strokeRect(rx, ry, cellW, cellH);
-
-        // Icon inside room
-        ctx.font = '800 8px sans-serif';
-        ctx.textAlign = 'center';
-        if (room.type === 'boss') {
-          ctx.fillStyle = '#ef4444';
-          ctx.fillText('💀', rx + cellW / 2, ry + cellH / 2 + 3);
-        } else if (room.type === 'treasure') {
-          ctx.fillStyle = '#fbbf24';
-          ctx.fillText('★', rx + cellW / 2, ry + cellH / 2 + 3);
-        }
+      if (room.type === 'boss') {
+        ctx.fillStyle = isCurrent ? 'rgba(239, 68, 68, 0.65)' : 'rgba(239, 68, 68, 0.4)';
+        ctx.strokeStyle = '#ef4444';
+      } else if (room.type === 'treasure') {
+        ctx.fillStyle = isCurrent ? 'rgba(245, 158, 11, 0.65)' : 'rgba(245, 158, 11, 0.4)';
+        ctx.strokeStyle = '#f59e0b';
+      } else if (room.type === 'spawn') {
+        ctx.fillStyle = isCurrent ? 'rgba(56, 189, 248, 0.55)' : 'rgba(56, 189, 248, 0.3)';
+        ctx.strokeStyle = '#38bdf8';
       } else {
-        // Discovered adjacent room (foggy outline with question mark)
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-        ctx.fillRect(rx, ry, cellW, cellH);
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rx, ry, cellW, cellH);
-
-        ctx.font = '700 7px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
-        ctx.fillText('?', rx + cellW / 2, ry + cellH / 2 + 2.5);
+        ctx.fillStyle = room.isCleared
+          ? 'rgba(71, 85, 105, 0.65)'
+          : (isCurrent ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.25)');
+        ctx.strokeStyle = room.isCleared ? '#64748b' : '#a855f7';
       }
 
-      // Highlight current room
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(rx, ry, cellW, cellH);
+      ctx.strokeRect(rx, ry, cellW, cellH);
+
+      // Icon inside room
+      ctx.font = '800 8.5px sans-serif';
+      ctx.textAlign = 'center';
+      if (room.type === 'boss') {
+        ctx.fillStyle = '#fca5a5';
+        ctx.fillText('💀', rx + cellW / 2, ry + cellH / 2 + 3);
+      } else if (room.type === 'treasure') {
+        ctx.fillStyle = '#fde68a';
+        ctx.fillText('★', rx + cellW / 2, ry + cellH / 2 + 3);
+      } else if (room.type === 'spawn') {
+        ctx.fillStyle = '#bae6fd';
+        ctx.fillText('🏠', rx + cellW / 2, ry + cellH / 2 + 3);
+      } else {
+        if (room.isCleared) {
+          ctx.fillStyle = '#22c55e';
+          ctx.fillText('✓', rx + cellW / 2, ry + cellH / 2 + 3);
+        } else {
+          ctx.fillStyle = '#d8b4fe';
+          ctx.fillText('⚔️', rx + cellW / 2, ry + cellH / 2 + 3);
+        }
+      }
+
+      // Highlight current room with crisp white pulsing border
       if (isCurrent) {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
@@ -2088,6 +2314,22 @@ export class Renderer {
 
     for (const m of monsters) {
       if (m.isDead) continue;
+
+      // Draw monster after-images (e.g. Adam Smasher Sandevistan trail)
+      if (m.afterImages && m.afterImages.length > 0) {
+        for (const img of m.afterImages) {
+          ctx.save();
+          ctx.translate(img.x, img.y);
+          ctx.rotate(img.angle);
+          ctx.globalAlpha = Math.max(0, img.alpha * 0.7);
+          ctx.fillStyle = img.color || '#00ff88';
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 0.95, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
       ctx.save();
       ctx.translate(m.x, m.y);
 
@@ -2185,22 +2427,67 @@ export class Renderer {
         ctx.fillRect(m.radius - 6, -8, 6, 6);
       } else if (m.type === 'finger_bearer') {
         // JJK Boss: Special Grade Finger Bearer
-        const pulse = Math.sin(m.animTime * 4) * 4;
+        const isPhase2 = m.phase === 2;
+        const pulse = Math.sin(m.animTime * (isPhase2 ? 7 : 4)) * (isPhase2 ? 6 : 4);
 
-        // Cursed energy aura
-        ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+        if (m.isDying) {
+          // Death Animation: Curse Vaporization & Spasms
+          const deathProg = Math.max(0, 1 - (m.deathTimer / m.deathDuration));
+          ctx.globalAlpha = Math.max(0, 1 - deathProg * 0.95);
+          ctx.translate((Math.random() - 0.5) * 8 * deathProg, (Math.random() - 0.5) * 8 * deathProg);
+
+          // Rising Cursed Spirit Dissolution Vapor Spirals
+          for (let v = 0; v < 8; v++) {
+            const vAngle = (v / 8) * Math.PI * 2 + m.animTime * 4;
+            const vDist = (m.radius + deathProg * 40) * (0.6 + (v % 3) * 0.2);
+            const vY = -deathProg * 65 - (v * 4);
+            ctx.fillStyle = v % 2 === 0 ? 'rgba(168, 85, 247, 0.45)' : 'rgba(88, 28, 135, 0.55)';
+            ctx.beginPath();
+            ctx.arc(Math.cos(vAngle) * vDist, Math.sin(vAngle) * (vDist * 0.4) + vY, 7 * (1 - deathProg * 0.5), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Cursed energy aura (expands aggressively in Phase 2)
+        const auraColor = isPhase2 ? 'rgba(126, 34, 206, 0.38)' : 'rgba(168, 85, 247, 0.22)';
+        ctx.fillStyle = auraColor;
         ctx.beginPath();
-        ctx.arc(0, 0, m.radius + 12 + pulse, 0, Math.PI * 2);
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 22 : 12) + pulse, 0, Math.PI * 2);
         ctx.fill();
 
+        // Phase 2: Black Flash Lightning Arcs
+        if (isPhase2 && !m.isDying) {
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          for (let bf = 0; bf < 4; bf++) {
+            const bAng = (bf / 4) * Math.PI * 2 + Math.sin(m.animTime * 15 + bf) * 0.6;
+            ctx.moveTo(Math.cos(bAng) * (m.radius * 0.7), Math.sin(bAng) * (m.radius * 0.7));
+            ctx.lineTo(Math.cos(bAng) * (m.radius * 1.45), Math.sin(bAng) * (m.radius * 1.45));
+          }
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Domain Expansion Windup Circle
+          if (m.windupTimer > 0) {
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, m.radius * 2.8 * (1 - m.windupTimer / 0.85), 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
         // Pale demonic body
-        ctx.fillStyle = '#e2e8f0';
+        ctx.fillStyle = isPhase2 ? '#cbd5e1' : '#e2e8f0';
         ctx.beginPath();
         ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = '#7e22ce';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = isPhase2 ? '#581c87' : '#7e22ce';
+        ctx.lineWidth = isPhase2 ? 5 : 4;
         ctx.stroke();
 
         // Wide Jagged Grin
@@ -2211,13 +2498,630 @@ export class Renderer {
         ctx.stroke();
 
         // 4 Glowing Red Eyes
-        ctx.fillStyle = '#dc2626';
+        ctx.fillStyle = isPhase2 ? '#ff003c' : '#dc2626';
+        ctx.shadowColor = isPhase2 ? '#ff003c' : '#dc2626';
+        ctx.shadowBlur = isPhase2 ? 14 : 6;
         ctx.beginPath();
         ctx.arc(-12, -8, 4, 0, Math.PI * 2);
         ctx.arc(-4, -14, 4, 0, Math.PI * 2);
         ctx.arc(4, -14, 4, 0, Math.PI * 2);
         ctx.arc(12, -8, 4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (m.type === 'arasaka_drone') {
+        // Cyberpunk Swarmer: Arasaka Security Drone (quad-rotor hovering drone)
+        const hoverY = Math.sin(m.animTime * 8) * 3;
+        ctx.translate(0, hoverY);
+
+        // 4 Quad-thruster diagonal arms
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2.5;
+        const armDist = m.radius * 0.95;
+        ctx.beginPath();
+        ctx.moveTo(-armDist, -armDist);
+        ctx.lineTo(armDist, armDist);
+        ctx.moveTo(-armDist, armDist);
+        ctx.lineTo(armDist, -armDist);
+        ctx.stroke();
+
+        // 4 Rotor micro-pods with cyan ion glow
+        const thrusters = [
+          [-armDist, -armDist],
+          [armDist, -armDist],
+          [-armDist, armDist],
+          [armDist, armDist]
+        ];
+        for (const [tx, ty] of thrusters) {
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Ion thrust flicker
+          const thrustAlpha = 0.5 + Math.sin(m.animTime * 30 + tx) * 0.3;
+          ctx.fillStyle = `rgba(6, 182, 212, ${thrustAlpha})`;
+          ctx.beginPath();
+          ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Central diamond composite chassis
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.moveTo(0, -m.radius * 0.75);
+        ctx.lineTo(m.radius * 0.75, 0);
+        ctx.lineTo(0, m.radius * 0.75);
+        ctx.lineTo(-m.radius * 0.75, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Flashing central red optical sensor
+        const opticPulse = 0.75 + Math.sin(m.animTime * 12) * 0.25;
+        ctx.fillStyle = `rgba(239, 68, 68, ${opticPulse})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (m.type === 'tyger_claw_sniper') {
+        // Cyberpunk Ranged: Tyger Claw Cyber-Gunner (neon punk with laser rifle)
+        // Red laser sight aiming toward player / target
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(m.radius + 12, 0);
+        ctx.lineTo(m.radius + 240, 0);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Long Cyber Sniper Rifle barrel
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(m.radius * 0.4, -2.5, m.radius + 6, 5);
+        ctx.fillStyle = '#06b6d4';
+        ctx.fillRect(m.radius + 4, -1.5, 6, 3);
+        ctx.restore();
+
+        // Dark street techwear body
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Neon Pink Punk Mohawk
+        ctx.fillStyle = '#ec4899';
+        ctx.shadowColor = '#ec4899';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(0, -m.radius * 0.6, 3.5, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Glowing Cyan Kiroshi Visor slit
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(Math.cos(m.angle) * 6 - 5, Math.sin(m.angle) * 6 - 2, 10, 4);
+        ctx.shadowBlur = 0;
+      } else if (m.type === 'maelstrom_cyberpsycho') {
+        // Cyberpunk Brute: Maelstrom Cyberpsycho (Gorilla Arms, spider eyes, hydraulic slam)
+        if (m.windupTimer > 0) {
+          // Telegraphed Electric Cyan/Red Slam Radius
+          const p = 1 - (m.windupTimer / 0.8);
+          ctx.strokeStyle = '#06b6d4';
+          ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 2.2 * p, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Electric arcing sparks
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          for (let a = 0; a < 6; a++) {
+            const sparkAng = (a / 6) * Math.PI * 2 + Math.random() * 0.5;
+            const dist = m.radius * (1.2 + Math.random() * 0.8);
+            ctx.moveTo(Math.cos(sparkAng) * m.radius, Math.sin(sparkAng) * m.radius);
+            ctx.lineTo(Math.cos(sparkAng) * dist, Math.sin(sparkAng) * dist);
+          }
+          ctx.stroke();
+        }
+
+        // Heavy reinforced chrome frame
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Exposed pulsating spinal cyberware & wiring
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -m.radius * 0.7);
+        ctx.lineTo(0, m.radius * 0.7);
+        ctx.stroke();
+
+        // Heavy Gorilla Chrome Fists
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(m.radius * 0.4, -m.radius * 0.75, 12, 8);
+        ctx.fillRect(m.radius * 0.4, m.radius * 0.75 - 8, 12, 8);
+        ctx.fillStyle = '#06b6d4';
+        ctx.fillRect(m.radius * 0.4 + 10, -m.radius * 0.75 + 2, 3, 4);
+        ctx.fillRect(m.radius * 0.4 + 10, m.radius * 0.75 - 6, 3, 4);
+        ctx.restore();
+
+        // Terrifying 5-Eye Maelstrom Spider Optic Cluster (Glowing Red)
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 10;
+        const spiderEyes = [
+          [-6, -4],
+          [6, -4],
+          [0, -7],
+          [-4, 2],
+          [4, 2]
+        ];
+        for (const [ex, ey] of spiderEyes) {
+          ctx.beginPath();
+          ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      } else if (m.type === 'adam_smasher_prototype') {
+        // Cyberpunk Boss: Adam Smasher Prototype (Titanium War Chassis)
+        const isPhase2 = m.phase === 2;
+        const pulse = Math.sin(m.animTime * (isPhase2 ? 8 : 4)) * (isPhase2 ? 6 : 4);
+
+        if (m.isDying) {
+          // Death Animation: Core Detonation & System Failure
+          const deathProg = Math.max(0, 1 - (m.deathTimer / m.deathDuration));
+          ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+
+          // Electrical arcs crackling across chassis
+          ctx.strokeStyle = Math.random() < 0.5 ? '#00f0ff' : '#facc15';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          for (let a = 0; a < 6; a++) {
+            const arcAng = (a / 6) * Math.PI * 2 + Math.random() * 0.6;
+            ctx.moveTo(Math.cos(arcAng) * (m.radius * 0.3), Math.sin(arcAng) * (m.radius * 0.3));
+            ctx.lineTo(Math.cos(arcAng) * (m.radius * 1.35), Math.sin(arcAng) * (m.radius * 1.35));
+          }
+          ctx.stroke();
+
+          // Final 0.8s: High-energy core explosion sphere
+          if (m.deathTimer <= 0.8) {
+            const blastProg = (0.8 - m.deathTimer) / 0.8;
+            ctx.fillStyle = `rgba(6, 182, 212, ${(1 - blastProg) * 0.85})`;
+            ctx.beginPath();
+            ctx.arc(0, 0, m.radius * (1 + blastProg * 2.8), 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - blastProg) * 0.95})`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+        }
+
+        // Sandevistan Electric Cyber-Aura (Neon green in Phase 2!)
+        const auraBorder = isPhase2 ? 'rgba(0, 255, 136, 0.65)' : 'rgba(6, 182, 212, 0.4)';
+        const auraFill = isPhase2 ? 'rgba(0, 255, 136, 0.18)' : 'rgba(6, 182, 212, 0.12)';
+        ctx.strokeStyle = auraBorder;
+        ctx.fillStyle = auraFill;
+        ctx.lineWidth = isPhase2 ? 3.5 : 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 22 : 14) + pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // If winding up attack or special
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.strokeStyle = isPhase2 ? '#00ff88' : '#ef4444';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.2 : 2.5), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Heavy industrial titanium shoulder missile pods
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-m.radius * 0.95, -m.radius * 0.95, 18, 22);
+        ctx.fillRect(m.radius * 0.95 - 18, -m.radius * 0.95, 18, 22);
+        ctx.strokeStyle = isPhase2 ? '#00ff88' : '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-m.radius * 0.95, -m.radius * 0.95, 18, 22);
+        ctx.strokeRect(m.radius * 0.95 - 18, -m.radius * 0.95, 18, 22);
+
+        // Missile tube holes (Phase 2 glows hotter with open rocket tips)
+        const tubeColor = isPhase2 ? '#facc15' : '#ef4444';
+        ctx.fillStyle = tubeColor;
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 2; col++) {
+            ctx.fillRect(-m.radius * 0.95 + 3 + col * 7, -m.radius * 0.95 + 3 + row * 6, 4, 4);
+            ctx.fillRect(m.radius * 0.95 - 16 + col * 7, -m.radius * 0.95 + 3 + row * 6, 4, 4);
+          }
+        }
+
+        // Massive Heavy Torso
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Hydraulic Collar & Chest Plate
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-m.radius * 0.5, -m.radius * 0.4, m.radius, m.radius * 0.8);
+        ctx.strokeStyle = isPhase2 ? '#00ff88' : '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-m.radius * 0.5, -m.radius * 0.4, m.radius, m.radius * 0.8);
+
+        // Skull Faceplate (Cybernetic Skull)
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Glowing Red Optic Sockets (or flickering if dying)
+        const opticGlow = m.isDying ? (Math.random() < 0.5 ? '#ffffff' : '#ff003c') : '#ff003c';
+        ctx.fillStyle = opticGlow;
+        ctx.shadowColor = opticGlow;
+        ctx.shadowBlur = isPhase2 ? 18 : 12;
+        ctx.beginPath();
+        ctx.arc(-6, -4, 4, 0, Math.PI * 2);
+        ctx.arc(6, -4, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Titanium Teeth Grille
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-8, 6, 16, 4);
+        ctx.fillStyle = '#94a3b8';
+        for (let t = -7; t <= 5; t += 3) {
+          ctx.fillRect(t, 6, 1.5, 4);
+        }
+
+        // Right Arm Rotary Cannon
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(m.radius * 0.4, -m.radius * 0.75, 26, 9);
+        ctx.strokeStyle = isPhase2 ? '#00ff88' : '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(m.radius * 0.4, -m.radius * 0.75, 26, 9);
+        ctx.restore();
+      } else if (m.type === 'crawler_titan') {
+        // AoT Swarmer: Pure Titan Crawler (erratic scuttling abnormal titan with giant grinning maw)
+        const crawlOsc = Math.sin(m.animTime * 14) * 4;
+        ctx.translate(0, crawlOsc);
+
+        // Scuttling elongated limbs
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        // Front grasping arms
+        ctx.moveTo(-m.radius * 0.4, -m.radius * 0.2);
+        ctx.lineTo(-m.radius * 1.1, -m.radius * 0.7);
+        ctx.moveTo(m.radius * 0.4, -m.radius * 0.2);
+        ctx.lineTo(m.radius * 1.1, -m.radius * 0.7);
+        // Rear sprawling legs
+        ctx.moveTo(-m.radius * 0.3, m.radius * 0.3);
+        ctx.lineTo(-m.radius * 0.95, m.radius * 0.85);
+        ctx.moveTo(m.radius * 0.3, m.radius * 0.3);
+        ctx.lineTo(m.radius * 0.95, m.radius * 0.85);
+        ctx.stroke();
+
+        // Pale grotesque torso
+        ctx.fillStyle = '#f1f5f9';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, m.radius * 0.85, m.radius * 0.65, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Disproportionate Titan Head
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(0, -m.radius * 0.4, m.radius * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gaping toothy grinning mouth
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(0, -m.radius * 0.3, m.radius * 0.45, 5, 0, 0, Math.PI);
+        ctx.fill();
+
+        // Needle teeth row
+        ctx.fillStyle = '#ffffff';
+        for (let t = -m.radius * 0.35; t <= m.radius * 0.35; t += 3) {
+          ctx.fillRect(t, -m.radius * 0.32, 1.5, 3.5);
+        }
+
+        // Bulging manic staring eyes with pinprick pupils
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-6, -m.radius * 0.55, 4, 0, Math.PI * 2);
+        ctx.arc(6, -m.radius * 0.55, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-6 + Math.cos(m.angle) * 1.5, -m.radius * 0.55 + Math.sin(m.angle) * 1.5, 1.8, 0, Math.PI * 2);
+        ctx.arc(6 + Math.cos(m.angle) * 1.5, -m.radius * 0.55 + Math.sin(m.angle) * 1.5, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (m.type === 'marleyan_rifleman') {
+        // AoT Ranged: Marleyan Military Rifleman
+        // Aiming laser sight
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(m.radius + 14, 0);
+        ctx.lineTo(m.radius + 250, 0);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Long-barrel Mauser Anti-Titan Rifle
+        ctx.fillStyle = '#78350f'; // Wooden stock
+        ctx.fillRect(m.radius * 0.3, -2, 14, 4);
+        ctx.fillStyle = '#1e293b'; // Steel barrel
+        ctx.fillRect(m.radius * 0.3 + 12, -1.5, m.radius + 8, 3);
+        ctx.fillStyle = '#d97706'; // Brass bolt
+        ctx.fillRect(m.radius * 0.3 + 8, -2.5, 4, 2);
+        ctx.restore();
+
+        // Dark grey uniform body
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Military stalhelm helmet
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, -2, m.radius * 0.72, Math.PI * 0.8, Math.PI * 2.2);
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Tactical gear harness belt
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(-m.radius * 0.6, 2, m.radius * 1.2, 4);
+      } else if (m.type === 'hardened_brute') {
+        // AoT Brute: Hardened Fist 4-Meter Class Titan
+        if (m.windupTimer > 0) {
+          // Telegraphed Crystallized Shockwave Radius
+          const p = 1 - (m.windupTimer / 0.8);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 2.2 * p, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Crystal shard spikes radiating outward
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let a = 0; a < 8; a++) {
+            const spikeAng = (a / 8) * Math.PI * 2;
+            const sDist = m.radius * (1.1 + p * 1.0);
+            ctx.moveTo(Math.cos(spikeAng) * (sDist - 8), Math.sin(spikeAng) * (sDist - 8));
+            ctx.lineTo(Math.cos(spikeAng) * sDist, Math.sin(spikeAng) * sDist);
+          }
+          ctx.stroke();
+        }
+
+        // Heavy muscular titan torso
+        ctx.fillStyle = '#991b1b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Crystallized Hardening on shoulders and knuckles (glowing cyan-white)
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.85)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+
+        // Left shoulder crystal plate
+        ctx.beginPath();
+        ctx.moveTo(-m.radius * 0.9, -m.radius * 0.3);
+        ctx.lineTo(-m.radius * 0.5, -m.radius * 0.85);
+        ctx.lineTo(-m.radius * 0.2, -m.radius * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Right shoulder crystal plate
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.9, -m.radius * 0.3);
+        ctx.lineTo(m.radius * 0.5, -m.radius * 0.85);
+        ctx.lineTo(m.radius * 0.2, -m.radius * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Heavy Hardened Fists
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.fillStyle = '#e0f2fe';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(m.radius * 0.4, -m.radius * 0.8, 14, 10);
+        ctx.strokeRect(m.radius * 0.4, -m.radius * 0.8, 14, 10);
+        ctx.fillRect(m.radius * 0.4, m.radius * 0.8 - 10, 14, 10);
+        ctx.strokeRect(m.radius * 0.4, m.radius * 0.8 - 10, 14, 10);
+        ctx.restore();
+
+        // Glowing crystal cyan eyes
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(-5, -m.radius * 0.4, 3, 0, Math.PI * 2);
+        ctx.arc(5, -m.radius * 0.4, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (m.type === 'armored_titan') {
+        // AoT Boss: Armored Titan (Reiner Braun Prototype)
+        const isPhase2 = m.phase === 2;
+        const pulse = Math.sin(m.animTime * (isPhase2 ? 7 : 3.5)) * (isPhase2 ? 5 : 3);
+
+        if (m.isDying) {
+          // Custom Death Animation: Hardening Armor Shatter & Billowing Steam Evaporation
+          const deathProg = Math.max(0, 1 - (m.deathTimer / m.deathDuration));
+          ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+
+          // Billowing scalding white steam clouds erupting upwards
+          for (let s = 0; s < 7; s++) {
+            const steamAng = (s / 7) * Math.PI * 2 + m.animTime * 2;
+            const steamR = m.radius * (0.8 + deathProg * 1.8 + Math.sin(s * 1.5) * 0.2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${(1 - deathProg) * 0.45})`;
+            ctx.beginPath();
+            ctx.arc(Math.cos(steamAng) * (steamR * 0.5), Math.sin(steamAng) * (steamR * 0.5) - deathProg * 25, steamR * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Flying crystalline armor shards bursting outward
+          ctx.fillStyle = '#fde047';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          for (let p = 0; p < 8; p++) {
+            const pAng = (p / 8) * Math.PI * 2;
+            const pDist = m.radius * (0.5 + deathProg * 2.2);
+            ctx.save();
+            ctx.translate(Math.cos(pAng) * pDist, Math.sin(pAng) * pDist);
+            ctx.rotate(deathProg * 8 + p);
+            ctx.beginPath();
+            ctx.moveTo(-6, -4);
+            ctx.lineTo(6, -2);
+            ctx.lineTo(2, 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
+        // Scalding Steam Cloud Puffs around Titan (Continuous passive aura)
+        ctx.fillStyle = isPhase2 ? 'rgba(254, 240, 138, 0.22)' : 'rgba(255, 255, 255, 0.16)';
+        for (let s = 0; s < 5; s++) {
+          const sAng = (s / 5) * Math.PI * 2 + m.animTime * 1.2;
+          const sRad = m.radius + 8 + Math.sin(m.animTime * 4 + s) * 6;
+          ctx.beginPath();
+          ctx.arc(Math.cos(sAng) * sRad, Math.sin(sAng) * sRad, 12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Phase 2 Molten Amber Aura
+        if (isPhase2 && !m.isDying) {
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius + 16 + pulse, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // If winding up attack
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.strokeStyle = isPhase2 ? '#ef4444' : '#f59e0b';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.0 : 2.4), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Exposed striated scarlet muscle core
+        ctx.fillStyle = '#991b1b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Muscle striations
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = -m.radius * 0.7; i <= m.radius * 0.7; i += 7) {
+          ctx.moveTo(i, -m.radius * 0.6);
+          ctx.lineTo(i, m.radius * 0.6);
+        }
+        ctx.stroke();
+
+        // Golden Hardened Armor Plates (Chest Carapace)
+        const armorBase = isPhase2 ? '#b45309' : '#d97706';
+        const armorRim = isPhase2 ? '#f59e0b' : '#fde047';
+        ctx.fillStyle = armorBase;
+        ctx.strokeStyle = armorRim;
+        ctx.lineWidth = 2;
+
+        // Pectoral Plates
+        ctx.fillRect(-m.radius * 0.75, -m.radius * 0.45, m.radius * 0.7, m.radius * 0.4);
+        ctx.strokeRect(-m.radius * 0.75, -m.radius * 0.45, m.radius * 0.7, m.radius * 0.4);
+        ctx.fillRect(m.radius * 0.05, -m.radius * 0.45, m.radius * 0.7, m.radius * 0.4);
+        ctx.strokeRect(m.radius * 0.05, -m.radius * 0.45, m.radius * 0.7, m.radius * 0.4);
+
+        // Abdominal Armor Segment
+        ctx.fillRect(-m.radius * 0.5, m.radius * 0.05, m.radius * 1.0, m.radius * 0.45);
+        ctx.strokeRect(-m.radius * 0.5, m.radius * 0.05, m.radius * 1.0, m.radius * 0.45);
+
+        // Broad Shoulder Pauldrons
+        ctx.fillRect(-m.radius * 0.98, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
+        ctx.strokeRect(-m.radius * 0.98, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
+        ctx.fillRect(m.radius * 0.53, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
+        ctx.strokeRect(m.radius * 0.53, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
+
+        // Armored Lower Jaw Visor
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(-m.radius * 0.35, m.radius * 0.5, m.radius * 0.7, 8);
+        ctx.strokeStyle = armorRim;
+        ctx.strokeRect(-m.radius * 0.35, m.radius * 0.5, m.radius * 0.7, 8);
+
+        // Blazing Golden-Yellow Eyes
+        ctx.fillStyle = '#fde047';
+        ctx.shadowColor = '#fde047';
+        ctx.shadowBlur = isPhase2 ? 18 : 10;
+        ctx.beginPath();
+        ctx.arc(-8, -m.radius * 0.2, 3.5, 0, Math.PI * 2);
+        ctx.arc(8, -m.radius * 0.2, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
       } else {
         // Generic / Fallback Monster
         ctx.fillStyle = '#475569';
@@ -2229,17 +3133,19 @@ export class Renderer {
         ctx.stroke();
       }
 
-      // Health Bar above monster
-      const barW = Math.max(28, m.radius * 1.4);
-      const barH = 4;
-      const barY = -m.radius - 10;
-      const hpPct = Math.max(0, m.hp / m.maxHp);
+      // Health Bar above monster (hidden during death animation)
+      if (!m.isDying) {
+        const barW = Math.max(28, m.radius * 1.4);
+        const barH = 4;
+        const barY = -m.radius - 10;
+        const hpPct = Math.max(0, m.hp / m.maxHp);
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(-barW / 2, barY, barW, barH);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(-barW / 2, barY, barW, barH);
 
-      ctx.fillStyle = hpPct > 0.3 ? '#ef4444' : '#dc2626';
-      ctx.fillRect(-barW / 2, barY, barW * hpPct, barH);
+        ctx.fillStyle = hpPct > 0.3 ? '#ef4444' : '#dc2626';
+        ctx.fillRect(-barW / 2, barY, barW * hpPct, barH);
+      }
 
       ctx.restore();
     }
@@ -2259,31 +3165,28 @@ export class Renderer {
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-    const bannerW = 480;
-    const bannerH = 44;
+    const bannerW = 440;
+    const bannerH = 40;
     const x = screenWidth / 2 - bannerW / 2;
-    const y = 52;
+    const y = 86; // Clean vertical tier below floor badge & boss bar
 
-    // Dark backdrop with gradient
-    ctx.fillStyle = 'rgba(10, 8, 18, 0.88)';
-    ctx.strokeStyle = b.color || '#a855f7';
-    ctx.lineWidth = 2;
+    // Dark backdrop (Clean, crisp, no glow)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = b.color || '#64748b';
+    ctx.lineWidth = 1.5;
     ctx.fillRect(x, y, bannerW, bannerH);
     ctx.strokeRect(x, y, bannerW, bannerH);
 
     // Title
-    ctx.font = '900 16px "Outfit", sans-serif';
+    ctx.font = '800 14px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = b.color || '#a855f7';
-    ctx.shadowBlur = 10;
-    ctx.fillText(`⚔ ${b.title} ⚔`, screenWidth / 2, y + 20);
+    ctx.fillText(`⚔ ${b.title} ⚔`, screenWidth / 2, y + 18);
 
     // Subtitle
-    ctx.font = '800 10px "JetBrains Mono", monospace';
-    ctx.fillStyle = b.color || '#c084fc';
-    ctx.shadowBlur = 0;
-    ctx.fillText(b.subtitle || 'ANIME DUNGEON DEPTHS', screenWidth / 2, y + 36);
+    ctx.font = '700 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = b.color || '#94a3b8';
+    ctx.fillText(b.subtitle || 'ANIME DUNGEON DEPTHS', screenWidth / 2, y + 32);
 
     ctx.restore();
   }
@@ -2291,50 +3194,70 @@ export class Renderer {
   /**
    * Draws Full-Screen Top Boss Health Bar
    */
-  drawBossHUD(boss, screenWidth) {
+  drawBossHUD(boss, screenWidth, currentRoom = null) {
     if (!boss || boss.isDead) return;
+    if (currentRoom && currentRoom.type !== 'boss') return;
     const ctx = this.ctx;
     ctx.save();
 
-    const barW = Math.min(540, screenWidth - 40);
-    const barH = 18;
+    const barW = Math.min(500, screenWidth - 40);
+    const barH = 14;
     const x = screenWidth / 2 - barW / 2;
-    const y = 20;
+    const y = 50; // Sits neatly below the floor badge at top: 16px
     const hpPct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
 
-    // Outer dark gothic frame
-    ctx.fillStyle = 'rgba(10, 8, 18, 0.92)';
-    ctx.fillRect(x - 4, y - 18, barW + 8, barH + 26);
+    const isPhase2 = boss.phase === 2;
+    const isDying = boss.isDying;
 
-    ctx.strokeStyle = '#7e22ce';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x - 4, y - 18, barW + 8, barH + 26);
+    // Outer dark frame
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
+    ctx.fillRect(x - 6, y - 18, barW + 12, barH + 26);
 
-    // Boss Name Header
-    ctx.font = '900 12px "Outfit", sans-serif';
+    // Frame border: pulses crimson/amber in Phase 2
+    if (isPhase2) {
+      ctx.strokeStyle = Math.floor(Date.now() / 200) % 2 === 0 ? '#ef4444' : '#f59e0b';
+      ctx.lineWidth = 2.5;
+    } else {
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+    }
+    ctx.strokeRect(x - 6, y - 18, barW + 12, barH + 26);
+
+    // Boss Name & Phase Badge Header
+    ctx.font = '800 11px "Outfit", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#c084fc';
-    ctx.shadowColor = '#a855f7';
-    ctx.shadowBlur = 8;
-    ctx.fillText(`💀 ${boss.name.toUpperCase()} 💀`, screenWidth / 2, y - 4);
-    ctx.shadowBlur = 0;
+    if (isDying) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`💀 ${boss.name.toUpperCase()} — TERMINATING... 💀`, screenWidth / 2, y - 4);
+    } else if (isPhase2) {
+      ctx.fillStyle = '#f87171';
+      ctx.fillText(`💀 ${boss.name.toUpperCase()} ⚡ [PHASE 2: ENRAGED] 💀`, screenWidth / 2, y - 4);
+    } else {
+      ctx.fillStyle = '#fca5a5';
+      ctx.fillText(`💀 ${boss.name.toUpperCase()} 💀`, screenWidth / 2, y - 4);
+    }
 
     // Health Bar Background
-    ctx.fillStyle = 'rgba(30, 20, 45, 0.9)';
+    ctx.fillStyle = 'rgba(20, 15, 30, 0.95)';
     ctx.fillRect(x, y, barW, barH);
 
-    // Health Bar Fill
-    const grad = ctx.createLinearGradient(x, y, x + barW, y);
-    grad.addColorStop(0, '#9333ea');
-    grad.addColorStop(0.5, '#c084fc');
-    grad.addColorStop(1, '#ef4444');
-    ctx.fillStyle = grad;
+    // Health Bar Fill with gradient
+    if (isPhase2) {
+      const grad = ctx.createLinearGradient(x, y, x + barW * hpPct, y);
+      grad.addColorStop(0, '#b91c1c');
+      grad.addColorStop(0.6, '#ef4444');
+      grad.addColorStop(1, '#f97316');
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = '#dc2626';
+    }
     ctx.fillRect(x, y, barW * hpPct, barH);
 
     // HP Text
-    ctx.font = '800 10px "JetBrains Mono", monospace';
+    ctx.font = '700 9px "JetBrains Mono", monospace';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${Math.round(boss.hp)} / ${boss.maxHp} HP (${Math.round(hpPct * 100)}%)`, screenWidth / 2, y + 13);
+    const hpLabel = isDying ? '0 / ' + boss.maxHp + ' HP (0%)' : `${Math.round(boss.hp)} / ${boss.maxHp} HP (${Math.round(hpPct * 100)}%)`;
+    ctx.fillText(hpLabel, screenWidth / 2, y + 11);
 
     ctx.restore();
   }

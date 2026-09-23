@@ -36,10 +36,12 @@
       </div>
 
       <div class="hud-top-center">
-        <div class="floor-badge">
+        <button id="btn-floor-badge" class="floor-badge-btn" title="Click or Press [F] to Select Floor">
+          <span class="floor-icon">🌀</span>
           <span class="floor-label">FLOOR</span>
           <span class="floor-number" id="hud-floor">1</span>
-        </div>
+          <span class="floor-dropdown-arrow">▾ [F]</span>
+        </button>
       </div>
 
       <div class="hud-top-right">
@@ -48,6 +50,63 @@
           <span id="hud-network-status">SOLO</span>
         </div>
         <button id="btn-open-lobby" class="lobby-btn">LOBBY / CO-OP</button>
+      </div>
+
+      <!-- Floor Selection & Level Testing Modal (Triggered by [F] or Altar in Lobby) -->
+      <div id="floor-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card floor-card-container">
+          <div class="floor-modal-header">
+            <span class="floor-modal-icon">🌀</span>
+            <div>
+              <h2 class="modal-title">DIMENSIONAL GATEWAY</h2>
+              <p class="modal-subtitle">Select dungeon floor level to test or return to base camp</p>
+            </div>
+          </div>
+
+          <div class="floor-grid">
+            <!-- Floor 1 Card -->
+            <div class="floor-select-card" data-floor="1">
+              <div class="floor-badge-tag jjk-tag">FLOOR 1</div>
+              <div class="floor-card-title">Cursed Detention Center</div>
+              <div class="floor-card-theme">Theme: Jujutsu Kaisen</div>
+              <div class="floor-card-boss">💀 Boss: Finger Bearer (Special Grade)</div>
+              <div class="floor-card-desc">Dark stone crypts, cursed energy, swarmers, and blood sorcery.</div>
+              <button class="floor-warp-btn jjk-btn" data-floor="1">WARP TO FLOOR 1</button>
+            </div>
+
+            <!-- Floor 2 Card -->
+            <div class="floor-select-card" data-floor="2">
+              <div class="floor-badge-tag cyber-tag">FLOOR 2</div>
+              <div class="floor-card-title">Arasaka R&D Sublevel</div>
+              <div class="floor-card-theme">Theme: Cyberpunk: Edgerunners</div>
+              <div class="floor-card-boss">💀 Boss: Adam Smasher Prototype</div>
+              <div class="floor-card-desc">Cybernetic neon corridors, missile artillery, laser sweep, and Sandevistan overclock.</div>
+              <button class="floor-warp-btn cyber-btn" data-floor="2">WARP TO FLOOR 2</button>
+            </div>
+
+            <!-- Floor 3 Card -->
+            <div class="floor-select-card" data-floor="3">
+              <div class="floor-badge-tag aot-tag">FLOOR 3</div>
+              <div class="floor-card-title">Wall Maria Crypts</div>
+              <div class="floor-card-theme">Theme: Attack on Titan</div>
+              <div class="floor-card-boss">💀 Boss: Armored Titan (Reiner)</div>
+              <div class="floor-card-desc">Ancient moss cobblestone, pure titan crawlers, riflemen, crystal shatter & steam geysers.</div>
+              <button class="floor-warp-btn aot-btn" data-floor="3">WARP TO FLOOR 3</button>
+            </div>
+
+            <!-- Base Camp Card -->
+            <div class="floor-select-card lobby-card" data-floor="0">
+              <div class="floor-badge-tag lobby-tag">BASE CAMP</div>
+              <div class="floor-card-title">Adventurer Sanctuary</div>
+              <div class="floor-card-theme">Theme: Safe Lobby Base Camp</div>
+              <div class="floor-card-boss">🛡️ Training Dummy & Full Anime Loot</div>
+              <div class="floor-card-desc">Safe haven with dressing mirror, gear racks, sparring automaton, and co-op ritual.</div>
+              <button class="floor-warp-btn lobby-warp-btn" data-floor="0">RETURN TO LOBBY</button>
+            </div>
+          </div>
+
+          <button id="btn-close-floor-modal" class="action-btn outline-btn" style="margin-top: 14px; width: 100%;">CLOSE [ESC / F]</button>
+        </div>
       </div>
 
       <!-- In-World Wardrobe & Dye Station Modal (Triggered by [E] at the Mirror) -->

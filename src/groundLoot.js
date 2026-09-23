@@ -45,41 +45,47 @@ export class GroundLoot {
     ctx.fillStyle = beamGrad;
     ctx.fillRect(-6, -28 + bob, 12, 34);
 
-    // Glowing floating diamond / loot icon
+    // Clean floating diamond / loot icon (No blur glow)
     ctx.save();
     ctx.translate(0, bob);
     ctx.rotate(this.time * 0.8);
 
     ctx.beginPath();
-    ctx.moveTo(0, -10);
-    ctx.lineTo(8, 0);
-    ctx.lineTo(0, 10);
-    ctx.lineTo(-8, 0);
+    ctx.moveTo(0, -9);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(0, 9);
+    ctx.lineTo(-7, 0);
     ctx.closePath();
 
     ctx.fillStyle = rarityInfo.color;
-    ctx.shadowColor = rarityInfo.color;
-    ctx.shadowBlur = 10;
     ctx.fill();
 
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.shadowBlur = 0;
     ctx.restore();
 
-    // Floating item name tag
-    ctx.font = '700 11px "Outfit", sans-serif';
+    // Floating item name tag with crisp dark badge
+    const tagText = this.item.name;
+    ctx.font = '700 10px "Outfit", sans-serif';
+    const tagW = ctx.measureText(tagText).width + 12;
+    const tagH = 16;
+    const tagY = -22 + bob;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(-tagW / 2, tagY - 12, tagW, tagH);
+    ctx.strokeStyle = rarityInfo.color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-tagW / 2, tagY - 12, tagW, tagH);
+
     ctx.textAlign = 'center';
     ctx.fillStyle = rarityInfo.color;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(this.item.name, 0, -22 + bob);
+    ctx.fillText(tagText, 0, tagY);
 
     if (isNear) {
-      ctx.font = '800 10px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('[E] PICK UP', 0, 24);
+      ctx.font = '800 9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText('[E] PICK UP', 0, 22);
     }
 
     ctx.restore();

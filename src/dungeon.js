@@ -52,18 +52,18 @@ export const DUNGEON_THEMES = {
   },
   aot: {
     id: 'aot',
-    name: 'Attack on Titan: The Wall Crypts',
+    name: 'Attack on Titan: Wall Maria Crypts & Shiganshina Outskirts',
     shortName: 'WALL MARIA CRYPTS',
     floorColor: '#1c1917',
     floorAltColor: '#24201d',
-    floorGridColor: 'rgba(217, 119, 6, 0.12)',
-    wallColor: '#44403c',
-    wallTopColor: '#57534e',
-    wallBevelColor: '#78716c',
+    floorGridColor: 'rgba(34, 197, 94, 0.14)',
+    wallColor: '#292524',
+    wallTopColor: '#44403c',
+    wallBevelColor: '#166534',
     wallStrokeColor: '#1c1917',
     torchColor: '#f59e0b',
-    torchGlowColor: 'rgba(245, 158, 11, 0.35)',
-    accentColor: '#10b981',
+    torchGlowColor: 'rgba(245, 158, 11, 0.38)',
+    accentColor: '#22c55e',
     ambientColor: 'rgba(28, 25, 23, 0.85)',
     bannerPrefix: 'DISTRICT',
     musicTrack: 'aot'
@@ -89,15 +89,20 @@ export const DUNGEON_THEMES = {
 };
 
 // Standard chamber dimensions (16:9 widescreen ratio)
-export const ROOM_COLS = 17; // 17 tiles wide = 1088px
-export const ROOM_ROWS = 11; // 11 tiles high = 704px
+export const ROOM_COLS = 27; // 27 tiles wide = 1728px
+export const ROOM_ROWS = 17; // 17 tiles high = 1088px
 export const TILE_SIZE = 64;
-export const ROOM_WIDTH = ROOM_COLS * TILE_SIZE; // 1088px
-export const ROOM_HEIGHT = ROOM_ROWS * TILE_SIZE; // 704px
+export const ROOM_WIDTH = ROOM_COLS * TILE_SIZE; // 1728px
+export const ROOM_HEIGHT = ROOM_ROWS * TILE_SIZE; // 1088px
+
+// Asymmetric 2.5D top-down perspective wall thicknesses
+// Top (North) wall is tall/wide showing vertical front face, other walls are thin curbs
+export const NORTH_WALL = 72; // Wide front face with bevel and mortar lines
+export const SIDE_WALL = 28;  // Thin curb on West, East, and South borders
 
 // Physical world stride between adjacent room centers
-export const STRIDE_X = 1600;
-export const STRIDE_Y = 1200;
+export const STRIDE_X = 2400;
+export const STRIDE_Y = 1800;
 
 export class Dungeon {
   constructor(options = {}) {
@@ -158,36 +163,58 @@ export class Dungeon {
 
   connectRooms(roomA, roomB, dirFromA, dirFromB) {
     const makeDoor = (room, targetRoom, dir) => {
-      let x = room.centerX;
-      let y = room.centerY;
+      let x = room.centerX - 64;
+      let y = room.centerY - 64;
       let w = 128;
-      let h = 64;
+      let h = 128;
+      let centerX = room.centerX;
+      let centerY = room.centerY;
       let targetSpawnX = targetRoom.centerX;
       let targetSpawnY = targetRoom.centerY;
 
       if (dir === 'north') {
+        // North door sits flush inside the tall North wall (between minY and minY + NORTH_WALL)
+        x = room.centerX - 64;
         y = room.bounds.minY;
         w = 128;
-        h = 64;
+        h = NORTH_WALL; // 72px
+        centerX = room.centerX;
+        centerY = room.bounds.minY + NORTH_WALL / 2;
+        // Spawns near South wall of target room
         targetSpawnX = targetRoom.centerX;
-        targetSpawnY = targetRoom.bounds.maxY - 110;
+        targetSpawnY = targetRoom.bounds.maxY - SIDE_WALL - 55;
       } else if (dir === 'south') {
-        y = room.bounds.maxY;
+        // South door sits flush inside the thin South curb (between maxY - SIDE_WALL and maxY)
+        x = room.centerX - 64;
+        y = room.bounds.maxY - SIDE_WALL;
         w = 128;
-        h = 64;
+        h = SIDE_WALL; // 28px
+        centerX = room.centerX;
+        centerY = room.bounds.maxY - SIDE_WALL / 2;
+        // Spawns safely below the North wall of target room
         targetSpawnX = targetRoom.centerX;
-        targetSpawnY = targetRoom.bounds.minY + 110;
+        targetSpawnY = targetRoom.bounds.minY + NORTH_WALL + 65;
       } else if (dir === 'west') {
+        // West door sits flush inside thin West curb (between minX and minX + SIDE_WALL)
         x = room.bounds.minX;
-        w = 64;
+        y = room.centerY - 64;
+        w = SIDE_WALL; // 28px
         h = 128;
-        targetSpawnX = targetRoom.bounds.maxX - 110;
+        centerX = room.bounds.minX + SIDE_WALL / 2;
+        centerY = room.centerY;
+        // Spawns safely to the left of target room's East wall
+        targetSpawnX = targetRoom.bounds.maxX - SIDE_WALL - 55;
         targetSpawnY = targetRoom.centerY;
       } else if (dir === 'east') {
-        x = room.bounds.maxX;
-        w = 64;
+        // East door sits flush inside thin East curb (between maxX - SIDE_WALL and maxX)
+        x = room.bounds.maxX - SIDE_WALL;
+        y = room.centerY - 64;
+        w = SIDE_WALL; // 28px
         h = 128;
-        targetSpawnX = targetRoom.bounds.minX + 110;
+        centerX = room.bounds.maxX - SIDE_WALL / 2;
+        centerY = room.centerY;
+        // Spawns safely to the right of target room's West wall
+        targetSpawnX = targetRoom.bounds.minX + SIDE_WALL + 55;
         targetSpawnY = targetRoom.centerY;
       }
 
@@ -196,6 +223,8 @@ export class Dungeon {
         targetRoomId: targetRoom.id,
         x,
         y,
+        centerX,
+        centerY,
         width: w,
         height: h,
         targetSpawnX,
@@ -221,7 +250,7 @@ export class Dungeon {
     this.torches = [];
     this.containers = [];
 
-    // 1. Create Spawn Room at (0, 0)
+    // 1. Create Central Spawn Room at (0, 0)
     const spawnRoom = this.createRoom(1, 0, 0, 'spawn');
     spawnRoom.name = `${this.theme.bannerPrefix} ENTRANCE`;
     spawnRoom.isCleared = true;
@@ -233,101 +262,53 @@ export class Dungeon {
     this.spawnRoom = spawnRoom;
     this.currentRoom = spawnRoom;
 
-    // 2. Expand outwards to generate 7 to 9 rooms
-    const totalRooms = Math.min(10, 7 + Math.floor(this.floorNumber * 0.5));
-    let nextId = 2;
-
-    while (this.rooms.length < totalRooms) {
-      // Pick random room that has fewer than 3 doors
-      const candidates = this.rooms.filter(r => r.doors.length < 3);
-      if (candidates.length === 0) break;
-      const current = candidates[Math.floor(Math.random() * candidates.length)];
-
-      const dirs = [
-        { name: 'north', opp: 'south', dx: 0, dy: -1 },
-        { name: 'south', opp: 'north', dx: 0, dy: 1 },
-        { name: 'east', opp: 'west', dx: 1, dy: 0 },
-        { name: 'west', opp: 'east', dx: -1, dy: 0 }
-      ].sort(() => Math.random() - 0.5);
-
-      let added = false;
-      for (const d of dirs) {
-        const nx = current.gridX + d.dx;
-        const ny = current.gridY + d.dy;
-        const key = `${nx},${ny}`;
-
-        if (!this.roomsMap.has(key)) {
-          // Check how many adjacent neighbors this cell has (enforce branching, avoid large loops)
-          let neighborCount = 0;
-          for (const c of [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }]) {
-            if (this.roomsMap.has(`${nx + c.dx},${ny + c.dy}`)) neighborCount++;
-          }
-
-          if (neighborCount === 1) {
-            const newRoom = this.createRoom(nextId++, nx, ny, 'combat');
-            this.connectRooms(current, newRoom, d.name, d.opp);
-            this.rooms.push(newRoom);
-            this.roomsMap.set(key, newRoom);
-            added = true;
-            break;
-          }
-        }
-      }
-
-      if (!added && candidates.length === 1 && this.rooms.length >= 6) {
-        break;
-      }
-    }
-
-    // 3. Compute BFS distances from Spawn to assign Boss & Treasure rooms
-    const distances = new Map();
-    distances.set(spawnRoom.id, 0);
-    const queue = [spawnRoom];
-
-    while (queue.length > 0) {
-      const r = queue.shift();
-      const d = distances.get(r.id);
-      for (const door of r.doors) {
-        if (!distances.has(door.targetRoomId)) {
-          distances.set(door.targetRoomId, d + 1);
-          const neighbor = this.rooms.find(x => x.id === door.targetRoomId);
-          if (neighbor) queue.push(neighbor);
-        }
-      }
-    }
-
-    // Sort non-spawn rooms by: 1) degree === 1 (dead ends), 2) distance from spawn
-    const nonSpawn = this.rooms.filter(r => r !== spawnRoom);
-    nonSpawn.sort((a, b) => {
-      const aDead = a.doors.length === 1 ? 1 : 0;
-      const bDead = b.doors.length === 1 ? 1 : 0;
-      if (aDead !== bDead) return bDead - aDead;
-      return (distances.get(b.id) || 0) - (distances.get(a.id) || 0);
-    });
-
-    // 4. Assign Boss Sanctum (deepest dead end)
-    const bossRoom = nonSpawn[0];
-    bossRoom.type = 'boss';
+    // 2. Cardinal Hub Layout (All main chambers directly 1 door away from Spawn)
+    // North (Ke Atas): Boss Sanctum (0, -1)
+    const bossRoom = this.createRoom(2, 0, -1, 'boss');
     bossRoom.name = `${this.theme.bannerPrefix} BOSS SANCTUM`;
+    this.connectRooms(spawnRoom, bossRoom, 'north', 'south');
+    this.rooms.push(bossRoom);
+    this.roomsMap.set('0,-1', bossRoom);
     this.bossRoom = bossRoom;
 
-    // 5. Assign Treasure Vault (second deepest dead end)
-    if (nonSpawn.length > 1) {
-      const treasureRoom = nonSpawn[1];
-      treasureRoom.type = 'treasure';
-      treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
-      treasureRoom.isCleared = true; // Treasure room has no combat
-      this.treasureRoom = treasureRoom;
-    }
+    // West (Ke Kiri): Treasure Vault (-1, 0)
+    const treasureRoom = this.createRoom(3, -1, 0, 'treasure');
+    treasureRoom.name = `${this.theme.bannerPrefix} TREASURE VAULT`;
+    treasureRoom.isCleared = true;
+    this.connectRooms(spawnRoom, treasureRoom, 'west', 'east');
+    this.rooms.push(treasureRoom);
+    this.roomsMap.set('-1,0', treasureRoom);
+    this.treasureRoom = treasureRoom;
 
-    // 6. Name and configure remaining combat rooms
-    this.combatRooms = this.rooms.filter(r => r.type === 'combat');
-    for (let i = 0; i < this.combatRooms.length; i++) {
-      this.combatRooms[i].name = `${this.theme.bannerPrefix} CHAMBER 0${i + 1}`;
-      this.combatRooms[i].isCleared = false;
-    }
+    // East (Ke Kanan): Combat Chamber East (1, 0)
+    const combatEast = this.createRoom(4, 1, 0, 'combat');
+    combatEast.name = `${this.theme.bannerPrefix} EAST BATTLEGROUND`;
+    combatEast.isCleared = false;
+    this.connectRooms(spawnRoom, combatEast, 'east', 'west');
+    this.rooms.push(combatEast);
+    this.roomsMap.set('1,0', combatEast);
 
-    // Update door special flags (isBoss, isTreasure)
+    // South (Ke Bawah): Combat Chamber South (0, 1)
+    const combatSouth = this.createRoom(5, 0, 1, 'combat');
+    combatSouth.name = `${this.theme.bannerPrefix} SOUTH ARENA`;
+    combatSouth.isCleared = false;
+    this.connectRooms(spawnRoom, combatSouth, 'south', 'north');
+    this.rooms.push(combatSouth);
+    this.roomsMap.set('0,1', combatSouth);
+
+    // Southeast: Additional Combat Chamber (1, 1) connecting East and South
+    const combatSE = this.createRoom(6, 1, 1, 'combat');
+    combatSE.name = `${this.theme.bannerPrefix} SOUTHEAST CRYPT`;
+    combatSE.isCleared = false;
+    this.connectRooms(combatEast, combatSE, 'south', 'north');
+    this.connectRooms(combatSouth, combatSE, 'east', 'west');
+    this.rooms.push(combatSE);
+    this.roomsMap.set('1,1', combatSE);
+
+    // 3. Register combat rooms list
+    this.combatRooms = [combatEast, combatSouth, combatSE];
+
+    // 4. Update door special flags (isBoss, isTreasure)
     for (const r of this.rooms) {
       for (const d of r.doors) {
         const target = this.rooms.find(x => x.id === d.targetRoomId);
@@ -338,16 +319,19 @@ export class Dungeon {
       }
     }
 
-    // 7. Setup Exit Descent Portal in Boss Sanctum
+    // 5. Setup Exit Descent Portal in Boss Sanctum
     this.exitPortal = {
       x: this.bossRoom.centerX,
       y: this.bossRoom.centerY,
-      radius: 36,
+      radius: 56,
       isActive: false,
-      pulseAngle: 0
+      pulseAngle: 0,
+      countdown: 3.0,
+      isCountingDown: false,
+      allReady: false
     };
 
-    // 8. Place fixtures (Torches & Destructible Pots)
+    // 6. Place fixtures (Torches & Destructible Pots)
     this.populateFixtures();
 
     return this;
@@ -362,12 +346,12 @@ export class Dungeon {
     let containerId = 1;
 
     for (const room of this.rooms) {
-      // Place torches in the 4 corners of each room
+      // Place torches in the 4 corners of each room (respecting North wall top-down thickness)
       const cornerOffsets = [
-        { ox: -room.width / 2 + 54, oy: -room.height / 2 + 54 },
-        { ox: room.width / 2 - 54, oy: -room.height / 2 + 54 },
-        { ox: -room.width / 2 + 54, oy: room.height / 2 - 54 },
-        { ox: room.width / 2 - 54, oy: room.height / 2 - 54 }
+        { ox: -room.width / 2 + 54, oy: -room.height / 2 + NORTH_WALL + 40 },
+        { ox: room.width / 2 - 54, oy: -room.height / 2 + NORTH_WALL + 40 },
+        { ox: -room.width / 2 + 54, oy: room.height / 2 - SIDE_WALL - 40 },
+        { ox: room.width / 2 - 54, oy: room.height / 2 - SIDE_WALL - 40 }
       ];
 
       for (const c of cornerOffsets) {
@@ -388,32 +372,6 @@ export class Dungeon {
         this.torches.push(t);
         room.torches.push(t);
       }
-
-      // Destructible pots in corners and walls of combat/treasure rooms
-      if (room.type === 'combat' || room.type === 'treasure') {
-        const potSpots = [
-          { ox: -room.width / 2 + 120, oy: -room.height / 2 + 64 },
-          { ox: room.width / 2 - 120, oy: -room.height / 2 + 64 },
-          { ox: -room.width / 2 + 120, oy: room.height / 2 - 64 },
-          { ox: room.width / 2 - 120, oy: room.height / 2 - 64 }
-        ];
-
-        for (const spot of potSpots) {
-          if (Math.random() < 0.75) {
-            const pot = {
-              id: containerId++,
-              x: room.centerX + spot.ox,
-              y: room.centerY + spot.oy,
-              radius: 18,
-              hp: 1,
-              isBroken: false,
-              theme: this.themeKey
-            };
-            this.containers.push(pot);
-            room.containers.push(pot);
-          }
-        }
-      }
     }
   }
 
@@ -424,17 +382,22 @@ export class Dungeon {
   checkDoorTransition(playerX, playerY, radius = 22) {
     if (!this.currentRoom || this.currentRoom.isLocked) return null;
 
+    const innerMinX = this.currentRoom.bounds.minX + SIDE_WALL;
+    const innerMaxX = this.currentRoom.bounds.maxX - SIDE_WALL;
+    const innerMinY = this.currentRoom.bounds.minY + NORTH_WALL;
+    const innerMaxY = this.currentRoom.bounds.maxY - SIDE_WALL;
+
     for (const door of this.currentRoom.doors) {
       let triggered = false;
 
       if (door.dir === 'north') {
-        triggered = playerY <= this.currentRoom.bounds.minY + 54 && Math.abs(playerX - door.x) <= 56;
+        triggered = playerY <= innerMinY + 14 && Math.abs(playerX - this.currentRoom.centerX) <= 54;
       } else if (door.dir === 'south') {
-        triggered = playerY >= this.currentRoom.bounds.maxY - 54 && Math.abs(playerX - door.x) <= 56;
+        triggered = playerY >= innerMaxY - 14 && Math.abs(playerX - this.currentRoom.centerX) <= 54;
       } else if (door.dir === 'west') {
-        triggered = playerX <= this.currentRoom.bounds.minX + 54 && Math.abs(playerY - door.y) <= 56;
+        triggered = playerX <= innerMinX + 14 && Math.abs(playerY - this.currentRoom.centerY) <= 54;
       } else if (door.dir === 'east') {
-        triggered = playerX >= this.currentRoom.bounds.maxX - 54 && Math.abs(playerY - door.y) <= 56;
+        triggered = playerX >= innerMaxX - 14 && Math.abs(playerY - this.currentRoom.centerY) <= 54;
       }
 
       if (triggered) {
@@ -457,8 +420,8 @@ export class Dungeon {
    * Enforces chamber wall collision and door locks
    * While currentRoom is locked (active combat), doors are impassable solid walls!
    */
-  resolveCircleCollision(circleX, circleY, radius = 22) {
-    const room = this.currentRoom || this.spawnRoom;
+  resolveCircleCollision(circleX, circleY, radius = 22, explicitRoom = null, isMonster = false) {
+    const room = explicitRoom || this.currentRoom || this.spawnRoom;
     if (!room) return { x: circleX, y: circleY, hitWall: false, normalX: 0, normalY: 0 };
 
     let resolvedX = circleX;
@@ -467,74 +430,100 @@ export class Dungeon {
     let normX = 0;
     let normY = 0;
 
-    // Chamber wall inner edge thickness
-    const wallPad = 54;
-    const innerMinX = room.bounds.minX + wallPad;
-    const innerMaxX = room.bounds.maxX - wallPad;
-    const innerMinY = room.bounds.minY + wallPad;
-    const innerMaxY = room.bounds.maxY - wallPad;
+    // Asymmetric 2.5D perspective chamber wall thickness
+    const innerMinX = room.bounds.minX + SIDE_WALL;
+    const innerMaxX = room.bounds.maxX - SIDE_WALL;
+    const innerMinY = room.bounds.minY + NORTH_WALL;
+    const innerMaxY = room.bounds.maxY - SIDE_WALL;
 
     const hasNorthDoor = room.doors.some(d => d.dir === 'north');
     const hasSouthDoor = room.doors.some(d => d.dir === 'south');
     const hasWestDoor = room.doors.some(d => d.dir === 'west');
     const hasEastDoor = room.doors.some(d => d.dir === 'east');
 
-    const doorHalfWidth = 52; // 104px door opening
+    const doorHalfWidth = 54; // Door opening half-width
 
-    // 1. West Wall
+    // 1. West Wall (Thin 28px curb)
     if (resolvedX - radius < innerMinX) {
       const isAtDoorway = hasWestDoor && Math.abs(resolvedY - room.centerY) <= doorHalfWidth;
-      if (room.isLocked || !isAtDoorway) {
+      if (room.isLocked || isMonster || !isAtDoorway) {
         resolvedX = innerMinX + radius;
         hitWall = true;
         normX = 1;
+      } else {
+        if (resolvedX - radius < room.bounds.minX) {
+          resolvedX = room.bounds.minX + radius;
+          hitWall = true;
+          normX = 1;
+        }
+        if (resolvedY - radius < room.centerY - doorHalfWidth) {
+          resolvedY = room.centerY - doorHalfWidth + radius;
+        } else if (resolvedY + radius > room.centerY + doorHalfWidth) {
+          resolvedY = room.centerY + doorHalfWidth - radius;
+        }
       }
     }
 
-    // 2. East Wall
+    // 2. East Wall (Thin 28px curb)
     if (resolvedX + radius > innerMaxX) {
       const isAtDoorway = hasEastDoor && Math.abs(resolvedY - room.centerY) <= doorHalfWidth;
-      if (room.isLocked || !isAtDoorway) {
+      if (room.isLocked || isMonster || !isAtDoorway) {
         resolvedX = innerMaxX - radius;
         hitWall = true;
         normX = -1;
+      } else {
+        if (resolvedX + radius > room.bounds.maxX) {
+          resolvedX = room.bounds.maxX - radius;
+          hitWall = true;
+          normX = -1;
+        }
+        if (resolvedY - radius < room.centerY - doorHalfWidth) {
+          resolvedY = room.centerY - doorHalfWidth + radius;
+        } else if (resolvedY + radius > room.centerY + doorHalfWidth) {
+          resolvedY = room.centerY + doorHalfWidth - radius;
+        }
       }
     }
 
-    // 3. North Wall
+    // 3. North Wall (Wide/Tall 72px front-facing wall)
     if (resolvedY - radius < innerMinY) {
       const isAtDoorway = hasNorthDoor && Math.abs(resolvedX - room.centerX) <= doorHalfWidth;
-      if (room.isLocked || !isAtDoorway) {
+      if (room.isLocked || isMonster || !isAtDoorway) {
         resolvedY = innerMinY + radius;
         hitWall = true;
         normY = 1;
+      } else {
+        if (resolvedY - radius < room.bounds.minY) {
+          resolvedY = room.bounds.minY + radius;
+          hitWall = true;
+          normY = 1;
+        }
+        if (resolvedX - radius < room.centerX - doorHalfWidth) {
+          resolvedX = room.centerX - doorHalfWidth + radius;
+        } else if (resolvedX + radius > room.centerX + doorHalfWidth) {
+          resolvedX = room.centerX + doorHalfWidth - radius;
+        }
       }
     }
 
-    // 4. South Wall
+    // 4. South Wall (Thin 28px curb)
     if (resolvedY + radius > innerMaxY) {
       const isAtDoorway = hasSouthDoor && Math.abs(resolvedX - room.centerX) <= doorHalfWidth;
-      if (room.isLocked || !isAtDoorway) {
+      if (room.isLocked || isMonster || !isAtDoorway) {
         resolvedY = innerMaxY - radius;
         hitWall = true;
         normY = -1;
-      }
-    }
-
-    // 5. Destructible Containers (Pots) inside this room
-    for (const c of room.containers) {
-      if (c.isBroken) continue;
-      const dx = resolvedX - c.x;
-      const dy = resolvedY - c.y;
-      const dist = Math.hypot(dx, dy);
-      const minDist = radius + (c.radius || 18);
-      if (dist < minDist && dist > 0.001) {
-        hitWall = true;
-        const push = minDist - dist;
-        resolvedX += (dx / dist) * push;
-        resolvedY += (dy / dist) * push;
-        normX = dx / dist;
-        normY = dy / dist;
+      } else {
+        if (resolvedY + radius > room.bounds.maxY) {
+          resolvedY = room.bounds.maxY - radius;
+          hitWall = true;
+          normY = -1;
+        }
+        if (resolvedX - radius < room.centerX - doorHalfWidth) {
+          resolvedX = room.centerX - doorHalfWidth + radius;
+        } else if (resolvedX + radius > room.centerX + doorHalfWidth) {
+          resolvedX = room.centerX + doorHalfWidth - radius;
+        }
       }
     }
 
@@ -553,10 +542,10 @@ export class Dungeon {
     const uX = dirX / len;
     const uY = dirY / len;
 
-    const minX = room.bounds.minX + 54;
-    const maxX = room.bounds.maxX - 54;
-    const minY = room.bounds.minY + 54;
-    const maxY = room.bounds.maxY - 54;
+    const minX = room.bounds.minX + SIDE_WALL;
+    const maxX = room.bounds.maxX - SIDE_WALL;
+    const minY = room.bounds.minY + NORTH_WALL;
+    const maxY = room.bounds.maxY - SIDE_WALL;
 
     let closestDist = maxDist;
     let hitX = startX;
