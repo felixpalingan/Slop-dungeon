@@ -16,6 +16,7 @@ export class SettingsManager {
       showFps: true,
       masterVolume: 80, // 0 - 100
       sfxVolume: 80, // 0 - 100
+      bgmVolume: 60, // 0 - 100
       isMuted: false
     };
 

@@ -41,6 +41,7 @@ const settings = new SettingsManager();
 const audio = new AudioManager();
 audio.setMasterVolume(settings.settings.masterVolume / 100);
 audio.setSfxVolume(settings.settings.sfxVolume / 100);
+audio.setBgmVolume(settings.settings.bgmVolume / 100);
 audio.setMuted(settings.settings.isMuted);
 
 const particles = new ParticleManager(settings);
@@ -60,9 +61,20 @@ const groundItems = new Map();
 
 const dungeonBounds = { minX: -600, minY: -600, maxX: 600, maxY: 600 };
 
-// Auto-initialize audio on user gesture
+// Auto-initialize audio and procedural BGM on user gesture
 const unlockAudio = () => {
   audio.init();
+  if (audio.initialized) {
+    if (currentFloor === 0) {
+      audio.updateBgmTrack('lobby');
+    } else if (currentFloor >= 1) {
+      if (currentDungeon && currentDungeon.currentRoom && currentDungeon.currentRoom.type === 'boss') {
+        audio.updateBgmTrack('boss');
+      } else {
+        audio.updateBgmTrack('dungeon');
+      }
+    }
+  }
 };
 window.addEventListener('pointerdown', unlockAudio, { passive: true });
 window.addEventListener('mousedown', unlockAudio, { passive: true });
@@ -1617,6 +1629,7 @@ function startFloorDescent(floorNumber, broadcast = true) {
     hudDevHint.classList.add('hidden');
   }
 
+  audio.updateBgmTrack('dungeon');
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
 }
 
@@ -1678,6 +1691,7 @@ function returnToLobby(broadcast = true) {
   }
 
   audio.playDescentFanfare();
+  audio.updateBgmTrack('lobby');
   particles.spawnComicText(player.x, player.y - 40, 'RETURNED TO BASE CAMP! 🏕️', '#38bdf8');
 
   if (broadcast && network.isHost) {
@@ -2850,6 +2864,7 @@ function triggerPartyWipe(syncedStats = null) {
   broadcastMyState();
 
   audio.playGameOverGong();
+  audio.stopBgm();
   cinematics.addScreenShake(20);
 
   const elapsedSec = runStats.startTime ? Math.max(1, Math.floor((performance.now() - runStats.startTime) / 1000)) : 0;
@@ -3082,6 +3097,13 @@ function updateSettingsUIFromState() {
     valMaster.textContent = `${current.masterVolume}%`;
   }
 
+  const sliderBgm = document.getElementById('slider-bgm-vol');
+  const valBgm = document.getElementById('val-bgm-vol');
+  if (sliderBgm && valBgm) {
+    sliderBgm.value = current.bgmVolume !== undefined ? current.bgmVolume : 60;
+    valBgm.textContent = `${sliderBgm.value}%`;
+  }
+
   const sliderSfx = document.getElementById('slider-sfx-vol');
   const valSfx = document.getElementById('val-sfx-vol');
   if (sliderSfx && valSfx) {
@@ -3177,6 +3199,17 @@ function initSettingsUI() {
       audio.setMasterVolume(vol / 100);
       const valMaster = document.getElementById('val-master-vol');
       if (valMaster) valMaster.textContent = `${vol}%`;
+    });
+  }
+
+  const sliderBgm = document.getElementById('slider-bgm-vol');
+  if (sliderBgm) {
+    sliderBgm.addEventListener('input', (e) => {
+      const vol = Number(e.target.value);
+      settings.update({ bgmVolume: vol });
+      audio.setBgmVolume(vol / 100);
+      const valBgm = document.getElementById('val-bgm-vol');
+      if (valBgm) valBgm.textContent = `${vol}%`;
     });
   }
 
@@ -3789,6 +3822,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
         room.hasVisited = true;
         currentDungeon.currentRoom = room;
         currentDungeon.showRoomBanner(room);
+        if (room.type === 'boss') {
+          audio.updateBgmTrack('boss');
+        } else {
+          audio.updateBgmTrack('dungeon');
+        }
         if (!room.isCleared) {
           room.isLocked = true;
           monsterManager.activateRoom(room.id);
@@ -4495,6 +4533,12 @@ function gameLoop(now) {
       currentDungeon.currentRoom = doorTrans.targetRoom;
       doorTrans.targetRoom.hasVisited = true;
       currentDungeon.showRoomBanner(doorTrans.targetRoom);
+
+      if (doorTrans.targetRoom.type === 'boss') {
+        audio.updateBgmTrack('boss');
+      } else {
+        audio.updateBgmTrack('dungeon');
+      }
 
       // Check if targetRoom has monsters and is not cleared -> trigger combat lockdown!
       if (!doorTrans.targetRoom.isCleared) {

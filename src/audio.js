@@ -9,11 +9,19 @@ export class AudioManager {
     this.rawCtx = null;
     this.masterGain = null;
     this.sfxGain = null;
+    this.bgmGain = null;
     this.isMuted = false;
     this.masterVolume = 0.8;
     this.sfxVolume = 0.8;
+    this.bgmVolume = 0.6;
     this.initialized = false;
     this.lastPlayTimes = new Map();
+
+    // BGM Sequencer state
+    this.currentBgmTrack = 'none';
+    this.bgmTimer = null;
+    this.bgmStep = 0;
+    this.bgmNextNoteTime = 0;
   }
 
   init() {
@@ -31,6 +39,10 @@ export class AudioManager {
           this.sfxGain = raw.createGain();
           this.sfxGain.gain.setValueAtTime(this.sfxVolume, raw.currentTime);
           this.sfxGain.connect(this.masterGain);
+
+          this.bgmGain = raw.createGain();
+          this.bgmGain.gain.setValueAtTime(this.bgmVolume, raw.currentTime);
+          this.bgmGain.connect(this.masterGain);
 
           const sfxNode = this.sfxGain;
           this.ctx = new Proxy(raw, {
@@ -71,6 +83,13 @@ export class AudioManager {
     }
   }
 
+  setBgmVolume(val) {
+    this.bgmVolume = Math.max(0, Math.min(1, val));
+    if (this.bgmGain && this.rawCtx) {
+      this.bgmGain.gain.setValueAtTime(this.bgmVolume, this.rawCtx.currentTime);
+    }
+  }
+
   setMuted(muted) {
     this.isMuted = !!muted;
     if (this.masterGain && this.rawCtx) {
@@ -85,6 +104,209 @@ export class AudioManager {
     if (now - last < throttleMs) return false;
     this.lastPlayTimes.set(key, now);
     return true;
+  }
+
+  // =========================================================================
+  // PROCEDURAL BGM SOUNDTRACK ENGINE (STEP 5.8)
+  // =========================================================================
+
+  playBgmNote(freq, time, duration = 0.45, waveType = 'triangle', filterFreq = 1200, gainLevel = 0.18) {
+    if (!this.rawCtx || !this.bgmGain || this.isMuted) return;
+    try {
+      const osc = this.rawCtx.createOscillator();
+      const noteGain = this.rawCtx.createGain();
+      const filter = this.rawCtx.createBiquadFilter();
+
+      osc.type = waveType;
+      osc.frequency.setValueAtTime(freq, time);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(filterFreq, time);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(100, filterFreq * 0.4), time + duration);
+
+      // Plucked / chime envelope: instant attack, exponential decay
+      noteGain.gain.setValueAtTime(0.0001, time);
+      noteGain.gain.linearRampToValueAtTime(gainLevel, time + 0.015);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+      osc.connect(filter);
+      filter.connect(noteGain);
+      noteGain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + duration + 0.05);
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  playBgmSubBass(freq, time, duration = 1.2, gainLevel = 0.22) {
+    if (!this.rawCtx || !this.bgmGain || this.isMuted) return;
+    try {
+      const osc = this.rawCtx.createOscillator();
+      const noteGain = this.rawCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+
+      noteGain.gain.setValueAtTime(0.0001, time);
+      noteGain.gain.linearRampToValueAtTime(gainLevel, time + 0.08);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+      osc.connect(noteGain);
+      noteGain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + duration + 0.05);
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  playBgmPulse(time, isAccent = false) {
+    if (!this.rawCtx || !this.bgmGain || this.isMuted) return;
+    try {
+      const osc = this.rawCtx.createOscillator();
+      const gain = this.rawCtx.createGain();
+      osc.type = 'sine';
+      const startFreq = isAccent ? 85 : 60;
+      osc.frequency.setValueAtTime(startFreq, time);
+      osc.frequency.exponentialRampToValueAtTime(26, time + 0.12);
+
+      gain.gain.setValueAtTime(isAccent ? 0.2 : 0.12, time);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.14);
+
+      osc.connect(gain);
+      gain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + 0.15);
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  updateBgmTrack(trackName) {
+    if (this.currentBgmTrack === trackName) return;
+    this.playBgmTrack(trackName);
+  }
+
+  playBgmTrack(trackName) {
+    this.currentBgmTrack = trackName;
+    if (trackName === 'none') {
+      this.stopBgm();
+      return;
+    }
+    this.ensureContext();
+    if (!this.rawCtx || !this.bgmGain) return;
+
+    if (!this.bgmTimer) {
+      this.bgmStep = 0;
+      this.bgmNextNoteTime = this.rawCtx.currentTime + 0.05;
+      this.bgmTimer = setInterval(() => this.scheduleBgm(), 75);
+    }
+  }
+
+  stopBgm() {
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+    this.currentBgmTrack = 'none';
+  }
+
+  scheduleBgm() {
+    if (!this.rawCtx || this.currentBgmTrack === 'none' || this.isMuted || this.bgmVolume <= 0) return;
+
+    const scheduleHorizon = this.rawCtx.currentTime + 0.25;
+
+    let stepDuration = 0.28;
+    if (this.currentBgmTrack === 'lobby') stepDuration = 0.28;
+    else if (this.currentBgmTrack === 'dungeon') stepDuration = 0.25;
+    else if (this.currentBgmTrack === 'boss') stepDuration = 0.13;
+
+    while (this.bgmNextNoteTime < scheduleHorizon) {
+      const time = this.bgmNextNoteTime;
+      const step = this.bgmStep;
+
+      if (this.currentBgmTrack === 'lobby') {
+        // Safe haven / campfire melodic plucked arpeggio: A-minor -> F-maj -> C-maj -> G-maj
+        const cycle = step % 32;
+        const lobbyScaleA = [220.00, 261.63, 329.63, 440.00, 329.63, 261.63]; // Am
+        const lobbyScaleF = [174.61, 220.00, 261.63, 349.23, 261.63, 220.00]; // F
+        const lobbyScaleC = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; // C
+        const lobbyScaleG = [196.00, 246.94, 293.66, 392.00, 293.66, 246.94]; // G
+
+        let chordNotes = lobbyScaleA;
+        let bassNote = 110.0; // A2
+        if (cycle >= 8 && cycle < 16) {
+          chordNotes = lobbyScaleF;
+          bassNote = 87.31; // F2
+        } else if (cycle >= 16 && cycle < 24) {
+          chordNotes = lobbyScaleC;
+          bassNote = 130.81; // C3
+        } else if (cycle >= 24) {
+          chordNotes = lobbyScaleG;
+          bassNote = 98.0; // G2
+        }
+
+        // Sub bass drone on chord change (step 0, 8, 16, 24)
+        if (cycle % 8 === 0) {
+          this.playBgmSubBass(bassNote, time, 2.2, 0.22);
+        }
+
+        // Gentle lute arpeggio note
+        const noteIdx = cycle % chordNotes.length;
+        const noteFreq = chordNotes[noteIdx];
+        this.playBgmNote(noteFreq, time, 0.42, 'triangle', 1400, 0.15);
+
+      } else if (this.currentBgmTrack === 'dungeon') {
+        // Dark Phrygian descent in D (D, Eb, F, G, A, Bb, C)
+        const cycle = step % 32;
+        const dungeonScale = [146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 293.66, 311.13];
+
+        // Heartbeat sub-bass kick on steps 0, 8, 16, 24
+        if (cycle % 8 === 0) {
+          this.playBgmPulse(time, true);
+          this.playBgmSubBass(73.42, time, 1.8, 0.25); // D2 sub bass
+        } else if (cycle % 8 === 4) {
+          this.playBgmPulse(time, false);
+        }
+
+        // Ominous bell/chime notes on syncopated beats
+        if (cycle % 4 === 2) {
+          const chimeFreq = dungeonScale[(cycle * 3) % dungeonScale.length];
+          this.playBgmNote(chimeFreq, time, 0.55, 'sine', 950, 0.14);
+        } else if (cycle % 8 === 6) {
+          const dissonantFreq = dungeonScale[(cycle + 1) % dungeonScale.length];
+          this.playBgmNote(dissonantFreq * 1.5, time, 0.45, 'triangle', 750, 0.11);
+        }
+
+      } else if (this.currentBgmTrack === 'boss') {
+        // High-tempo driving battle theme
+        const cycle = step % 16;
+        const bassRiff = [146.83, 146.83, 174.61, 146.83, 220.00, 146.83, 233.08, 146.83];
+        const bassNote = bassRiff[cycle % bassRiff.length];
+
+        // Driving 16th note bassline
+        this.playBgmNote(bassNote, time, 0.11, 'sawtooth', 750, 0.17);
+
+        // Kick pulse on quarter beats
+        if (cycle % 4 === 0) {
+          this.playBgmPulse(time, true);
+          this.playBgmSubBass(73.42, time, 0.4, 0.26);
+        }
+
+        // Dramatic brass lead stabs on steps 4, 10, 14
+        if (cycle === 4 || cycle === 10 || cycle === 14) {
+          const leadFreq = (cycle === 4) ? 293.66 : (cycle === 10 ? 349.23 : 440.00);
+          this.playBgmNote(leadFreq, time, 0.28, 'sawtooth', 1800, 0.2);
+          this.playBgmNote(leadFreq * 1.5, time, 0.28, 'triangle', 2200, 0.13);
+        }
+      }
+
+      this.bgmStep++;
+      this.bgmNextNoteTime += stepDuration;
+    }
   }
 
   // =========================================================================
