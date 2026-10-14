@@ -267,6 +267,35 @@ html, body {
   box-shadow: none;
 }
 
+.dev-armory-hud-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+  border: 1px solid rgba(250, 204, 21, 0.6);
+  color: #fde047;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 0.74rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: auto;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.25);
+}
+
+.dev-armory-hud-btn:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  border-color: #fde047;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.6);
+  transform: translateY(-1px);
+}
+
+.dev-hint kbd {
+  background: #facc15 !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
 /* Modal styling */
 .hidden {
   display: none !important;
@@ -1577,5 +1606,1056 @@ kbd {
   min-width: 180px;
 }
 
+/* ==========================================================================
+   PAID SHOP REFRESH TOOLBAR
+   ========================================================================== */
+.shop-tab-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
 
+.shop-tab-toolbar .tab-description {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
 
+.btn-refresh-shop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fef08a;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+}
+
+.btn-refresh-shop:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5);
+}
+
+.btn-refresh-shop:disabled {
+  background: #334155;
+  color: #64748b;
+  border-color: #475569;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.refresh-icon {
+  display: inline-block;
+  transition: transform 0.4s ease;
+}
+
+.btn-refresh-shop:hover:not(:disabled) .refresh-icon {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   WHEEL OF SLOP IN-WORLD ALTAR MODAL
+   ========================================================================== */
+.wheel-altar-card {
+  width: 90vw;
+  max-width: 680px;
+  background: linear-gradient(180deg, #181528 0%, #0d0b16 100%);
+  border: 2px solid #8b5cf6;
+  box-shadow: 0 0 35px rgba(139, 92, 246, 0.35), 0 20px 50px rgba(0, 0, 0, 0.85);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wheel-altar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.25);
+  padding-bottom: 12px;
+}
+
+.altar-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #c084fc;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid #8b5cf6;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.wheel-altar-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 18px;
+}
+
+.wheel-altar-wager-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wheel-altar-picker-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 280px;
+  max-height: 340px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ==========================================================================
+   BLACKJACK CASINO MODAL
+   ========================================================================== */
+.blackjack-card {
+  width: 95vw;
+  max-width: 820px;
+  background: linear-gradient(180deg, #092e20 0%, #041810 100%);
+  border: 2px solid #10b981;
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.35), 0 25px 60px rgba(0, 0, 0, 0.9);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bj-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+  padding-bottom: 12px;
+}
+
+.casino-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.bj-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+}
+
+.bj-vault-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+.highlight-slop {
+  color: #facc15;
+  font-weight: 800;
+}
+
+/* Casino Felt Arena */
+.bj-table-felt {
+  background: radial-gradient(circle at center, #065f46 0%, #022c22 85%);
+  border: 4px solid #451a03;
+  border-radius: 14px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bj-dealer-zone, .bj-player-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bj-dealer-info, .bj-player-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bj-dealer-avatar {
+  font-size: 1.4rem;
+  background: #1e293b;
+  border: 2px solid #f59e0b;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bj-dealer-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.bj-speech-bubble {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fef08a;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.bj-score-pill {
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.bj-cards-row {
+  display: flex;
+  gap: 10px;
+  min-height: 84px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+/* Individual Playing Card */
+.bj-card {
+  width: 58px;
+  height: 82px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 6px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 0.85rem;
+  user-select: none;
+  transition: transform 0.2s ease;
+  animation: cardDeal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bj-card:hover {
+  transform: translateY(-4px) scale(1.05);
+}
+
+.bj-card.red {
+  color: #ef4444;
+}
+
+.bj-card.black {
+  color: #0f172a;
+}
+
+.bj-card.hole-card {
+  background: linear-gradient(135deg, #991b1b, #450a0a);
+  border: 2px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hole-card-inner {
+  width: 44px;
+  height: 68px;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.2rem;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1;
+}
+
+.card-mid {
+  font-size: 1.4rem;
+  align-self: center;
+  line-height: 1;
+}
+
+.card-bot {
+  align-self: flex-end;
+  line-height: 1;
+  transform: rotate(180deg);
+}
+
+@keyframes cardDeal {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Center Table Felt Info */
+.bj-felt-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-top: 1px dashed rgba(245, 158, 11, 0.3);
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
+  padding: 8px 0;
+}
+
+.bj-arc-text {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: rgba(251, 191, 36, 0.7);
+}
+
+.bj-status-banner {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
+.bj-bet-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+/* Casino Controls Bar */
+.bj-controls-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bj-control-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bj-ctrl-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.bj-chips-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bj-chip-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.bj-chip-btn:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.bj-chip-btn:active {
+  transform: scale(0.95);
+}
+
+.chip-10 {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 3px dashed #64748b;
+}
+
+.chip-25 {
+  background: #ef4444;
+  color: #ffffff;
+  border: 3px dashed #fee2e2;
+}
+
+.chip-50 {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 3px dashed #dbeafe;
+}
+
+.chip-100 {
+  background: #0f172a;
+  color: #facc15;
+  border: 3px dashed #facc15;
+}
+
+.chip-clear, .chip-max {
+  width: auto;
+  height: 38px;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.chip-max {
+  color: #facc15;
+  border-color: #facc15;
+}
+
+.bj-deal-btn {
+  margin-left: auto;
+  min-width: 220px;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.bj-action-btn {
+  flex: 1;
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+
+.bj-action-btn.special-btn {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #ffffff;
+}
+
+.bj-action-btn.special-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+}
+
+/* ==========================================================================
+   GAME OVER / PARTY WIPE & VICTORY SUMMARY MODALS
+   ========================================================================== */
+
+@keyframes gameOverPulse {
+  0%, 100% {
+    box-shadow: 0 0 60px rgba(220, 38, 38, 0.45), inset 0 0 30px rgba(185, 28, 28, 0.25);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 85px rgba(239, 68, 68, 0.65), inset 0 0 45px rgba(220, 38, 38, 0.35);
+    border-color: rgba(248, 113, 113, 1);
+  }
+}
+
+@keyframes victoryGlow {
+  0%, 100% {
+    box-shadow: 0 0 70px rgba(245, 158, 11, 0.4), 0 0 35px rgba(6, 182, 212, 0.3);
+    border-color: rgba(251, 191, 36, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 95px rgba(251, 191, 36, 0.6), 0 0 50px rgba(6, 182, 212, 0.45);
+    border-color: rgba(254, 240, 138, 1);
+  }
+}
+
+@keyframes bounceFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.game-over-card {
+  max-width: 580px;
+  width: 95%;
+  background: radial-gradient(circle at 50% 20%, rgba(55, 10, 18, 0.98), rgba(15, 3, 6, 0.98));
+  border: 2px solid rgba(239, 68, 68, 0.75);
+  box-shadow: 0 0 60px rgba(220, 38, 38, 0.45);
+  animation: gameOverPulse 3s infinite ease-in-out;
+  padding: 28px 32px;
+  gap: 16px;
+}
+
+.game-over-banner, .victory-banner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.skull-badge {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  animation: bounceFloat 2.4s infinite ease-in-out;
+  filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.8));
+}
+
+.game-over-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #ef4444;
+  text-shadow: 0 0 25px rgba(239, 68, 68, 0.85);
+  margin-bottom: 4px;
+}
+
+.game-over-subtitle {
+  font-size: 0.9rem;
+  color: #fca5a5;
+  font-weight: 500;
+}
+
+.run-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.run-stat-item {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.run-stat-item .stat-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+}
+
+.run-stat-item .stat-val {
+  font-size: 1.15rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.stat-val.red-val {
+  color: #ef4444;
+}
+
+.stat-val.cyan-val {
+  color: #00f0ff;
+}
+
+.stat-val.gold-val {
+  color: #facc15;
+}
+
+.run-mvp-box {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mvp-crown {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.8));
+}
+
+.mvp-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvp-tag {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #f59e0b;
+  letter-spacing: 1px;
+}
+
+.mvp-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mvp-damage {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.party-wipe-roster-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.wipe-roster-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.6px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.party-wipe-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.party-member-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+.member-avatar-mini {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.member-status-dead {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ef4444;
+}
+
+.member-status-alive {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #22c55e;
+}
+
+.modal-actions-dual {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.run-decision-btn {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
+}
+
+.run-decision-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  border: 1px solid #f87171;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
+}
+
+.danger-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.65);
+}
+
+.host-notice {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
+  font-style: italic;
+  margin-top: -6px;
+}
+
+/* ==========================================================================
+   Dev Armory Modal & Sandbox Selector Styles
+   ========================================================================== */
+.dev-armory-card {
+  max-width: 820px;
+  width: 95%;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-color: rgba(250, 204, 21, 0.45);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  background: rgba(15, 20, 30, 0.96);
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dev-armory-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 14px;
+}
+
+.armory-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 2px 8px rgba(250, 204, 21, 0.5));
+}
+
+.armory-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.armory-section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fde047;
+  letter-spacing: 0.8px;
+}
+
+.armory-sets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.armory-set-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+}
+
+.armory-set-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.set-btn-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.set-btn-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.gojo-set-btn {
+  border-color: rgba(0, 240, 255, 0.4);
+}
+.gojo-set-btn:hover {
+  border-color: #00f0ff;
+  box-shadow: 0 4px 16px rgba(0, 240, 255, 0.25);
+}
+.gojo-set-btn .set-btn-name {
+  color: #00f0ff;
+}
+
+.sukuna-set-btn {
+  border-color: rgba(255, 42, 95, 0.4);
+}
+.sukuna-set-btn:hover {
+  border-color: #ff2a5f;
+  box-shadow: 0 4px 16px rgba(255, 42, 95, 0.25);
+}
+.sukuna-set-btn .set-btn-name {
+  color: #ff2a5f;
+}
+
+.toji-set-btn {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.toji-set-btn:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.25);
+}
+.toji-set-btn .set-btn-name {
+  color: #38bdf8;
+}
+
+.guts-set-btn {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.guts-set-btn:hover {
+  border-color: #ef4444;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+.guts-set-btn .set-btn-name {
+  color: #ef4444;
+}
+
+.levi-set-btn {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.levi-set-btn:hover {
+  border-color: #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+.levi-set-btn .set-btn-name {
+  color: #10b981;
+}
+
+.david-set-btn {
+  border-color: rgba(0, 255, 136, 0.4);
+}
+.david-set-btn:hover {
+  border-color: #00ff88;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.25);
+}
+.david-set-btn .set-btn-name {
+  color: #00ff88;
+}
+
+.starter-set-btn {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+.starter-set-btn:hover {
+  border-color: #94a3b8;
+}
+.starter-set-btn .set-btn-name {
+  color: #cbd5e1;
+}
+
+.unequip-set-btn {
+  border-color: rgba(248, 113, 113, 0.3);
+}
+.unequip-set-btn:hover {
+  border-color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+}
+.unequip-set-btn .set-btn-name {
+  color: #fca5a5;
+}
+
+.armory-filter-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.armory-tab-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.armory-tab-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.armory-tab-btn.active {
+  background: #facc15;
+  color: #0f172a;
+  border-color: #facc15;
+  font-weight: 800;
+}
+
+.armory-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.armory-item-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px 12px;
+  gap: 6px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.armory-item-card:hover {
+  transform: translateY(-1px);
+}
+
+.armory-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.armory-item-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.armory-item-slot-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.armory-item-stats {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.armory-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.armory-action-btn {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s ease;
+}
+
+.armory-equip-btn {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #38bdf8;
+}
+
+.armory-equip-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.armory-bag-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+}
+
+.armory-bag-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}

@@ -15,27 +15,25 @@ import { CinematicManager } from './cinematics.js';
 import { Dungeon, DUNGEON_THEMES } from './dungeon.js';
 import { Monster, MonsterManager } from './monster.js';
 import { SlopMerchant } from './slopMerchant.js';
+import { WheelAltar } from './wheelAltar.js';
+import { BlackjackTable } from './blackjackTable.js';
+import { BlackjackGame } from './blackjack.js';
+import { DevArmoryChest } from './devArmoryChest.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
 const input = new InputManager();
 const player = new Player(0, 0);
 
-// Start equipped as Humanity's Strongest Soldier (Levi Ackerman)
-player.equipItem(ITEM_CATALOG['scout_hood']);
-player.equipItem(ITEM_CATALOG['odm_harness']);
-player.equipItem(ITEM_CATALOG['scout_trousers']);
-player.equipItem(ITEM_CATALOG['scout_boots']);
-player.equipItem(ITEM_CATALOG['dual_snap_blades']);
+// Start with standard starter adventurer gear (clean roguelike progression)
+player.equipItem(ITEM_CATALOG['rusty_sword']);
+player.equipItem(ITEM_CATALOG['leather_tunic']);
+player.equipItem(ITEM_CATALOG['cloth_pants']);
+player.equipItem(ITEM_CATALOG['travel_boots']);
 
-// Store starter dungeon gear in backpack inventory
+// Store backup wooden buckler in backpack inventory
 player.inventory.push(
-  ITEM_CATALOG['rusty_sword'],
-  ITEM_CATALOG['wooden_buckler'],
-  ITEM_CATALOG['iron_visor'],
-  ITEM_CATALOG['leather_tunic'],
-  ITEM_CATALOG['cloth_pants'],
-  ITEM_CATALOG['travel_boots']
+  ITEM_CATALOG['wooden_buckler']
 );
 
 const audio = new AudioManager();
@@ -49,59 +47,10 @@ const dummy = new Dummy(0, -180);
 const readyCircle = new ReadyCircle(0, 160, 75);
 const wardrobeStation = new CustomizationStation(-240, -120);
 const floorStation = new FloorSelectStation(240, -120);
+const devArmoryChest = new DevArmoryChest(-240, 160);
 
-// Ground loot items in world (trading & drops)
+// Ground loot items in world (trading & dungeon drops) - clean base camp floor
 const groundItems = new Map();
-
-// Spawn Batch 1 Anime Demo Sets across the lobby!
-const batch1Loot = [
-  // Gojo items
-  new GroundLoot(ITEM_CATALOG['gojo_blindfold'], -160, -40, 'loot_gojo_blindfold'),
-  new GroundLoot(ITEM_CATALOG['gojo_tunic'], -120, -40, 'loot_gojo_tunic'),
-  new GroundLoot(ITEM_CATALOG['gojo_slacks'], -80, -40, 'loot_gojo_slacks'),
-  new GroundLoot(ITEM_CATALOG['gojo_loafers'], -40, -40, 'loot_gojo_loafers'),
-  new GroundLoot(ITEM_CATALOG['lapse_blue'], 0, -40, 'loot_lapse_blue'),
-  new GroundLoot(ITEM_CATALOG['reversal_red'], 40, -40, 'loot_reversal_red'),
-
-  // Sukuna items
-  new GroundLoot(ITEM_CATALOG['sukuna_crown'], -160, 20, 'loot_sukuna_crown'),
-  new GroundLoot(ITEM_CATALOG['sukuna_robe'], -120, 20, 'loot_sukuna_robe'),
-  new GroundLoot(ITEM_CATALOG['sukuna_hakama'], -80, 20, 'loot_sukuna_hakama'),
-  new GroundLoot(ITEM_CATALOG['sukuna_zori'], -40, 20, 'loot_sukuna_zori'),
-  new GroundLoot(ITEM_CATALOG['sukuna_kamutoke'], 0, 20, 'loot_sukuna_kamutoke'),
-  new GroundLoot(ITEM_CATALOG['sukuna_cleaver'], 40, 20, 'loot_sukuna_cleaver'),
-
-  // Toji items
-  new GroundLoot(ITEM_CATALOG['toji_worm'], 100, -40, 'loot_toji_worm'),
-  new GroundLoot(ITEM_CATALOG['toji_shirt'], 140, -40, 'loot_toji_shirt'),
-  new GroundLoot(ITEM_CATALOG['toji_pants'], 180, -40, 'loot_toji_pants'),
-  new GroundLoot(ITEM_CATALOG['toji_slippers'], 220, -40, 'loot_toji_slippers'),
-  new GroundLoot(ITEM_CATALOG['inverted_spear_chain'], 260, -40, 'loot_inverted_spear_chain'),
-
-  // Guts items
-  new GroundLoot(ITEM_CATALOG['guts_beast_helm'], 100, 20, 'loot_guts_beast_helm'),
-  new GroundLoot(ITEM_CATALOG['guts_berserker_plate'], 140, 20, 'loot_guts_berserker_plate'),
-  new GroundLoot(ITEM_CATALOG['guts_greaves'], 180, 20, 'loot_guts_greaves'),
-  new GroundLoot(ITEM_CATALOG['guts_sollerets'], 220, 20, 'loot_guts_sollerets'),
-  new GroundLoot(ITEM_CATALOG['dragon_slayer'], 260, 20, 'loot_dragon_slayer'),
-
-  // Levi items (Attack on Titan)
-  new GroundLoot(ITEM_CATALOG['scout_hood'], -160, 80, 'loot_scout_hood'),
-  new GroundLoot(ITEM_CATALOG['odm_harness'], -120, 80, 'loot_odm_harness'),
-  new GroundLoot(ITEM_CATALOG['scout_trousers'], -80, 80, 'loot_scout_trousers'),
-  new GroundLoot(ITEM_CATALOG['scout_boots'], -40, 80, 'loot_scout_boots'),
-  new GroundLoot(ITEM_CATALOG['dual_snap_blades'], 0, 80, 'loot_dual_snap_blades'),
-
-  // David Martinez items (Cyberpunk: Edgerunners)
-  new GroundLoot(ITEM_CATALOG['david_kiroshi'], 60, 80, 'loot_david_kiroshi'),
-  new GroundLoot(ITEM_CATALOG['david_jacket'], 100, 80, 'loot_david_jacket'),
-  new GroundLoot(ITEM_CATALOG['david_pants'], 140, 80, 'loot_david_pants'),
-  new GroundLoot(ITEM_CATALOG['david_sneakers'], 180, 80, 'loot_david_sneakers'),
-  new GroundLoot(ITEM_CATALOG['david_shotgun'], 220, 80, 'loot_david_shotgun'),
-  new GroundLoot(ITEM_CATALOG['david_gorilla_arms'], 260, 80, 'loot_david_gorilla_arms')
-];
-
-batch1Loot.forEach((loot) => groundItems.set(loot.id, loot));
 
 const dungeonBounds = { minX: -600, minY: -600, maxX: 600, maxY: 600 };
 
@@ -119,6 +68,9 @@ window.addEventListener('click', unlockAudio, { passive: true });
 let currentFloor = 0; // 0 = Safe Lobby Base Camp, 1+ = Procedural Dungeon Floors
 let currentDungeon = null;
 let slopMerchant = null;
+let wheelAltar = null;
+let blackjackTable = null;
+const blackjackGame = new BlackjackGame();
 const monsterManager = new MonsterManager();
 
 // --- SHARED SLOPS PARTY WALLET & COIN DROPS ---
@@ -136,6 +88,40 @@ function broadcastSlops() {
   const msg = { type: 'SLOPS_SYNC', amount: sharedSlops };
   if (network.isHost) network.broadcast(msg);
   else network.sendToHost(msg);
+}
+
+// --- RUN STATISTICS TRACKER (STEP 5.2) ---
+const runStats = {
+  startTime: null,
+  totalKills: 0,
+  slopsEarned: 0,
+  damageDealt: new Map(), // peerId or 'local' -> damage number
+  isRunOver: false,
+  highestFloor: 0
+};
+
+function recordDamageDealt(source = 'local', amount = 0) {
+  if (!amount || amount <= 0) return;
+  const current = runStats.damageDealt.get(source) || 0;
+  runStats.damageDealt.set(source, current + amount);
+}
+
+function getRunMvp() {
+  let highestDmg = 0;
+  let mvpName = player.name || 'Hero';
+
+  for (const [peerId, dmg] of runStats.damageDealt.entries()) {
+    if (dmg > highestDmg) {
+      highestDmg = dmg;
+      if (peerId === 'local') {
+        mvpName = player.name || 'Hero';
+      } else {
+        const remote = network.remotePlayers.get(peerId);
+        mvpName = remote ? (remote.name || `Player ${peerId.slice(0, 4)}`) : 'Teammate';
+      }
+    }
+  }
+  return { name: mvpName, damage: highestDmg };
 }
 
 class SlopCoin {
@@ -220,6 +206,9 @@ updateSlopsUI();
 
 // Monster Death Callbacks
 monsterManager.onMonsterKilled = (monster) => {
+  if (currentFloor >= 1) {
+    runStats.totalKills++;
+  }
   const isCyber = monster.theme === 'cyberpunk' || (currentDungeon && currentDungeon.themeKey === 'cyberpunk');
   const isAot = monster.theme === 'aot' || (currentDungeon && currentDungeon.themeKey === 'aot');
   const isBoss = monster.archetype === 'boss';
@@ -245,6 +234,15 @@ monsterManager.onMonsterKilled = (monster) => {
 
   // Drop Slops coins from defeated monster! (Will home towards the killer player if left uncollected)
   const killer = monster.lastAttacker || player;
+
+  if (monster.archetype === 'exploder' && !monster.hasExploded) {
+    particles.spawnComicText(monster.x, monster.y - 38, 'DISARMED! +4 SLOPS 🪙', '#fde047');
+    spawnSlopCoins(monster.x, monster.y, 4, 5, killer);
+  } else if (monster.archetype === 'shaman') {
+    particles.spawnComicText(monster.x, monster.y - 38, 'WARD CRUSHED! +3 SLOPS 🪙', '#38bdf8');
+    spawnSlopCoins(monster.x, monster.y, 3, 5, killer);
+  }
+
   spawnSlopCoins(monster.x, monster.y, 2 + Math.floor(Math.random() * 3), 5, killer);
 
   // 35% chance to drop a minor heal orb
@@ -346,15 +344,44 @@ monsterManager.onBossKilled = (boss) => {
   }
 };
 
+function hasStandingTeammates() {
+  if (!network.remotePlayers || network.remotePlayers.size === 0) {
+    return false;
+  }
+  return [...network.remotePlayers.values()].some(r => r && !r.isDowned && !r.isDead);
+}
+
+function hitPlayer(damage, angle, knockback, sourceLabel = null, color = '#ef4444') {
+  const canBeDowned = hasStandingTeammates();
+  const res = player.takeDamage(damage, angle, knockback, canBeDowned);
+  if (!res) return false;
+
+  if (res.becameDead) {
+    audio.playBonk();
+    cinematics.addScreenShake(12);
+    particles.spawnComicText(player.x, player.y - 28, 'YOU DIED! 💀', '#ef4444');
+  } else if (res.becameDowned) {
+    audio.playPlayerDowned();
+    cinematics.addScreenShake(12);
+    particles.spawnComicText(player.x, player.y - 28, 'DOWNED! 🩸 CRAWL TO TEAMMATES!', '#ef4444');
+  } else if (res.isBleedAccelerated) {
+    audio.playBonk();
+    cinematics.addScreenShake(4);
+    particles.spawnComicText(player.x, player.y - 22, `-3.0s BLEED! 🩸 (${Math.ceil(res.downedTimer)}s)`, '#ef4444');
+  } else {
+    audio.playBonk();
+    const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : (sourceLabel || `-${res.damage}`));
+    particles.spawnComicText(player.x, player.y - 24, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : color));
+  }
+  player.syncHUD();
+  broadcastMyState();
+  return res;
+}
+
 function applyDamageToTarget(target, damage, angle, knockback, sourceLabel, color) {
   if (!target) return;
   if (target === player) {
-    const res = player.takeDamage(damage, angle, knockback);
-    if (res) {
-      const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : sourceLabel);
-      particles.spawnComicText(player.x, player.y - 20, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : color));
-      broadcastMyState();
-    }
+    hitPlayer(damage, angle, knockback, sourceLabel, color);
   } else if (typeof target.takeDamage === 'function') {
     target.takeDamage(damage, angle, knockback);
     particles.spawnComicText(target.x, target.y - 20, sourceLabel, color);
@@ -443,6 +470,22 @@ function populateFloorMonsters(dungeon) {
           radius = 20;
           speed = 115;
           name = 'Tyger Claw Cyber-Gunner';
+        } else if (m === 3) {
+          // 1 Kamikaze Exploder
+          monsterType = 'arasaka_drone_suicide';
+          archetype = 'exploder';
+          hp = 48;
+          radius = 18;
+          speed = 230;
+          name = 'Arasaka Suicide Drone';
+        } else if (m === 4) {
+          // 1 Support Shaman Buffer
+          monsterType = 'netrunner_overseer';
+          archetype = 'shaman';
+          hp = 125;
+          radius = 22;
+          speed = 135;
+          name = 'Netrunner Overseer';
         } else {
           // Swarmers
           monsterType = 'arasaka_drone';
@@ -469,6 +512,22 @@ function populateFloorMonsters(dungeon) {
           radius = 20;
           speed = 110;
           name = 'Marleyan Heavy Rifleman';
+        } else if (m === 3) {
+          // 1 Kamikaze Exploder
+          monsterType = 'pure_titan_bomb';
+          archetype = 'exploder';
+          hp = 50;
+          radius = 19;
+          speed = 225;
+          name = 'Volatile Abnormal Titan';
+        } else if (m === 4) {
+          // 1 Support Shaman Buffer
+          monsterType = 'marleyan_commander';
+          archetype = 'shaman';
+          hp = 130;
+          radius = 23;
+          speed = 130;
+          name = 'Marleyan Signal Commander';
         } else {
           // Pure Titan Swarmers
           monsterType = 'crawler_titan';
@@ -496,6 +555,22 @@ function populateFloorMonsters(dungeon) {
           radius = 20;
           speed = 120;
           name = 'Masked Ino Cursed Spirit';
+        } else if (m === 3) {
+          // 1 Kamikaze Exploder
+          monsterType = 'cursed_bomb_bug';
+          archetype = 'exploder';
+          hp = 46;
+          radius = 18;
+          speed = 230;
+          name = 'Volatile Curse Beetle';
+        } else if (m === 4) {
+          // 1 Support Shaman Buffer
+          monsterType = 'cursed_shaman';
+          archetype = 'shaman';
+          hp = 120;
+          radius = 22;
+          speed = 130;
+          name = 'Cursed Ward Shaman';
         }
       }
 
@@ -615,6 +690,53 @@ function populateFloorMonsters(dungeon) {
                 applyDamageToTarget(target, 38, monster.angle, 520, '-38 SLAM!', '#f97316');
               }
             }
+          }
+        };
+      } else if (archetype === 'exploder') {
+        monster.onPrimeStart = () => {
+          particles.spawnComicText(monster.x, monster.y - 30, '⚠️ PRIMING! 1.0s', '#ef4444');
+        };
+        monster.onBeep = () => {
+          audio.playFuseBeep();
+        };
+        monster.onExplode = (m) => {
+          audio.playExplosion();
+          cinematics.addScreenShake(16);
+          particles.spawnDashBurst(m.x, m.y, 0, '#ef4444');
+          particles.spawnComicText(m.x, m.y - 36, '💥 KAMIKAZE DETONATION! 65 DMG', '#ef4444');
+
+          // AoE damage to players
+          const allPlayers = [player, ...network.remotePlayers.values()].filter(p => p && !p.isDead);
+          for (const p of allPlayers) {
+            const pDist = Math.hypot(p.x - m.x, p.y - m.y);
+            if (pDist <= m.explosionRadius + (p.radius || 22)) {
+              const pAng = Math.atan2(p.y - m.y, p.x - m.x);
+              applyDamageToTarget(p, m.explosionDamage, pAng, 650, '-65 KAMIKAZE BLAST! 💥', '#ef4444');
+            }
+          }
+
+          // AoE damage to other monsters within radius!
+          const otherMonsters = monsterManager.getNearbyMonsters(m.x, m.y, m.explosionRadius);
+          for (const other of otherMonsters) {
+            if (other !== m && !other.isDead) {
+              const oAng = Math.atan2(other.y - m.y, other.x - m.x);
+              other.takeHit(m.explosionDamage, oAng, 550, true);
+              particles.spawnComicText(other.x, other.y - 20, '-65 BLAST! 💥', '#f97316');
+            }
+          }
+        };
+      } else if (archetype === 'shaman') {
+        monster.onChannelStart = (m) => {
+          particles.spawnComicText(m.x, m.y - 32, '✨ CHANTING WARD... ✨', '#fbbf24');
+        };
+        monster.onShamanBuff = (m, buffedTargets) => {
+          audio.playShamanBuff();
+          cinematics.addScreenShake(7);
+          particles.spawnDashBurst(m.x, m.y, 0, '#fbbf24');
+          particles.spawnComicText(m.x, m.y - 36, '🛡️ PROTECTIVE WARD! +40', '#fde047');
+          for (const target of buffedTargets) {
+            particles.spawnComicText(target.x, target.y - 24, 'WARDED! +40 🛡️', '#38bdf8');
+            particles.spawnDashBurst(target.x, target.y, 0, '#38bdf8');
           }
         };
       }
@@ -1301,6 +1423,27 @@ function startFloorDescent(floorNumber, broadcast = true) {
   audio.playDescentFanfare();
   cinematics.addScreenShake(10);
 
+  if (floorNumber === 1) {
+    runStats.startTime = performance.now();
+    runStats.totalKills = 0;
+    runStats.slopsEarned = 0;
+    runStats.damageDealt.clear();
+    runStats.damageDealt.set('local', 0);
+  }
+  runStats.isRunOver = false;
+  runStats.highestFloor = Math.max(runStats.highestFloor, floorNumber);
+
+  // Restore player from downed or dead state upon starting a new floor/run
+  player.isDowned = false;
+  player.isDead = false;
+  player.downedTimer = 0;
+  player.reviveProgress = 0;
+  player.hp = player.maxHp;
+  player.syncHUD();
+
+  const gameOverModalEl = document.getElementById('game-over-modal');
+  if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
+
   // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, subsequent cycle
   const themePool = ['jjk', 'cyberpunk', 'aot'];
   const themeKey = themePool[(floorNumber - 1) % themePool.length];
@@ -1319,11 +1462,18 @@ function startFloorDescent(floorNumber, broadcast = true) {
   groundItems.clear();
   slopCoins.length = 0;
 
-  // Spawn Slop Merchant in Merchant Sanctum
+  // Spawn Slop Merchant, Wheel Altar & Blackjack Table in Merchant Sanctum
   if (currentDungeon.merchantRoom) {
-    slopMerchant = new SlopMerchant(currentDungeon.merchantRoom.centerX, currentDungeon.merchantRoom.centerY);
+    const mx = currentDungeon.merchantRoom.centerX;
+    const my = currentDungeon.merchantRoom.centerY;
+    slopMerchant = new SlopMerchant(mx, my);
+    slopMerchant.generateWares(currentFloor, ITEM_CATALOG);
+    wheelAltar = new WheelAltar(mx - 240, my - 40);
+    blackjackTable = new BlackjackTable(mx + 240, my - 40);
   } else {
     slopMerchant = null;
+    wheelAltar = null;
+    blackjackTable = null;
   }
 
   if (network.isHost || !network.isConnected) {
@@ -1343,7 +1493,8 @@ function startFloorDescent(floorNumber, broadcast = true) {
     network.broadcast({
       type: 'DUNGEON_FLOOR_SYNC',
       floorNumber: currentFloor,
-      dungeonData: currentDungeon.getSyncData()
+      dungeonData: currentDungeon.getSyncData(),
+      merchantStock: slopMerchant ? slopMerchant.stock.map(s => ({ itemId: s.item.id, price: s.price })) : null
     });
   }
 
@@ -1366,9 +1517,22 @@ function returnToLobby(broadcast = true) {
   currentFloor = 0;
   currentDungeon = null;
   slopMerchant = null;
+  wheelAltar = null;
+  blackjackTable = null;
   slopCoins.length = 0;
   monsterManager.clear();
   groundItems.clear();
+
+  runStats.isRunOver = false;
+  player.isDowned = false;
+  player.isDead = false;
+  player.downedTimer = 0;
+  player.reviveProgress = 0;
+  player.hp = player.maxHp;
+  player.syncHUD();
+
+  const gameOverModalEl = document.getElementById('game-over-modal');
+  if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
 
   // Re-spawn batch 1 demo gear in lobby
   batch1Loot.forEach((loot) => groundItems.set(loot.id, loot));
@@ -1497,7 +1661,8 @@ function renderInventoryUI() {
       setBadge.style.background = `${activeSet.color}22`;
       setBadge.style.border = `1px solid ${activeSet.color}`;
       setBadge.style.color = activeSet.color;
-      setBadge.innerHTML = `✨ SET BONUS ACTIVE: ${activeSet.name} — [Q] REPLACED WITH ${activeSet.ultimateQ.toUpperCase().replace(/_/g, ' ')}!`;
+      const ultName = activeSet.ultimateTitle || activeSet.ultimateQ.toUpperCase().replace(/_/g, ' ');
+      setBadge.innerHTML = `✨ SET BONUS ACTIVE: ${activeSet.name} — [Q] REPLACED WITH ${ultName}!`;
     } else {
       setBadge.style.display = 'none';
     }
@@ -1693,17 +1858,9 @@ const forgeInventoryGrid = document.getElementById('forge-inventory-grid');
 const btnExecuteForge = document.getElementById('btn-execute-forge');
 const btnClearForge = document.getElementById('btn-clear-forge');
 const forgeSlotResult = document.getElementById('forge-slot-result');
-const wheelInventoryGrid = document.getElementById('wheel-inventory-grid');
-const btnSpinWheel = document.getElementById('btn-spin-wheel');
-const wheelWagerSlot = document.getElementById('wheel-wager-slot');
-const wheelResultMsg = document.getElementById('wheel-result-message');
-const wheelCanvas = document.getElementById('wheel-canvas');
 
 let activeMerchantTab = 'shop';
 let forgeSlots = [null, null, null];
-let wheelWagerItem = null;
-let isWheelSpinning = false;
-let currentWheelAngle = 0;
 
 function openMerchantModal() {
   if (!merchantModal) return;
@@ -1712,7 +1869,7 @@ function openMerchantModal() {
   switchMerchantTab(activeMerchantTab);
   audio.playSwing();
   if (slopMerchant) {
-    slopMerchant.say('Welcome to the Slop Emporium! Best prices in the crypts! 💰', '#fbbf24', 4.0);
+    slopMerchant.sayRandomGreeting();
   }
 }
 
@@ -1750,7 +1907,6 @@ function switchMerchantTab(tabName) {
   if (tabName === 'shop') renderShopTab();
   else if (tabName === 'sell') renderSellTab();
   else if (tabName === 'forge') renderForgeTab();
-  else if (tabName === 'wheel') renderWheelTab();
 }
 
 // 1. SUPPLIES SHOP
@@ -1758,14 +1914,19 @@ function renderShopTab() {
   if (!shopItemsGrid) return;
   shopItemsGrid.innerHTML = '';
 
-  const shopStock = [
-    { item: ITEM_CATALOG['health_flask'] || { id: 'health_flask', name: 'Health Flask', slot: 'consumable', rarity: 'COMMON', desc: 'Restores +45 HP instantly on use!' }, price: 25 },
-    { item: ITEM_CATALOG['stamina_tonic'] || { id: 'stamina_tonic', name: 'Stamina Tonic', slot: 'consumable', rarity: 'COMMON', desc: 'Refills stamina & grants +20% move speed!' }, price: 20 },
-    { item: ITEM_CATALOG['crystal_blade'] || ITEM_CATALOG['rusty_sword'], price: 75 },
-    { item: ITEM_CATALOG['knight_shield'] || ITEM_CATALOG['wooden_buckler'], price: 60 },
-    { item: ITEM_CATALOG['iron_plate'] || ITEM_CATALOG['leather_tunic'], price: 80 },
-    { item: ITEM_CATALOG['travel_boots'], price: 40 }
-  ];
+  if (slopMerchant && (!slopMerchant.stock || slopMerchant.stock.length === 0)) {
+    slopMerchant.generateWares(currentFloor, ITEM_CATALOG);
+  }
+
+  const shopStock = slopMerchant ? slopMerchant.stock : [];
+
+  const btnRefresh = document.getElementById('btn-refresh-shop');
+  const refreshCostText = document.getElementById('refresh-cost-text');
+  if (btnRefresh && slopMerchant) {
+    const cost = slopMerchant.refreshCost || 25;
+    if (refreshCostText) refreshCostText.textContent = cost;
+    btnRefresh.disabled = sharedSlops < cost;
+  }
 
   shopStock.forEach(({ item, price }) => {
     if (!item) return;
@@ -1812,10 +1973,37 @@ function renderShopTab() {
 
       audio.playShopBuy();
       particles.spawnComicText(player.x, player.y - 30, `BOUGHT ${item.name}! 🛍️`, '#fbbf24');
+      if (slopMerchant) slopMerchant.sayRandomBuy(item.name);
       updateSlopsUI();
       broadcastSlops();
       renderShopTab();
     });
+  });
+}
+
+const btnRefreshShop = document.getElementById('btn-refresh-shop');
+if (btnRefreshShop) {
+  btnRefreshShop.addEventListener('click', () => {
+    if (!slopMerchant) return;
+    const cost = slopMerchant.refreshCost || 25;
+    if (sharedSlops < cost) return;
+
+    sharedSlops -= cost;
+    updateSlopsUI();
+    broadcastSlops();
+
+    slopMerchant.refreshStock(currentFloor, ITEM_CATALOG);
+    if (audio.playCashReroll) audio.playCashReroll();
+    particles.spawnComicText(player.x, player.y - 35, `-${cost} SLOPS (REROLLED 🔄)`, '#facc15');
+
+    const refreshMsg = {
+      type: 'SHOP_WARES_REFRESH',
+      stock: slopMerchant.stock.map(s => ({ itemId: s.item.id, price: s.price }))
+    };
+    if (network.isHost) network.broadcast(refreshMsg);
+    else network.sendToHost(refreshMsg);
+
+    renderShopTab();
   });
 }
 
@@ -1859,6 +2047,7 @@ function renderSellTab() {
         sharedSlops += price;
         audio.playShopSell();
         particles.spawnComicText(player.x, player.y - 30, `+${price} SLOPS 🪙`, '#4ade80');
+        if (slopMerchant) slopMerchant.sayRandomSell();
         updateSlopsUI();
         broadcastSlops();
         renderSellTab();
@@ -1988,107 +2177,55 @@ if (btnExecuteForge) {
   });
 }
 
-// 4. SPIN-A-WHEEL GACHA
-function drawWheel(angle = 0) {
-  if (!wheelCanvas) return;
-  const ctx = wheelCanvas.getContext('2d');
-  const w = wheelCanvas.width;
-  const h = wheelCanvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const r = w / 2 - 8;
+// --- IN-WORLD WHEEL OF SLOP ALTAR MODAL LOGIC ---
+const wheelAltarModal = document.getElementById('wheel-altar-modal');
+const btnCloseWheelAltar = document.getElementById('btn-close-wheel-altar');
+const altarWagerSlot = document.getElementById('altar-wager-slot');
+const btnAltarSpinWheel = document.getElementById('btn-altar-spin-wheel');
+const altarInventoryGrid = document.getElementById('altar-inventory-grid');
+let altarWagerItem = null;
 
-  ctx.clearRect(0, 0, w, h);
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(angle);
-
-  // 3 Sectors conforming strictly to user specs:
-  // Sector 0: 50% = Math.PI radians (Ancur)
-  // Sector 1: 45% = 0.90 * Math.PI radians (Upgrade)
-  // Sector 2: 5%  = 0.10 * Math.PI radians (Jackpot)
-  const sectors = [
-    { start: 0, end: Math.PI, color: '#ef4444', label: '💀 ANCUR (50%)', textColor: '#ffffff' },
-    { start: Math.PI, end: Math.PI * 1.9, color: '#10b981', label: '⬆️ UPGRADE (45%)', textColor: '#ffffff' },
-    { start: Math.PI * 1.9, end: Math.PI * 2, color: '#f59e0b', label: '👑 JACKPOT (5%)', textColor: '#170f03' }
-  ];
-
-  for (const s of sectors) {
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, r, s.start, s.end);
-    ctx.closePath();
-    ctx.fillStyle = s.color;
-    ctx.fill();
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Text label along wedge bisector
-    const midAngle = (s.start + s.end) / 2;
-    ctx.save();
-    ctx.rotate(midAngle);
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = s.textColor;
-    ctx.font = 'bold 11px Outfit, sans-serif';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(s.label, r - 16, 0);
-    ctx.restore();
+function openWheelAltarModal() {
+  if (!wheelAltarModal) return;
+  if (wheelAltar && wheelAltar.isSpinning) {
+    particles.spawnComicText(player.x, player.y - 35, `⚠️ IN USE BY ${wheelAltar.activeSpinnerName || 'FRIEND'}!`, '#f59e0b');
+    return;
   }
-
-  // Outer gold rim & tick pegs
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Draw 16 golden tick pegs along rim
-  ctx.fillStyle = '#fbbf24';
-  for (let p = 0; p < 16; p++) {
-    const pegAngle = (p / 16) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.arc(Math.cos(pegAngle) * (r - 2), Math.sin(pegAngle) * (r - 2), 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Center hub peg
-  ctx.fillStyle = '#1e293b';
-  ctx.beginPath();
-  ctx.arc(0, 0, 20, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.arc(0, 0, 10, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
+  wheelAltarModal.classList.remove('hidden');
+  altarWagerItem = null;
+  renderWheelAltarModal();
+  audio.playSwing();
 }
 
-function renderWheelTab() {
-  drawWheel(currentWheelAngle);
+function closeWheelAltarModal() {
+  if (!wheelAltarModal) return;
+  wheelAltarModal.classList.add('hidden');
+}
 
-  if (wheelWagerSlot) {
-    if (wheelWagerItem) {
-      const rarity = ItemRarity[wheelWagerItem.rarity] || ItemRarity.COMMON;
-      wheelWagerSlot.className = 'forge-slot wager-slot filled';
-      wheelWagerSlot.innerHTML = `<span style="color:${rarity.color}">${wheelWagerItem.name}</span><span style="font-size:0.65rem; color:#94a3b8;">(${wheelWagerItem.rarity})</span>`;
+if (btnCloseWheelAltar) {
+  btnCloseWheelAltar.addEventListener('click', closeWheelAltarModal);
+}
+
+function renderWheelAltarModal() {
+  if (altarWagerSlot) {
+    if (altarWagerItem) {
+      const rarity = ItemRarity[altarWagerItem.rarity] || ItemRarity.COMMON;
+      altarWagerSlot.className = 'forge-slot wager-slot filled';
+      altarWagerSlot.innerHTML = `<span style="color:${rarity.color}">${altarWagerItem.name}</span><span style="font-size:0.65rem; color:#94a3b8;">(${altarWagerItem.rarity})</span>`;
     } else {
-      wheelWagerSlot.className = 'forge-slot wager-slot';
-      wheelWagerSlot.innerHTML = 'Select Item Below';
+      altarWagerSlot.className = 'forge-slot wager-slot';
+      altarWagerSlot.innerHTML = 'Select Item Below';
     }
   }
 
-  if (btnSpinWheel) {
-    btnSpinWheel.disabled = !wheelWagerItem || isWheelSpinning;
+  if (btnAltarSpinWheel) {
+    btnAltarSpinWheel.disabled = !altarWagerItem || (wheelAltar && wheelAltar.isSpinning);
   }
 
-  if (wheelInventoryGrid) {
-    wheelInventoryGrid.innerHTML = '';
-    player.inventory.forEach((item, idx) => {
-      const isSelected = wheelWagerItem === item;
+  if (altarInventoryGrid) {
+    altarInventoryGrid.innerHTML = '';
+    player.inventory.forEach((item) => {
+      const isSelected = altarWagerItem === item;
       const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
       const card = document.createElement('div');
       card.className = `backpack-item-card mini-card wheel-pick-card ${isSelected ? 'selected' : ''}`;
@@ -2103,115 +2240,373 @@ function renderWheelTab() {
         </button>
       `;
       card.addEventListener('click', () => {
-        if (isWheelSpinning) return;
-        wheelWagerItem = item;
+        if (wheelAltar && wheelAltar.isSpinning) return;
+        altarWagerItem = item;
         audio.playSwing();
-        renderWheelTab();
+        renderWheelAltarModal();
       });
-      wheelInventoryGrid.appendChild(card);
+      altarInventoryGrid.appendChild(card);
     });
   }
 }
 
-if (btnSpinWheel) {
-  btnSpinWheel.addEventListener('click', () => {
-    if (!wheelWagerItem || isWheelSpinning) return;
-    isWheelSpinning = true;
-    btnSpinWheel.disabled = true;
+if (btnAltarSpinWheel) {
+  btnAltarSpinWheel.addEventListener('click', () => {
+    if (!altarWagerItem || !wheelAltar || wheelAltar.isSpinning) return;
+
+    const wageredItemRef = altarWagerItem;
+    closeWheelAltarModal();
 
     // Calculate outcome mathematically: 50% ancur, 45% upgrade, 5% jackpot
-    const spinResult = executeGachaSpin(wheelWagerItem);
+    const spinResult = executeGachaSpin(wageredItemRef);
 
-    // Target angle under top pointer (top pointer is at -Math.PI / 2)
-    // Sector 0 (ancur): 0 to Math.PI (center at 0.5 * Math.PI)
-    // Sector 1 (upgrade): Math.PI to 1.9 * Math.PI (center at 1.45 * Math.PI)
-    // Sector 2 (jackpot): 1.9 * Math.PI to 2.0 * Math.PI (center at 1.95 * Math.PI)
-    let targetSectorAngle = 0.5 * Math.PI;
+    // 10 sectors on wheelAltar:
+    // 0: shatter, 1: upgrade, 2: shatter, 3: upgrade, 4: shatter, 5: upgrade, 6: shatter, 7: upgrade, 8: shatter, 9: jackpot
+    let targetSectorIdx = 0;
     if (spinResult.outcome === 'upgrade') {
-      targetSectorAngle = 1.45 * Math.PI;
+      const upgradeSectors = [1, 3, 5, 7];
+      targetSectorIdx = upgradeSectors[Math.floor(Math.random() * upgradeSectors.length)];
     } else if (spinResult.outcome === 'jackpot') {
-      targetSectorAngle = 1.95 * Math.PI;
+      targetSectorIdx = 9;
+    } else {
+      const shatterSectors = [0, 2, 4, 6, 8];
+      targetSectorIdx = shatterSectors[Math.floor(Math.random() * shatterSectors.length)];
     }
 
-    // Solve for final wheel rotation so pointer (-PI/2) points to targetSectorAngle:
-    // finalAngle mod 2PI = (-PI/2 - targetSectorAngle) mod 2PI
-    const pointerAngle = -Math.PI / 2;
-    const baseTargetRotation = pointerAngle - targetSectorAngle;
-    const fullSpins = 6 * Math.PI * 2; // 6 full revolutions
-    const startAngle = currentWheelAngle;
-    const finalAngle = startAngle + fullSpins + ((baseTargetRotation - (startAngle % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2));
+    const sectorAngle = (Math.PI * 2) / 10;
+    const midSectorAngle = targetSectorIdx * sectorAngle + sectorAngle / 2;
+    const targetWheelAngle = (-Math.PI / 2 - midSectorAngle);
+    const fullSpins = 6 * Math.PI * 2;
+    const startAngle = wheelAltar.currentAngle;
+    const finalAngle = startAngle + fullSpins + ((targetWheelAngle - (startAngle % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2));
 
-    const spinDuration = 3200; // 3.2s
-    const startTime = performance.now();
-    let lastTickAngle = startAngle;
+    const spinnerId = network.myPeerId || 'local_crawler';
+    const spinnerName = player.name || 'SlopCrawler';
+    const duration = 4.5;
+    const resultType = spinResult.outcome === 'ancur' ? 'shattered' : spinResult.outcome;
 
-    function animateSpin(nowTime) {
-      const elapsed = nowTime - startTime;
-      const progress = Math.min(1, elapsed / spinDuration);
-      // Cubic ease-out
-      const ease = 1 - Math.pow(1 - progress, 3);
-      currentWheelAngle = startAngle + (finalAngle - startAngle) * ease;
+    const spinMsg = {
+      type: 'WHEEL_SPIN_START',
+      spinnerId,
+      spinnerName,
+      wagerItemName: wageredItemRef.name,
+      targetAngle: finalAngle,
+      duration,
+      result: resultType
+    };
+    if (network.isHost) network.broadcast(spinMsg);
+    else network.sendToHost(spinMsg);
 
-      // Tick sound every 22.5° (Math.PI / 8)
-      if (Math.abs(currentWheelAngle - lastTickAngle) >= Math.PI / 8) {
-        audio.playWheelTick();
-        lastTickAngle = currentWheelAngle;
-      }
-
-      drawWheel(currentWheelAngle);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateSpin);
-      } else {
-        // Spin finished! Apply outcome
-        isWheelSpinning = false;
-        const wagerIdx = player.inventory.indexOf(wheelWagerItem);
-
-        if (spinResult.outcome === 'ancur') {
-          if (wagerIdx !== -1) player.inventory.splice(wagerIdx, 1);
-          audio.playRocketExplosion();
-          cinematics.addScreenShake(12);
-          particles.spawnComicText(player.x, player.y - 30, 'ANCUR! 💥 ITEM DESTROYED!', '#ef4444');
-          if (wheelResultMsg) {
-            wheelResultMsg.className = 'wheel-result-msg';
-            wheelResultMsg.style.background = 'rgba(239, 68, 68, 0.25)';
-            wheelResultMsg.style.color = '#f87171';
-            wheelResultMsg.textContent = '💀 ANCUR! Your wagered item was destroyed!';
-            wheelResultMsg.classList.remove('hidden');
-          }
-        } else if (spinResult.outcome === 'upgrade') {
-          if (wagerIdx !== -1) player.inventory[wagerIdx] = { ...spinResult.resultItem };
-          audio.playDescentFanfare();
-          cinematics.addScreenShake(8);
-          particles.spawnComicText(player.x, player.y - 30, `UPGRADE! ✨ ${spinResult.resultItem.name}`, '#4ade80');
-          if (wheelResultMsg) {
-            wheelResultMsg.className = 'wheel-result-msg';
-            wheelResultMsg.style.background = 'rgba(34, 197, 94, 0.25)';
-            wheelResultMsg.style.color = '#4ade80';
-            wheelResultMsg.textContent = `✨ UPGRADE! Promoted to ${spinResult.resultItem.name} (${spinResult.resultItem.rarity})!`;
-            wheelResultMsg.classList.remove('hidden');
-          }
-        } else if (spinResult.outcome === 'jackpot') {
-          if (wagerIdx !== -1) player.inventory[wagerIdx] = { ...spinResult.resultItem };
-          audio.playBossVictoryFanfare();
-          cinematics.addScreenShake(20);
-          particles.spawnComicText(player.x, player.y - 40, `👑 SECRET MYTHIC: ${spinResult.resultItem.name}!`, '#fbbf24');
-          if (wheelResultMsg) {
-            wheelResultMsg.className = 'wheel-result-msg';
-            wheelResultMsg.style.background = 'rgba(245, 158, 11, 0.3)';
-            wheelResultMsg.style.color = '#fbbf24';
-            wheelResultMsg.textContent = `👑 SECRET MYTHIC JACKPOT! Won ${spinResult.resultItem.name}!`;
-            wheelResultMsg.classList.remove('hidden');
-          }
-        }
-
-        wheelWagerItem = null;
-        renderWheelTab();
-      }
+    if (slopMerchant) {
+      slopMerchant.sayRandomWheelStart(spinnerName);
     }
 
-    requestAnimationFrame(animateSpin);
+    wheelAltar.startSpin(spinnerId, spinnerName, wageredItemRef, finalAngle, duration, resultType, (res) => {
+      const wagerIdx = player.inventory.indexOf(wageredItemRef);
+      if (res === 'shattered') {
+        if (wagerIdx !== -1) player.inventory.splice(wagerIdx, 1);
+      } else if (res === 'upgrade' || res === 'jackpot') {
+        if (wagerIdx !== -1) player.inventory[wagerIdx] = { ...spinResult.resultItem };
+      }
+      if (slopMerchant) slopMerchant.sayRandomWheelResult(res, spinResult.resultItem?.name, spinnerName);
+      player.syncHUD();
+    });
   });
+}
+
+// --- IN-WORLD BLACKJACK CASINO MODAL LOGIC ---
+const blackjackModal = document.getElementById('blackjack-modal');
+const btnCloseBlackjack = document.getElementById('btn-close-blackjack');
+const bjSlopsAmount = document.getElementById('bj-slops-amount');
+const bjDealerBubble = document.getElementById('bj-dealer-bubble');
+const bjDealerScore = document.getElementById('bj-dealer-score');
+const bjDealerCards = document.getElementById('bj-dealer-cards');
+const bjStatusBanner = document.getElementById('bj-status-banner');
+const bjCurrentBetVal = document.getElementById('bj-current-bet-val');
+const bjPlayerCards = document.getElementById('bj-player-cards');
+const bjPlayerScore = document.getElementById('bj-player-score');
+const bjBetControls = document.getElementById('bj-bet-controls');
+const bjActionControls = document.getElementById('bj-action-controls');
+const bjResolvedControls = document.getElementById('bj-resolved-controls');
+const btnBjDeal = document.getElementById('btn-bj-deal');
+const btnBjHit = document.getElementById('btn-bj-hit');
+const btnBjStand = document.getElementById('btn-bj-stand');
+const btnBjDouble = document.getElementById('btn-bj-double');
+const btnBjPlayAgain = document.getElementById('btn-bj-play-again');
+const btnBjClearBet = document.getElementById('btn-bj-clear-bet');
+const btnBjMaxBet = document.getElementById('btn-bj-max-bet');
+
+let selectedBjBet = 25;
+
+function openBlackjackModal() {
+  if (!blackjackModal) return;
+  blackjackModal.classList.remove('hidden');
+  if (blackjackTable) {
+    blackjackTable.setOccupant(network.myPeerId || 'local', player.name);
+    const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: false };
+    if (network.isHost) network.broadcast(occMsg);
+    else network.sendToHost(occMsg);
+  }
+  selectedBjBet = Math.min(25, sharedSlops > 0 ? sharedSlops : 25);
+  renderBlackjackUI();
+  if (audio.playCardFlip) audio.playCardFlip();
+  if (slopMerchant) {
+    slopMerchant.sayRandomBjWelcome(player.name);
+  }
+}
+
+function closeBlackjackModal() {
+  if (!blackjackModal) return;
+  blackjackModal.classList.add('hidden');
+  if (blackjackTable) {
+    blackjackTable.clearOccupant();
+    const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: true };
+    if (network.isHost) network.broadcast(occMsg);
+    else network.sendToHost(occMsg);
+  }
+}
+
+if (btnCloseBlackjack) {
+  btnCloseBlackjack.addEventListener('click', closeBlackjackModal);
+}
+
+function createCardDom(card, isHoleCard = false) {
+  const cardEl = document.createElement('div');
+  if (isHoleCard) {
+    cardEl.className = 'bj-card hole-card';
+    cardEl.innerHTML = '<div class="hole-card-inner">🂠</div>';
+    return cardEl;
+  }
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  cardEl.className = `bj-card ${isRed ? 'red' : 'black'}`;
+  cardEl.innerHTML = `
+    <div class="card-top">${card.rank}${card.suit}</div>
+    <div class="card-mid">${card.suit}</div>
+    <div class="card-bot">${card.rank}${card.suit}</div>
+  `;
+  return cardEl;
+}
+
+function renderBlackjackUI() {
+  if (bjSlopsAmount) bjSlopsAmount.textContent = `${sharedSlops.toLocaleString()} SLOPS`;
+  if (bjCurrentBetVal) bjCurrentBetVal.textContent = selectedBjBet;
+  const dealBtnAmt = document.getElementById('bj-deal-btn-amount');
+  if (dealBtnAmt) dealBtnAmt.textContent = selectedBjBet;
+
+  // Hand & Dealer Cards
+  if (bjDealerCards) {
+    bjDealerCards.innerHTML = '';
+    blackjackGame.dealerHand.forEach((card, idx) => {
+      const isHole = idx === 1 && !blackjackGame.dealerHoleCardRevealed;
+      bjDealerCards.appendChild(createCardDom(card, isHole));
+    });
+  }
+
+  if (bjPlayerCards) {
+    bjPlayerCards.innerHTML = '';
+    blackjackGame.playerHand.forEach((card) => {
+      bjPlayerCards.appendChild(createCardDom(card, false));
+    });
+  }
+
+  // Scores
+  if (bjPlayerScore) {
+    const pScore = blackjackGame.calculateScore(blackjackGame.playerHand);
+    bjPlayerScore.textContent = blackjackGame.playerHand.length > 0 ? (pScore.isSoft && pScore.score <= 21 ? `Soft ${pScore.score}` : pScore.score) : '0';
+  }
+
+  if (bjDealerScore) {
+    if (blackjackGame.dealerHand.length === 0) {
+      bjDealerScore.textContent = '?';
+    } else if (!blackjackGame.dealerHoleCardRevealed) {
+      const dUp = blackjackGame.calculateScore(blackjackGame.dealerHand, true);
+      bjDealerScore.textContent = `${dUp.score} + ?`;
+    } else {
+      const dScore = blackjackGame.calculateScore(blackjackGame.dealerHand, false);
+      bjDealerScore.textContent = dScore.score;
+    }
+  }
+
+  // State phases visibility
+  if (bjBetControls) bjBetControls.classList.toggle('hidden', blackjackGame.gameState !== 'BETTING');
+  if (bjActionControls) bjActionControls.classList.toggle('hidden', blackjackGame.gameState !== 'PLAYER_TURN');
+  if (bjResolvedControls) bjResolvedControls.classList.toggle('hidden', blackjackGame.gameState !== 'RESOLVED');
+
+  if (btnBjDeal) {
+    btnBjDeal.disabled = sharedSlops < selectedBjBet || selectedBjBet <= 0;
+  }
+  if (btnBjDouble) {
+    btnBjDouble.disabled = sharedSlops < blackjackGame.currentBet;
+  }
+
+  // Dealer Speech & Status Banner
+  if (bjStatusBanner) {
+    if (blackjackGame.gameState === 'BETTING') {
+      bjStatusBanner.textContent = 'PLACE YOUR BET & DEAL';
+      bjStatusBanner.style.color = '#ffffff';
+    } else if (blackjackGame.gameState === 'PLAYER_TURN') {
+      bjStatusBanner.textContent = 'YOUR TURN: HIT, STAND, OR DOUBLE DOWN';
+      bjStatusBanner.style.color = '#38bdf8';
+    } else if (blackjackGame.gameState === 'DEALER_TURN') {
+      bjStatusBanner.textContent = 'DEALER DRAWING...';
+      bjStatusBanner.style.color = '#f59e0b';
+    } else if (blackjackGame.gameState === 'RESOLVED') {
+      const res = blackjackGame.result;
+      if (res === 'BLACKJACK') {
+        bjStatusBanner.textContent = 'BLACKJACK! NATURAL 21! 💰';
+        bjStatusBanner.style.color = '#fbbf24';
+      } else if (res === 'WIN' || res === 'DEALER_BUST') {
+        bjStatusBanner.textContent = res === 'DEALER_BUST' ? 'DEALER BUST! YOU WIN! ✨' : 'YOU WIN! ✨';
+        bjStatusBanner.style.color = '#4ade80';
+      } else if (res === 'PUSH') {
+        bjStatusBanner.textContent = 'PUSH! BET RETURNED 🤝';
+        bjStatusBanner.style.color = '#94a3b8';
+      } else {
+        bjStatusBanner.textContent = res === 'BUST' ? 'BUSTED! YOU LOSE! 💀' : 'DEALER WINS! 💀';
+        bjStatusBanner.style.color = '#ef4444';
+      }
+    }
+  }
+
+  if (bjDealerBubble) {
+    bjDealerBubble.textContent = `"${blackjackGame.getMerchantQuip()}"`;
+  }
+}
+
+// Chip Betting Buttons
+document.querySelectorAll('.bj-chip-btn[data-amount]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'BETTING') return;
+    const addAmt = parseInt(btn.getAttribute('data-amount'));
+    selectedBjBet = Math.min(sharedSlops, selectedBjBet + addAmt);
+    if (audio.playChipClink) audio.playChipClink();
+    renderBlackjackUI();
+  });
+});
+
+if (btnBjClearBet) {
+  btnBjClearBet.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'BETTING') return;
+    selectedBjBet = Math.min(10, sharedSlops);
+    if (audio.playChipClink) audio.playChipClink();
+    renderBlackjackUI();
+  });
+}
+
+if (btnBjMaxBet) {
+  btnBjMaxBet.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'BETTING') return;
+    selectedBjBet = Math.max(10, sharedSlops);
+    if (audio.playChipClink) audio.playChipClink();
+    renderBlackjackUI();
+  });
+}
+
+// Deal Cards
+if (btnBjDeal) {
+  btnBjDeal.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'BETTING') return;
+    if (sharedSlops < selectedBjBet) return;
+
+    sharedSlops -= selectedBjBet;
+    updateSlopsUI();
+    broadcastSlops();
+
+    blackjackGame.startRound(selectedBjBet);
+    if (audio.playCardFlip) audio.playCardFlip();
+    renderBlackjackUI();
+
+    if (blackjackGame.gameState === 'RESOLVED') {
+      handleBlackjackResolution();
+    }
+  });
+}
+
+// Hit
+if (btnBjHit) {
+  btnBjHit.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'PLAYER_TURN') return;
+    if (audio.playCardFlip) audio.playCardFlip();
+    blackjackGame.hit();
+    renderBlackjackUI();
+
+    if (blackjackGame.gameState === 'RESOLVED') {
+      handleBlackjackResolution();
+    }
+  });
+}
+
+// Stand
+if (btnBjStand) {
+  btnBjStand.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'PLAYER_TURN') return;
+    if (audio.playCardFlip) audio.playCardFlip();
+    blackjackGame.stand();
+    renderBlackjackUI();
+    handleBlackjackResolution();
+  });
+}
+
+// Double Down
+if (btnBjDouble) {
+  btnBjDouble.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'PLAYER_TURN') return;
+    if (sharedSlops < blackjackGame.currentBet) return;
+
+    sharedSlops -= blackjackGame.currentBet;
+    updateSlopsUI();
+    broadcastSlops();
+
+    if (audio.playChipClink) audio.playChipClink();
+    if (audio.playCardFlip) audio.playCardFlip();
+    blackjackGame.doubleDown();
+    renderBlackjackUI();
+    handleBlackjackResolution();
+  });
+}
+
+// Play Again
+if (btnBjPlayAgain) {
+  btnBjPlayAgain.addEventListener('click', () => {
+    blackjackGame.gameState = 'BETTING';
+    blackjackGame.playerHand = [];
+    blackjackGame.dealerHand = [];
+    blackjackGame.dealerHoleCardRevealed = false;
+    blackjackGame.result = null;
+    selectedBjBet = Math.min(25, sharedSlops > 0 ? sharedSlops : 25);
+    renderBlackjackUI();
+  });
+}
+
+function handleBlackjackResolution() {
+  const payout = blackjackGame.payout;
+  if (payout > 0) {
+    sharedSlops += payout;
+    updateSlopsUI();
+    broadcastSlops();
+  }
+
+  const res = blackjackGame.result;
+  const quip = blackjackGame.getMerchantQuip();
+  if (slopMerchant) slopMerchant.say(quip, res === 'WIN' || res === 'BLACKJACK' ? '#4ade80' : '#ef4444', 4.0);
+
+  if (res === 'BLACKJACK') {
+    if (audio.playCasinoWin) audio.playCasinoWin(true);
+    cinematics.addScreenShake(12);
+    if (blackjackTable) particles.spawnComicText(blackjackTable.x, blackjackTable.y - 45, `BLACKJACK! +${payout} 🪙`, '#fbbf24');
+  } else if (res === 'WIN' || res === 'DEALER_BUST') {
+    if (audio.playCasinoWin) audio.playCasinoWin(false);
+    cinematics.addScreenShake(6);
+    if (blackjackTable) particles.spawnComicText(blackjackTable.x, blackjackTable.y - 45, `YOU WIN! +${payout} 🪙`, '#4ade80');
+  } else if (res === 'PUSH') {
+    if (audio.playChipClink) audio.playChipClink();
+    if (blackjackTable) particles.spawnComicText(blackjackTable.x, blackjackTable.y - 45, 'PUSH! REFUND 🤝', '#94a3b8');
+  } else {
+    if (audio.playCasinoBust) audio.playCasinoBust();
+    if (blackjackTable) particles.spawnComicText(blackjackTable.x, blackjackTable.y - 45, 'BUSTED! 💀', '#ef4444');
+  }
+
+  renderBlackjackUI();
 }
 
 // --- LOBBY CO-OP NETWORKING UI ---
@@ -2313,6 +2708,327 @@ if (roomParam) {
   lobbyModal.classList.remove('hidden');
 }
 
+// --- GAME OVER SUMMARY MODAL (STEP 5.2) ---
+const gameOverModal = document.getElementById('game-over-modal');
+const btnRetryRun = document.getElementById('btn-retry-run');
+const btnReturnLobbyFromGo = document.getElementById('btn-return-lobby-from-go');
+
+function triggerPartyWipe(syncedStats = null) {
+  if (runStats.isRunOver) return;
+  runStats.isRunOver = true;
+
+  if (player.isDowned) {
+    player.isDowned = false;
+    player.isDead = true;
+    player.downedTimer = 0;
+    player.vx = 0;
+    player.vy = 0;
+  }
+  player.syncHUD();
+  broadcastMyState();
+
+  audio.playGameOverGong();
+  cinematics.addScreenShake(20);
+
+  const elapsedSec = runStats.startTime ? Math.max(1, Math.floor((performance.now() - runStats.startTime) / 1000)) : 0;
+  const mins = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+  const secs = (elapsedSec % 60).toString().padStart(2, '0');
+  const timeFormatted = `${mins}:${secs}`;
+  const mvp = getRunMvp();
+
+  const floorText = syncedStats?.floor 
+    ? `FLOOR ${syncedStats.floor}`
+    : `FLOOR ${currentFloor} - ${currentDungeon?.theme?.shortName || 'DUNGEON'}`;
+  const timeText = syncedStats?.duration || timeFormatted;
+  const killsText = syncedStats ? syncedStats.kills : runStats.totalKills;
+  const slopsText = syncedStats ? `+${syncedStats.slops} SLOPS` : `+${runStats.slopsEarned} SLOPS`;
+  const mvpNameText = syncedStats ? syncedStats.mvpName : mvp.name;
+  const mvpDmgText = syncedStats ? `${(syncedStats.mvpDamage || 0).toLocaleString()} Total DMG` : `${(mvp.damage || 0).toLocaleString()} Total DMG`;
+
+  const statFloorEl = document.getElementById('go-stat-floor');
+  const statTimeEl = document.getElementById('go-stat-time');
+  const statKillsEl = document.getElementById('go-stat-kills');
+  const statSlopsEl = document.getElementById('go-stat-slops');
+  const mvpNameEl = document.getElementById('go-mvp-name');
+  const mvpDmgEl = document.getElementById('go-mvp-dmg');
+  if (statFloorEl) statFloorEl.textContent = floorText;
+  if (statTimeEl) statTimeEl.textContent = timeText;
+  if (statKillsEl) statKillsEl.textContent = killsText;
+  if (statSlopsEl) statSlopsEl.textContent = slopsText;
+  if (mvpNameEl) mvpNameEl.textContent = mvpNameText;
+  if (mvpDmgEl) mvpDmgEl.textContent = mvpDmgText;
+
+  // Render Fallen Party Roster
+  const rosterContainer = document.getElementById('go-party-roster');
+  if (rosterContainer) {
+    rosterContainer.innerHTML = '';
+    const localPill = document.createElement('div');
+    localPill.className = 'party-member-pill';
+    localPill.innerHTML = `
+      <div class="member-avatar-mini" style="background:${player.color || '#00f0ff'};"></div>
+      <span style="font-weight:700;">${player.name || 'You'}</span>
+      <span class="member-status-dead">[SLAIN 💀]</span>
+    `;
+    rosterContainer.appendChild(localPill);
+
+    for (const [peerId, remote] of network.remotePlayers.entries()) {
+      const remPill = document.createElement('div');
+      remPill.className = 'party-member-pill';
+      remPill.innerHTML = `
+        <div class="member-avatar-mini" style="background:${remote.color || '#f59e0b'};"></div>
+        <span style="font-weight:700;">${remote.name || `Player ${peerId.slice(0, 4)}`}</span>
+        <span class="member-status-dead">[SLAIN 💀]</span>
+      `;
+      rosterContainer.appendChild(remPill);
+    }
+  }
+
+  const isAuthority = network.isHost || !network.peer;
+  const hostNotice = document.getElementById('go-host-notice');
+  if (hostNotice) {
+    hostNotice.style.display = isAuthority ? 'none' : 'block';
+  }
+  if (btnRetryRun && btnReturnLobbyFromGo) {
+    btnRetryRun.disabled = !isAuthority;
+    btnReturnLobbyFromGo.disabled = !isAuthority;
+    btnRetryRun.style.opacity = isAuthority ? '1' : '0.45';
+    btnReturnLobbyFromGo.style.opacity = isAuthority ? '1' : '0.45';
+    btnRetryRun.style.cursor = isAuthority ? 'pointer' : 'not-allowed';
+    btnReturnLobbyFromGo.style.cursor = isAuthority ? 'pointer' : 'not-allowed';
+  }
+
+  if (gameOverModal) gameOverModal.classList.remove('hidden');
+
+  if (isAuthority && network.isHost) {
+    network.broadcast({
+      type: 'PARTY_WIPE',
+      stats: {
+        floor: currentFloor,
+        duration: timeText,
+        kills: killsText,
+        slops: runStats.slopsEarned,
+        mvpName: mvpNameText,
+        mvpDamage: mvp.damage
+      }
+    });
+  }
+}
+
+if (btnRetryRun) {
+  btnRetryRun.addEventListener('click', () => {
+    if (!network.isHost && network.peer) return;
+    if (gameOverModal) gameOverModal.classList.add('hidden');
+    if (network.isHost) {
+      network.broadcast({ type: 'DUNGEON_RETRY' });
+    }
+    startFloorDescent(1);
+  });
+}
+
+if (btnReturnLobbyFromGo) {
+  btnReturnLobbyFromGo.addEventListener('click', () => {
+    if (!network.isHost && network.peer) return;
+    if (gameOverModal) gameOverModal.classList.add('hidden');
+    returnToLobby();
+  });
+}
+
+// --- DEV ARMORY SANDBOX MODAL LOGIC ---
+const devArmoryModal = document.getElementById('dev-armory-modal');
+const btnCloseDevArmory = document.getElementById('btn-close-dev-armory');
+const btnCloseDevArmoryBottom = document.getElementById('btn-close-dev-armory-bottom');
+const btnHudDevArmory = document.getElementById('btn-hud-dev-armory');
+let currentArmoryFilter = 'all';
+
+function openDevArmoryModal() {
+  if (!devArmoryModal) return;
+  audio.playChestOpen();
+  renderArmoryItems(currentArmoryFilter);
+  devArmoryModal.classList.remove('hidden');
+}
+
+function closeDevArmoryModal() {
+  if (!devArmoryModal) return;
+  devArmoryModal.classList.add('hidden');
+  audio.playFootstep();
+}
+
+function toggleDevArmoryModal() {
+  if (!devArmoryModal) return;
+  if (devArmoryModal.classList.contains('hidden')) {
+    openDevArmoryModal();
+  } else {
+    closeDevArmoryModal();
+  }
+}
+
+if (btnHudDevArmory) {
+  btnHudDevArmory.addEventListener('click', toggleDevArmoryModal);
+}
+if (btnCloseDevArmory) {
+  btnCloseDevArmory.addEventListener('click', closeDevArmoryModal);
+}
+if (btnCloseDevArmoryBottom) {
+  btnCloseDevArmoryBottom.addEventListener('click', closeDevArmoryModal);
+}
+
+// Quick Set Equippers
+document.querySelectorAll('.armory-set-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const setName = btn.getAttribute('data-set');
+    equipFullSet(setName);
+  });
+});
+
+function equipFullSet(setName) {
+  ['helmet', 'chest', 'pants', 'boots', 'weapon', 'offhand'].forEach(slot => {
+    player.unequipSlot(slot);
+  });
+
+  if (setName === 'strip') {
+    player.syncHUD();
+    renderInventoryUI();
+    broadcastMyState();
+    audio.playSwing();
+    particles.spawnComicText(player.x, player.y - 30, '🚫 STRIPPED ALL GEAR', '#f87171');
+    return;
+  }
+
+  let itemsToEquip = [];
+  let bannerText = '';
+  let bannerColor = '#facc15';
+
+  if (setName === 'gojo') {
+    itemsToEquip = ['gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red'];
+    bannerText = '⚡ EQUIPPED THE HONORED ONE SET!';
+    bannerColor = '#00f0ff';
+  } else if (setName === 'sukuna') {
+    itemsToEquip = ['sukuna_crown', 'sukuna_robe', 'sukuna_hakama', 'sukuna_zori', 'sukuna_cleaver', 'sukuna_kamutoke'];
+    bannerText = '🗡️ EQUIPPED KING OF CURSES SET!';
+    bannerColor = '#ff2a5f';
+  } else if (setName === 'toji') {
+    itemsToEquip = ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain'];
+    bannerText = '⛓️ EQUIPPED SORCERER KILLER SET!';
+    bannerColor = '#38bdf8';
+  } else if (setName === 'guts') {
+    itemsToEquip = ['guts_beast_helm', 'guts_berserker_plate', 'guts_greaves', 'guts_sollerets', 'dragon_slayer'];
+    bannerText = '⚔️ EQUIPPED THE BLACK SWORDSMAN SET!';
+    bannerColor = '#ef4444';
+  } else if (setName === 'levi') {
+    itemsToEquip = ['scout_hood', 'odm_harness', 'scout_trousers', 'scout_boots', 'dual_snap_blades'];
+    bannerText = '🌪️ EQUIPPED HUMANITY\'S STRONGEST SET!';
+    bannerColor = '#10b981';
+  } else if (setName === 'david') {
+    itemsToEquip = ['david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'];
+    bannerText = '⚡ EQUIPPED NIGHT CITY LEGEND SET!';
+    bannerColor = '#00ff88';
+  } else if (setName === 'starter') {
+    itemsToEquip = ['iron_visor', 'leather_tunic', 'cloth_pants', 'travel_boots', 'rusty_sword', 'wooden_buckler'];
+    bannerText = '🛡️ EQUIPPED STARTER GEAR!';
+    bannerColor = '#cbd5e1';
+  }
+
+  itemsToEquip.forEach(id => {
+    if (ITEM_CATALOG[id]) {
+      player.equipItem(ITEM_CATALOG[id]);
+    }
+  });
+
+  player.syncHUD();
+  renderInventoryUI();
+  broadcastMyState();
+  audio.playChestOpen();
+  particles.spawnComicText(player.x, player.y - 30, bannerText, bannerColor);
+}
+
+// Filter Tabs
+document.querySelectorAll('.armory-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.armory-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentArmoryFilter = btn.getAttribute('data-filter') || 'all';
+    renderArmoryItems(currentArmoryFilter);
+  });
+});
+
+function renderArmoryItems(filter = 'all') {
+  const grid = document.getElementById('armory-items-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const allItems = Object.values(ITEM_CATALOG);
+  const animeIds = [
+    'gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red',
+    'sukuna_crown', 'sukuna_robe', 'sukuna_hakama', 'sukuna_zori', 'sukuna_kamutoke', 'sukuna_cleaver', 'sukuna_finger', 'sukuna_hiten',
+    'toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain',
+    'guts_beast_helm', 'guts_berserker_plate', 'guts_greaves', 'guts_sollerets', 'dragon_slayer',
+    'scout_hood', 'odm_harness', 'scout_trousers', 'scout_boots', 'dual_snap_blades',
+    'david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'
+  ];
+
+  const filtered = allItems.filter(item => {
+    if (!item || !item.slot || item.slot === 'consumable') return false;
+    if (filter === 'all') return true;
+    if (filter === 'weapon') return item.slot === 'weapon' || item.slot === 'offhand';
+    if (filter === 'armor') return ['helmet', 'chest', 'pants', 'boots'].includes(item.slot);
+    if (filter === 'anime') return animeIds.includes(item.id);
+    return true;
+  });
+
+  filtered.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'armory-item-card';
+    const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+    card.style.borderColor = rarity.border;
+
+    const stats = [];
+    if (item.damage) stats.push(`DMG: ${item.damage}`);
+    if (item.defense) stats.push(`DEF: +${item.defense}`);
+    if (item.hpBonus) stats.push(`HP: +${item.hpBonus}`);
+    if (item.speedBonus) stats.push(`SPD: +${item.speedBonus}`);
+    if (item.hands === 2) stats.push(`2H`);
+
+    card.innerHTML = `
+      <div class="armory-item-header">
+        <span class="armory-item-title" style="color: ${rarity.color};">${item.name}</span>
+        <span class="armory-item-slot-badge">${item.slot}</span>
+      </div>
+      <div class="armory-item-stats">
+        ${stats.join(' | ') || item.desc || 'Standard Equipment'}
+      </div>
+      <div class="armory-item-actions">
+        <button class="armory-action-btn armory-equip-btn" data-id="${item.id}">EQUIP</button>
+        <button class="armory-action-btn armory-bag-btn" data-id="${item.id}">+ BAG</button>
+      </div>
+    `;
+
+    card.querySelector('.armory-equip-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      player.equipItem(item);
+      player.syncHUD();
+      renderInventoryUI();
+      broadcastMyState();
+      audio.playSwing();
+      particles.spawnComicText(player.x, player.y - 20, `EQUIPPED ${item.name}!`, rarity.color);
+    });
+
+    card.querySelector('.armory-bag-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (player.inventory.length >= player.maxInventorySize) {
+        particles.spawnComicText(player.x, player.y - 20, 'BACKPACK FULL!', '#ef4444');
+        audio.playBonk();
+        return;
+      }
+      player.inventory.push(item);
+      renderInventoryUI();
+      audio.playCoinPickup();
+      particles.spawnComicText(player.x, player.y - 20, `+1 ${item.name}`, '#facc15');
+    });
+
+    grid.appendChild(card);
+  });
+}
+
 function broadcastMyState() {
   const payload = {
     type: 'PLAYER_STATE',
@@ -2344,6 +3060,12 @@ function broadcastMyState() {
     shotgunAmmo: player.shotgunAmmo,
     isReloadingShotgun: player.isReloadingShotgun,
     shotgunReloadTimer: player.shotgunReloadTimer,
+    isDowned: player.isDowned,
+    downedTimer: player.downedTimer,
+    maxDownedTimer: player.maxDownedTimer,
+    isDead: player.isDead,
+    reviveProgress: player.reviveProgress,
+    invulnerableTimer: player.invulnerableTimer,
     equipment: player.equipment
   };
 
@@ -2371,23 +3093,31 @@ player.onShotgunReloadComplete = () => {
 
 // Combat Automaton / Training Dummy Callbacks
 dummy.onShoot = (proj) => {
+  if (!network.isHost && network.peer) return;
   cinematics.projectiles.push(proj);
   audio.playLightningDagger();
   particles.spawnComicText(dummy.x, dummy.y - 32, 'ENERGY BLAST! 💥', '#f59e0b');
   const shootMsg = { type: 'BOT_SHOOT', proj: { ...proj, caster: null } };
   if (network.isHost) network.broadcast(shootMsg);
-  else network.sendToHost(shootMsg);
 };
 
 dummy.onMeleeHit = (target, dmg, angle) => {
+  if (!network.isHost && network.peer) return;
   if (target === player) {
-    const res = player.takeDamage(dmg, angle, 480);
-    if (res) {
-      audio.playBonk();
-      cinematics.addScreenShake(8);
-      const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage}`);
-      particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#ef4444'));
-      broadcastMyState();
+    hitPlayer(dmg, angle, 480);
+  } else {
+    for (const [peerId, remote] of network.remotePlayers.entries()) {
+      if (remote === target) {
+        if (network.isHost) {
+          network.broadcast({
+            type: 'BOT_MELEE_HIT',
+            targetPeerId: peerId,
+            damage: dmg,
+            angle: angle
+          });
+        }
+        break;
+      }
     }
   }
 };
@@ -2443,9 +3173,40 @@ network.onMessageReceived = (fromPeerId, msg) => {
   if (msg.type === 'PLAYER_STATE') {
     network.remotePlayers.set(fromPeerId, {
       ...msg,
+      peerId: fromPeerId,
       lastSeen: performance.now()
     });
     updatePartyRoster();
+  } else if (msg.type === 'REVIVE_PROGRESS') {
+    if (msg.targetPeerId === network.myPeerId) {
+      player.reviveProgress = msg.progress;
+      if (msg.progress > 0 && Math.random() < 0.25) {
+        audio.playRevivingPulse();
+      }
+    } else {
+      const rem = network.remotePlayers.get(msg.targetPeerId);
+      if (rem) {
+        rem.reviveProgress = msg.progress;
+      }
+    }
+  } else if (msg.type === 'PLAYER_REVIVED') {
+    if (msg.targetPeerId === network.myPeerId) {
+      player.revive(0.40);
+      audio.playRevivedFanfare();
+      cinematics.addScreenShake(8);
+      particles.spawnComicText(player.x, player.y - 32, 'REVIVED! 💚 40% HP', '#22c55e');
+      broadcastMyState();
+    } else {
+      const rem = network.remotePlayers.get(msg.targetPeerId);
+      if (rem) {
+        rem.isDowned = false;
+        rem.isDead = false;
+        rem.hp = Math.round((rem.maxHp || 100) * 0.40);
+        rem.reviveProgress = 0;
+      }
+      audio.playRevivedFanfare();
+      cinematics.addScreenShake(6);
+    }
   } else if (msg.type === 'SLAP_KNOCKBACK') {
     if (msg.targetPeerId === network.myPeerId) {
       if (player.isBerserk) {
@@ -2530,7 +3291,8 @@ network.onMessageReceived = (fromPeerId, msg) => {
         network.sendTo(fromPeerId, {
           type: 'DUNGEON_FLOOR_SYNC',
           floorNumber: currentFloor,
-          dungeonData: currentDungeon.getSyncData()
+          dungeonData: currentDungeon.getSyncData(),
+          merchantStock: slopMerchant ? slopMerchant.stock.map(s => ({ itemId: s.item.id, price: s.price })) : null
         });
       }
     }
@@ -2550,6 +3312,26 @@ network.onMessageReceived = (fromPeerId, msg) => {
     groundItems.clear();
     monsterManager.clear();
 
+    if (currentDungeon.merchantRoom) {
+      const mx = currentDungeon.merchantRoom.centerX;
+      const my = currentDungeon.merchantRoom.centerY;
+      slopMerchant = new SlopMerchant(mx, my);
+      if (msg.merchantStock && msg.merchantStock.length > 0) {
+        slopMerchant.stock = msg.merchantStock.map(s => {
+          const item = ITEM_CATALOG[s.itemId] || { id: s.itemId, name: s.itemId, slot: 'gear', rarity: 'COMMON' };
+          return { item, price: s.price };
+        });
+      } else {
+        slopMerchant.generateWares(currentFloor, ITEM_CATALOG);
+      }
+      wheelAltar = new WheelAltar(mx - 240, my - 40);
+      blackjackTable = new BlackjackTable(mx + 240, my - 40);
+    } else {
+      slopMerchant = null;
+      wheelAltar = null;
+      blackjackTable = null;
+    }
+
     const hudFloor = document.getElementById('hud-floor');
     if (hudFloor) {
       hudFloor.textContent = `FLOOR ${currentFloor}: ${currentDungeon.theme.shortName}`;
@@ -2565,6 +3347,16 @@ network.onMessageReceived = (fromPeerId, msg) => {
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
   } else if (msg.type === 'RETURN_TO_LOBBY') {
     returnToLobby(false);
+  } else if (msg.type === 'PARTY_WIPE') {
+    triggerPartyWipe(msg.stats);
+  } else if (msg.type === 'DUNGEON_RETRY') {
+    const gameOverModalEl = document.getElementById('game-over-modal');
+    if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
+    runStats.isRunOver = false;
+    player.isDowned = false;
+    player.isDead = false;
+    player.hp = player.maxHp;
+    player.syncHUD();
   } else if (msg.type === 'ROOM_TRANSITION') {
     if (currentDungeon) {
       const room = currentDungeon.rooms.find(r => r.id === msg.roomId);
@@ -2607,6 +3399,7 @@ network.onMessageReceived = (fromPeerId, msg) => {
     const monster = monsterManager.getMonsterById(msg.monsterId);
     if (monster) {
       monster.takeHit(msg.damage, msg.angle, msg.knockback || 0, msg.isCrit);
+      recordDamageDealt(fromPeerId, msg.damage);
       particles.spawnComicText(monster.x, monster.y - 20, msg.isCrit ? `CRIT! -${msg.damage}` : `-${msg.damage}`, msg.isCrit ? '#ff0055' : '#fbbf24');
     }
   } else if (msg.type === 'COMIC_TEXT') {
@@ -2621,6 +3414,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
         caster: dummy
       });
       audio.playLightningDagger();
+      particles.spawnComicText(dummy.x, dummy.y - 32, 'ENERGY BLAST! 💥', '#f59e0b');
+    }
+  } else if (msg.type === 'BOT_MELEE_HIT') {
+    if (msg.targetPeerId === network.myPeerId) {
+      hitPlayer(msg.damage, msg.angle, 480);
     }
   } else if (msg.type === 'SHOTGUN_FIRE') {
     if (msg.peerId === network.myPeerId) return;
@@ -2634,6 +3432,35 @@ network.onMessageReceived = (fromPeerId, msg) => {
     if (slopMerchant) {
       const attacker = network.remotePlayers.get(msg.attackerPeerId) || player;
       slopMerchant.handleAttacked(attacker, audio, cinematics, particles);
+    }
+  } else if (msg.type === 'SHOP_WARES_REFRESH') {
+    if (slopMerchant) {
+      slopMerchant.stock = msg.stock.map(s => {
+        const item = ITEM_CATALOG[s.itemId] || { id: s.itemId, name: s.itemId, slot: 'gear', rarity: 'COMMON' };
+        return { item, price: s.price };
+      });
+      if (audio.playCashReroll) audio.playCashReroll();
+      if (merchantModal && !merchantModal.classList.contains('hidden') && activeMerchantTab === 'shop') {
+        renderShopTab();
+      }
+    }
+  } else if (msg.type === 'WHEEL_SPIN_START') {
+    if (wheelAltar) {
+      const wagerItem = { name: msg.wagerItemName, rarity: 'COMMON' };
+      if (slopMerchant) {
+        slopMerchant.sayRandomWheelStart(msg.spinnerName);
+      }
+      wheelAltar.startSpin(msg.spinnerId, msg.spinnerName, wagerItem, msg.targetAngle, msg.duration, msg.result, (res) => {
+        if (slopMerchant) slopMerchant.sayRandomWheelResult(res, null, msg.spinnerName);
+      });
+    }
+  } else if (msg.type === 'BJ_TABLE_OCCUPANT') {
+    if (blackjackTable) {
+      if (msg.isLeaving) {
+        blackjackTable.clearOccupant();
+      } else {
+        blackjackTable.setOccupant(msg.playerId, msg.playerName);
+      }
     }
   }
 };
@@ -2828,6 +3655,7 @@ function handleAttacks() {
       else network.sendToHost(hitMsg);
     } else if (hit.target instanceof Monster) {
       hit.target.takeHit(hit.damage, hit.angle, hit.knockback || 0, hit.isCrit, player);
+      recordDamageDealt('local', hit.damage);
       if (hit.isPull) {
         hit.target.pullTowards(player.x, player.y, 45);
       }
@@ -2970,6 +3798,7 @@ function handleOffhandAttack() {
       else network.sendToHost(hitMsg);
     } else if (hit.target instanceof Monster) {
       hit.target.takeHit(hit.damage, hit.angle, hit.knockback, hit.isCrit, player);
+      recordDamageDealt('local', hit.damage);
 
       if (hit.attackType === 'reversal_red') {
         audio.playRepulsionBurst();
@@ -3057,6 +3886,7 @@ function onTriggerCinematic(ultimateType, triggeringPlayer) {
 let lastTime = performance.now();
 let wasSandevistanActive = false;
 let slowMoTickTimer = 0;
+let revivePulseSoundTimer = 0;
 
 function gameLoop(now) {
   try {
@@ -3069,7 +3899,11 @@ function gameLoop(now) {
     !lobbyModal.classList.contains('hidden') ||
     !invModal.classList.contains('hidden') ||
     (floorModal && !floorModal.classList.contains('hidden')) ||
-    (merchantModal && !merchantModal.classList.contains('hidden'));
+    (merchantModal && !merchantModal.classList.contains('hidden')) ||
+    (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) ||
+    (blackjackModal && !blackjackModal.classList.contains('hidden')) ||
+    (gameOverModal && !gameOverModal.classList.contains('hidden')) ||
+    (devArmoryModal && !devArmoryModal.classList.contains('hidden'));
 
   // Inventory toggle hotkeys: I or Tab
   if (input.justPressedI || (input.keys.tab && !input.tabHandled)) {
@@ -3085,6 +3919,9 @@ function gameLoop(now) {
     if (!lobbyModal.classList.contains('hidden')) lobbyModal.classList.add('hidden');
     if (floorModal && !floorModal.classList.contains('hidden')) closeFloorModal();
     if (merchantModal && !merchantModal.classList.contains('hidden')) closeMerchantModal();
+    if (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) closeWheelAltarModal();
+    if (blackjackModal && !blackjackModal.classList.contains('hidden')) closeBlackjackModal();
+    if (devArmoryModal && !devArmoryModal.classList.contains('hidden')) closeDevArmoryModal();
   }
 
   // Handle Shield Blocking
@@ -3139,14 +3976,22 @@ function gameLoop(now) {
   player.update(playerDt, input, activeBounds);
 
   if (currentFloor === 0) {
-    dummy.update(worldDt, [player, ...network.remotePlayers.values()]);
+    const isBotAuthority = network.isHost || !network.peer;
+    dummy.update(worldDt, [player, ...network.remotePlayers.values()], isBotAuthority);
     readyCircle.update(worldDt, player, network.remotePlayers);
     wardrobeStation.update(worldDt);
     floorStation.update(worldDt);
+    devArmoryChest.update(worldDt);
   } else if (currentFloor >= 1 && currentDungeon) {
     // Update Slop Merchant (with RPG windup, laser aiming, and rocket launch)
     if (slopMerchant) {
       slopMerchant.update(worldDt, audio, cinematics, particles);
+    }
+    if (wheelAltar) {
+      wheelAltar.update(worldDt, audio, cinematics, particles);
+    }
+    if (blackjackTable) {
+      blackjackTable.update(worldDt);
     }
 
     // Update Slop Coins (with auto magnetic pull towards nearby players & homing to killer)
@@ -3159,6 +4004,9 @@ function gameLoop(now) {
         const dist = Math.hypot(p.x - coin.x, p.y - coin.y);
         if (dist <= (p.radius || 22) + coin.radius + 8) {
           sharedSlops += coin.value;
+          if (currentFloor >= 1) {
+            runStats.slopsEarned += coin.value;
+          }
           updateSlopsUI();
           audio.playCoinPickup();
           particles.spawnComicText(p.x, p.y - 25, `+${coin.value} SLOPS 🪙`, '#fbbf24');
@@ -3401,12 +4249,7 @@ function gameLoop(now) {
       const pDist = Math.hypot(player.x - proj.x, player.y - proj.y);
       if (pDist <= splashRadius) {
         const splashAngle = Math.atan2(player.y - proj.y, player.x - proj.x);
-        const res = player.takeDamage(proj.damage || 65, splashAngle, 650);
-        if (res) {
-          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (RPG DETONATION! 💥)`);
-          particles.spawnComicText(player.x, player.y - 28, statusText, '#ef4444');
-          broadcastMyState();
-        }
+        hitPlayer(proj.damage || 65, splashAngle, 650, 'RPG DETONATION! 💥');
       }
 
       // Blast nearby remote peers
@@ -3426,48 +4269,22 @@ function gameLoop(now) {
 
     if (target === player) {
       if (proj.type === 'shotgun_pellet') {
-        const res = player.takeDamage(proj.damage || 14, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
-        if (res) {
-          audio.playBonk();
-          cinematics.addScreenShake(3);
-          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage}`);
-          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#ef4444'));
-          broadcastMyState();
-        }
+        hitPlayer(proj.damage || 14, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
         return;
       }
       if (proj.type === 'bot_laser_bolt') {
-        const res = player.takeDamage(proj.damage || 20, Math.atan2(proj.vy || 0, proj.vx || 0), 220);
-        if (res) {
-          audio.playBonk();
-          cinematics.addScreenShake(5);
-          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (LASER!)`);
-          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#06b6d4'));
-          broadcastMyState();
-        }
+        hitPlayer(proj.damage || 20, Math.atan2(proj.vy || 0, proj.vx || 0), 220, '-20 (LASER!)', '#06b6d4');
         return;
       }
       if (proj.type === 'bot_micro_missile') {
-        const res = player.takeDamage(proj.damage || 28, Math.atan2(proj.vy || 0, proj.vx || 0), 480);
-        if (res) {
-          audio.playHammerSmash();
-          cinematics.addScreenShake(10);
-          particles.spawnDashBurst(player.x, player.y, 0, '#ef4444');
-          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage} (MISSILE BLAST! 🚀)`);
-          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#f59e0b'));
-          broadcastMyState();
-        }
+        audio.playHammerSmash();
+        cinematics.addScreenShake(10);
+        particles.spawnDashBurst(player.x, player.y, 0, '#ef4444');
+        hitPlayer(proj.damage || 28, Math.atan2(proj.vy || 0, proj.vx || 0), 480, 'MISSILE BLAST! 🚀', '#f59e0b');
         return;
       }
       if (proj.type === 'bot_energy_orb' || proj.caster === dummy || (proj.caster instanceof Monster)) {
-        const res = player.takeDamage(proj.damage || 22, Math.atan2(proj.vy || 0, proj.vx || 0), 450);
-        if (res) {
-          audio.playBonk();
-          cinematics.addScreenShake(6);
-          const statusText = player.isBerserk ? `-${res.damage} (UNSTOPPABLE! 🩸)` : (res.isBlocked ? 'BLOCKED! 🛡️' : `-${res.damage}`);
-          particles.spawnComicText(player.x, player.y - 28, statusText, player.isBerserk ? '#ef4444' : (res.isBlocked ? '#38bdf8' : '#ef4444'));
-          broadcastMyState();
-        }
+        hitPlayer(proj.damage || 22, Math.atan2(proj.vy || 0, proj.vx || 0), 450);
       }
       return;
     }
@@ -3540,6 +4357,7 @@ function gameLoop(now) {
       if (network.isHost) network.broadcast(hitMsg);
       else network.sendToHost(hitMsg);
     } else if (target instanceof Monster) {
+      recordDamageDealt('local', proj.damage);
       if (proj.type === 'shotgun_pellet') {
         target.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120, proj.isCrit, proj.caster);
         audio.playBonk();
@@ -3605,7 +4423,7 @@ function gameLoop(now) {
             if (network.isHost) network.broadcast(stunMsg);
             else network.sendToHost(stunMsg);
           }
-          if (proj.vx || proj.vy || proj.knockback) {
+          if (proj.caster === player && (proj.vx || proj.vy || proj.knockback)) {
             const kx = proj.vx ? proj.vx * 0.35 : Math.cos(proj.angle || 0) * (proj.knockback || 450);
             const ky = proj.vy ? proj.vy * 0.35 : Math.sin(proj.angle || 0) * (proj.knockback || 450);
             const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
@@ -3650,31 +4468,159 @@ function gameLoop(now) {
     }
   }
 
-  // [E] Key interactions (Pick up loot OR Open Mirror OR Open Floor Gateway OR Open Merchant)
-  if (input.justPressedE && !modalsOpen) {
-    if (currentFloor === 0 && floorStation.isPlayerNearby(player)) {
+  // --- DOWNED & REVIVE CO-OP CHANNELING LOOP ---
+  let isRevivingTeammate = false;
+  if (!player.isDowned && !player.isDead) {
+    let nearestDownedPeer = null;
+    let nearestDownedDist = 75; // 75px revive interaction radius
+
+    for (const [peerId, remote] of network.remotePlayers.entries()) {
+      if (remote.isDowned && !remote.isDead) {
+        const dist = Math.hypot(remote.x - player.x, remote.y - player.y);
+        if (dist <= 75) {
+          remote.showRevivePrompt = true;
+          if (dist < nearestDownedDist) {
+            nearestDownedDist = dist;
+            nearestDownedPeer = { peerId, remote };
+          }
+        } else {
+          remote.showRevivePrompt = false;
+        }
+      } else {
+        remote.showRevivePrompt = false;
+      }
+    }
+
+    if (nearestDownedPeer) {
+      if (input.keys.e && !modalsOpen) {
+        isRevivingTeammate = true;
+        const target = nearestDownedPeer.remote;
+        target.reviveProgress = (target.reviveProgress || 0) + dt;
+
+        revivePulseSoundTimer -= dt;
+        if (revivePulseSoundTimer <= 0) {
+          revivePulseSoundTimer = 0.28;
+          audio.playRevivingPulse();
+        }
+
+        if (Math.random() < 0.45) {
+          particles.spawnDashBurst(target.x, target.y, Math.random() * Math.PI * 2, '#22c55e');
+        }
+
+        const progMsg = {
+          type: 'REVIVE_PROGRESS',
+          targetPeerId: nearestDownedPeer.peerId,
+          progress: target.reviveProgress
+        };
+        if (network.isHost) network.broadcast(progMsg);
+        else network.sendToHost(progMsg);
+
+        if (target.reviveProgress >= 2.5) {
+          target.isDowned = false;
+          target.isDead = false;
+          target.hp = Math.round((target.maxHp || 100) * 0.40);
+          target.reviveProgress = 0;
+          target.showRevivePrompt = false;
+
+          audio.playRevivedFanfare();
+          cinematics.addScreenShake(8);
+          particles.spawnComicText(target.x, target.y - 30, 'TEAMMATE REVIVED! 💚 40% HP', '#22c55e');
+
+          const revMsg = {
+            type: 'PLAYER_REVIVED',
+            targetPeerId: nearestDownedPeer.peerId
+          };
+          if (network.isHost) network.broadcast(revMsg);
+          else network.sendToHost(revMsg);
+        }
+      } else {
+        const target = nearestDownedPeer.remote;
+        if (target.reviveProgress > 0) {
+          target.reviveProgress = Math.max(0, target.reviveProgress - dt * 2.5);
+          const progMsg = {
+            type: 'REVIVE_PROGRESS',
+            targetPeerId: nearestDownedPeer.peerId,
+            progress: target.reviveProgress
+          };
+          if (network.isHost) network.broadcast(progMsg);
+          else network.sendToHost(progMsg);
+        }
+      }
+    }
+  }
+
+  // If local player is downed and not being channeled, slowly decay revive progress
+  if (player.isDowned && player.reviveProgress > 0) {
+    player.reviveProgress = Math.max(0, player.reviveProgress - dt * 1.5);
+  }
+
+  // --- RUN CONCLUSION: PARTY WIPE DETECTION (STEP 5.2) ---
+  if (currentFloor >= 1 && currentDungeon && !runStats.isRunOver) {
+    const isLocalDownedOrDead = player.isDowned || player.isDead;
+    if (isLocalDownedOrDead) {
+      let isWiped = false;
+      if (network.remotePlayers.size === 0) {
+        // Solo mode: wiped when dead or downed
+        isWiped = player.isDead || player.isDowned;
+      } else {
+        // Co-op mode: wiped when all active teammates are downed or dead
+        const allRemotesDownOrDead = [...network.remotePlayers.values()].every(r => r.isDowned || r.isDead);
+        isWiped = allRemotesDownOrDead;
+      }
+
+      if (isWiped) {
+        triggerPartyWipe();
+      }
+    }
+  }
+
+  // Dead Player Respawn check (Lobby only)
+  if (player.isDead && currentFloor === 0) {
+    if (input.justPressedSpace || input.justPressedR) {
+      player.revive(1.0);
+      particles.spawnComicText(player.x, player.y - 30, 'RESPAWNED! 🏕️', '#38bdf8');
+      player.x = 0;
+      player.y = 0;
+      broadcastMyState();
+    }
+  }
+
+  // [E] Key interactions (Pick up loot OR Open Mirror OR Open Floor Gateway OR Dev Armory OR Open Merchant OR Casino Props)
+  if (input.justPressedE && !modalsOpen && !isRevivingTeammate && !player.isDowned && !player.isDead) {
+    if (currentFloor === 0 && devArmoryChest.isNear(player)) {
+      openDevArmoryModal();
+    } else if (currentFloor === 0 && floorStation.isPlayerNearby(player)) {
       openFloorModal();
     } else if (currentFloor === 0 && wardrobeStation.isPlayerNearby(player)) {
       openWardrobe();
     } else if (currentFloor >= 1 && slopMerchant && slopMerchant.isNear(player)) {
       openMerchantModal();
+    } else if (currentFloor >= 1 && wheelAltar && wheelAltar.isNear(player)) {
+      openWheelAltarModal();
+    } else if (currentFloor >= 1 && blackjackTable && blackjackTable.isNear(player)) {
+      openBlackjackModal();
     } else {
       tryPickupNearbyLoot();
     }
   }
 
   // [F] Key: Toggle Floor Selection Modal anytime for instant level testing!
-  if (input.justPressedF && !modalsOpen) {
+  if (input.justPressedF && !modalsOpen && !player.isDowned && !player.isDead) {
     toggleFloorModal();
   }
 
+  // [G] Key: Toggle Dev Armory Sandbox Gear anytime for instant testing!
+  if (input.justPressedG && !modalsOpen && !player.isDowned && !player.isDead) {
+    toggleDevArmoryModal();
+  }
+
   // [Q] Key: Active ability (Checks for Full Set Ultimate first, then Base Chest ability)
-  if (input.justPressedQ && !modalsOpen) {
+  if (input.justPressedQ && !modalsOpen && !player.isDowned && !player.isDead) {
     combat.triggerActiveAbility(player, activeSet, onTriggerCinematic);
   }
 
   // [R] Key: Manual Reload for Carnage Shotgun
-  if (input.justPressedR && !modalsOpen) {
+  if (input.justPressedR && !modalsOpen && !player.isDowned && !player.isDead) {
     const isShotgun = player.equipment?.weapon?.visual === 'david_shotgun';
     if (isShotgun && !player.isReloadingShotgun && player.shotgunAmmo < player.maxShotgunAmmo) {
       player.startShotgunReload();
@@ -3697,6 +4643,7 @@ function gameLoop(now) {
   const weaponVisual = player.equipment?.weapon?.visual;
 
   const performPrimaryAttack = () => {
+    if (player.isDowned || player.isDead) return false;
     const currentWeapon = player.equipment?.weapon;
     const currentWeaponVisual = currentWeapon?.visual;
     const isShotgun = currentWeaponVisual === 'david_shotgun';
@@ -3735,7 +4682,7 @@ function gameLoop(now) {
   };
 
   // Left Click: ODM Cable Launch (if in ODM Mode) OR Standard Weapon Attack (Dual Blades, Shotgun, Swords, etc.)
-  if (input.justPressedLeft && !modalsOpen && !player.isStunned) {
+  if (input.justPressedLeft && !modalsOpen && !player.isStunned && !player.isDowned && !player.isDead) {
     if (player.isOdmMode && isLeviGearEquipped) {
       // Launch high-tension ODM cable towards cursor in world coordinates
       const worldMouseX = (input.mouse.screenX - window.innerWidth / 2) + player.x;
@@ -3756,7 +4703,7 @@ function gameLoop(now) {
   }
 
   // Right Click: ODM Cable Launch (if in ODM Mode) OR 2-Handed Weapon Attack OR Standard Off-hand Slap / Ability
-  if (input.justPressedRight && !modalsOpen && !player.isBlocking && !player.isStunned) {
+  if (input.justPressedRight && !modalsOpen && !player.isBlocking && !player.isStunned && !player.isDowned && !player.isDead) {
     if (player.isOdmMode && isLeviGearEquipped) {
       // In ODM Mode, Right Click ALSO launches an ODM cable (enables rapid dual cable maneuvering!)
       const worldMouseX = (input.mouse.screenX - window.innerWidth / 2) + player.x;
@@ -3864,11 +4811,24 @@ function gameLoop(now) {
     // Floor Selector Gateway Station
     floorStation.draw(renderer.ctx, player);
 
+    // Dev Armory Sandbox Chest (Southwest)
+    devArmoryChest.draw(renderer.ctx, player);
+
     // Training Dummy / Combat Automaton
     dummy.draw(renderer.ctx, Math.hypot(player.x - dummy.x, player.y - dummy.y) <= 180);
   } else if (currentFloor >= 1 && currentDungeon) {
     // Procedural Anime Dungeon (Isaac-style discrete rooms & cardinal doors)
     renderer.drawDungeon(currentDungeon, targetCamX, targetCamY, renderer.width, renderer.height, now * 0.001);
+
+    // In-World Wheel of Slop Altar
+    if (wheelAltar) {
+      wheelAltar.draw(renderer.ctx, wheelAltar.isNear(player), now * 0.001);
+    }
+
+    // In-World Blackjack Table
+    if (blackjackTable) {
+      blackjackTable.draw(renderer.ctx, blackjackTable.isNear(player), now * 0.001);
+    }
 
     // Slop Merchant (with rug, goods, speech bubble, and RPG)
     if (slopMerchant) {
@@ -3917,6 +4877,76 @@ function gameLoop(now) {
 
   // Full-screen post-processing cinematic overlays (Dark purple vortex, screen bisection cut, blood-red vignette)
   cinematics.drawScreenOverlay(renderer.ctx, renderer.width, renderer.height);
+
+  // Screen-space UI banners for Downed and Dead states
+  if (player.isDowned) {
+    const ctx = renderer.ctx;
+    const w = renderer.width;
+    const h = renderer.height;
+
+    // Pulsing blood-red vignette
+    const pulse = Math.sin(Date.now() * 0.006) * 0.15 + 0.35;
+    const grad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.7);
+    grad.addColorStop(0, 'rgba(185, 28, 28, 0)');
+    grad.addColorStop(1, `rgba(185, 28, 28, ${pulse})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Downed Banner Bar
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(w / 2 - 180, h - 110, 360, 48, [12]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '800 14px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText(`🩸 DOWNED [${Math.ceil(player.downedTimer)}s] - CRAWL TO TEAMMATES!`, w / 2, h - 86);
+
+    if (player.reviveProgress > 0) {
+      const revPct = Math.max(0, Math.min(1, player.reviveProgress / 2.5));
+      ctx.fillStyle = '#22c55e';
+      ctx.font = '700 12px "JetBrains Mono", monospace';
+      ctx.fillText(`💚 BEING REVIVED... ${Math.round(revPct * 100)}%`, w / 2, h - 68);
+    } else {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 11px "Outfit", sans-serif';
+      ctx.fillText('Teammates hold [E] nearby to revive you', w / 2, h - 68);
+    }
+    ctx.restore();
+  } else if (player.isDead) {
+    const ctx = renderer.ctx;
+    const w = renderer.width;
+    const h = renderer.height;
+
+    // Dark death tint
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Death Banner
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(w / 2 - 200, h / 2 - 50, 400, 100, [16]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '900 24px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('💀 YOU DIED', w / 2, h / 2 - 14);
+
+    ctx.font = '600 13px "Outfit", sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('Press [SPACE] or [R] to Respawn at Base Camp', w / 2, h / 2 + 18);
+    ctx.restore();
+  }
 
     // 4. Clear single-frame input flags
     input.endFrame();

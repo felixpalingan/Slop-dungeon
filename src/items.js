@@ -14,53 +14,65 @@ export const ItemRarity = {
 
 export const SET_DEFINITIONS = {
   'gojo': {
-    name: 'The Honored One (Gojo Satoru)',
-    anime: 'Jujutsu Kaisen',
+    name: 'The Honored One',
+    title: 'The Honored One',
+    anime: 'Cursed Sorcerer',
     color: '#00f0ff',
     requiredItems: ['gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red'],
     ultimateQ: 'hollow_purple',
+    ultimateTitle: 'HOLLOW PURPLE',
     desc: 'Combines Blue & Red into the screen-clearing Hollow Purple!'
   },
   'sukuna': {
-    name: 'King of Curses (Ryomen Sukuna)',
-    anime: 'Jujutsu Kaisen',
+    name: 'King of Curses',
+    title: 'King of Curses',
+    anime: 'Cursed Sovereign',
     color: '#ff2a5f',
     requiredItems: ['sukuna_crown', 'sukuna_robe', 'sukuna_hakama', 'sukuna_zori'],
     requiredWeaponOneOf: ['sukuna_kamutoke', 'sukuna_cleaver'],
     ultimateQ: 'world_cutting_slash',
+    ultimateTitle: 'WORLD CUTTING SLASH',
     desc: 'Bisects reality with the unblockable World Cutting Slash!'
   },
   'toji': {
-    name: 'Sorcerer Killer (Toji Fushiguro)',
-    anime: 'Jujutsu Kaisen',
+    name: 'The Sorcerer Killer',
+    title: 'The Sorcerer Killer',
+    anime: 'Heavenly Restriction',
     color: '#38bdf8',
     requiredItems: ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain'],
     ultimateQ: 'inverted_chain_rampage',
+    ultimateTitle: 'INVERTED CHAIN RAMPAGE',
     desc: 'Swings the Thousand-Mile Chain in a sweeping whirlwind that nullifies enemy shields!'
   },
   'guts': {
-    name: 'The Black Swordsman (Guts)',
-    anime: 'Berserk',
+    name: 'The Black Swordsman',
+    title: 'The Black Swordsman',
+    anime: 'The Berserker',
     color: '#ef4444',
     requiredItems: ['guts_beast_helm', 'guts_berserker_plate', 'guts_greaves', 'guts_sollerets', 'dragon_slayer'],
     ultimateQ: 'berserker_rage',
+    ultimateTitle: 'BERSERKER RAGE',
     desc: 'Unleashes the Berserker Beast Armor: +85% attack speed, immune to stun & knockback, +35% damage reduction, and 35% life steal!'
   },
   'levi': {
-    name: 'Humanity’s Strongest Soldier (Levi Ackerman)',
-    anime: 'Attack on Titan',
+    name: 'Humanity’s Strongest Soldier',
+    title: 'Humanity’s Strongest',
+    anime: 'Titan Hunter',
     color: '#10b981',
     requiredItems: ['scout_hood', 'odm_harness', 'scout_trousers', 'scout_boots', 'dual_snap_blades'],
     ultimateQ: 'levi_grapple_whirlwind',
+    ultimateTitle: 'ODM GRAPPLE WHIRLWIND',
     desc: '[Q] Toggles ODM Mode: Left Click shoots maneuvering cables (max 2) with unlimited reach. Pass through enemies with zero collision, slicing and spinning on hit! Gas recharges on landing.'
   },
   'david': {
-    name: 'Night City Legend (David Martinez)',
-    anime: 'Cyberpunk: Edgerunners',
+    name: 'Night City Legend',
+    title: 'Night City Legend',
+    anime: 'Cyber Sandevistan',
     color: '#00ff88',
     requiredItems: ['david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'],
     ultimateQ: 'sandevistan_time_dilation',
-    desc: '[Q] Overclocks the military-grade Sandevistan: slows global time to 10% for everyone (monsters, projectiles, players) for 4s, while David moves freely with persistent cyan/lime ghost trails!'
+    ultimateTitle: 'SANDEVISTAN TIME DILATION',
+    desc: '[Q] Overclocks the military-grade Sandevistan: slows global time to 10% for everyone (monsters, projectiles, players) for 4s, while the wearer moves freely with persistent cyan/lime ghost trails!'
   }
 };
 
@@ -102,9 +114,11 @@ export function checkSetBonus(equipment) {
       return {
         setKey,
         name: set.name,
+        title: set.title || set.name,
         anime: set.anime,
         color: set.color,
         ultimateQ: set.ultimateQ,
+        ultimateTitle: set.ultimateTitle,
         desc: set.desc
       };
     }
@@ -276,7 +290,7 @@ export const ITEM_CATALOG = {
   },
   'sukuna_finger': {
     id: 'sukuna_finger',
-    name: "Sukuna's Sealed Finger",
+    name: "Sealed Cursed Finger",
     set: 'sukuna',
     slot: 'offhand',
     rarity: 'MYTHIC',
@@ -675,7 +689,7 @@ export const ITEM_CATALOG = {
   },
   'david_jacket': {
     id: 'david_jacket',
-    name: "Gloria's High-Vis EMT Jacket",
+    name: "High-Vis Cyber EMT Jacket",
     set: 'david',
     slot: 'chest',
     rarity: 'MYTHIC',

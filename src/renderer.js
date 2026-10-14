@@ -176,10 +176,59 @@ export class Renderer {
       isSlapping = false,
       slapProgress = 0,
       isBerserk = false,
+      isDowned = false,
+      downedTimer = 0,
+      isDead = false,
+      reviveProgress = 0,
+      invulnerableTimer = 0,
       equipment = {}
     } = entity;
 
     const ctx = this.ctx;
+
+    // 1. DEAD STATE: Render Tombstone & Ghost
+    if (isDead) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Grave shadow
+      ctx.beginPath();
+      ctx.ellipse(0, radius * 0.5, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fill();
+
+      // Stone slab
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(-14, -radius * 0.9, 28, radius * 1.3, [12, 12, 3, 3]);
+      ctx.fill();
+      ctx.stroke();
+
+      // RIP Engraving
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '700 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('R.I.P.', 0, -radius * 0.2);
+
+      // Floating Skull Icon
+      const hover = Math.sin(Date.now() * 0.005) * 4;
+      ctx.font = '16px sans-serif';
+      ctx.fillText('💀', 0, -radius - 12 + hover);
+
+      // Name & DEAD tag overhead
+      ctx.font = '600 12px "Outfit", sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(name, 0, -radius - 32);
+
+      ctx.font = '800 10px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('DEAD 💀', 0, -radius - 20);
+
+      ctx.restore();
+      return;
+    }
 
     // Draw high-tension ODM Grapple Cables in world coordinates before entity translation
     if (entity.activeCables && entity.activeCables.length > 0) {
@@ -189,16 +238,60 @@ export class Renderer {
     ctx.save();
     ctx.translate(x, y);
 
-    // Drop shadow
+    // Drop shadow or blood pool if downed
     ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(0, radius + 5, radius * 1.15, radius * 0.45, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fill();
+    if (isDowned) {
+      // Blood pool on ground underneath downed player
+      ctx.beginPath();
+      ctx.ellipse(0, 4, radius * 1.45, radius * 0.85, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.55)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(185, 28, 28, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(0, radius + 5, radius * 1.15, radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fill();
+    }
     ctx.restore();
 
-    // Rotate facing mouse direction
+    // Invulnerability i-frames aura flash
+    if (invulnerableTimer > 0) {
+      ctx.save();
+      const iPulse = Math.sin(Date.now() * 0.02) * 2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 3 + iPulse;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 8 + iPulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Glowing green circular revive channel ring
+    if (isDowned && reviveProgress > 0) {
+      const revPct = Math.max(0, Math.min(1, reviveProgress / 2.5));
+      ctx.save();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#22c55e';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 12, -Math.PI / 2, -Math.PI / 2 + revPct * Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Rotate facing mouse/movement direction
     ctx.rotate(angle);
+
+    // Downed crawl posture: collapsed onto floor
+    if (isDowned) {
+      ctx.scale(1.22, 0.60);
+    }
 
     // Levi Ackerman ODM Whirlwind Spin on Enemy Hit
     if (entity.spinTimer && entity.spinTimer > 0) {
@@ -1555,18 +1648,60 @@ export class Renderer {
 
     // Overhead Name & Mini HP Bar
     ctx.save();
-    ctx.translate(x, y - radius - (entity.isStunned ? 28 : 18));
+    ctx.translate(x, y - radius - (entity.isStunned ? 28 : (isDowned ? 26 : 18)));
     ctx.font = '600 12px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(name, 0, -6);
 
-    const barWidth = 36;
+    const barWidth = 38;
     const barHeight = 4;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(-barWidth / 2, 0, barWidth, barHeight);
-    ctx.fillStyle = '#00ff88';
-    ctx.fillRect(-barWidth / 2, 0, barWidth * ((entity.hp ?? 100) / (entity.maxHp ?? 100)), barHeight);
+
+    if (isDowned) {
+      // Pulsating bleed-out countdown
+      const pulseAlpha = Math.sin(Date.now() * 0.008) * 0.25 + 0.75;
+      ctx.font = '800 10px "JetBrains Mono", monospace';
+      ctx.fillStyle = `rgba(239, 68, 68, ${pulseAlpha})`;
+      ctx.fillText(`🩸 DOWNED [${Math.ceil(downedTimer || 0)}s]`, 0, -18);
+
+      // Bleed-out countdown bar
+      const bleedPct = Math.max(0, Math.min(1, (downedTimer || 0) / 30.0));
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(-barWidth / 2, 0, barWidth, barHeight);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-barWidth / 2, 0, barWidth * bleedPct, barHeight);
+
+      // Teammate Revive Progress Bar
+      if (reviveProgress && reviveProgress > 0) {
+        const revPct = Math.max(0, Math.min(1, reviveProgress / 2.5));
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(-barWidth / 2, barHeight + 3, barWidth, 4);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(-barWidth / 2, barHeight + 3, barWidth * revPct, 4);
+
+        ctx.font = '800 8.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText(`REVIVING... ${Math.round(revPct * 100)}% 💚`, 0, barHeight + 17);
+      } else if (entity.showRevivePrompt) {
+        // Floating prompt for nearby living player
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-54, barHeight + 4, 108, 16, [8]);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '800 8.5px "Outfit", sans-serif';
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText('HOLD [E] TO REVIVE 💚', 0, barHeight + 15);
+      }
+    } else {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(-barWidth / 2, 0, barWidth, barHeight);
+      ctx.fillStyle = '#00ff88';
+      ctx.fillRect(-barWidth / 2, 0, barWidth * ((entity.hp ?? 100) / (entity.maxHp ?? 100)), barHeight);
+    }
 
     // In-world Mini Gas Bar (for Levi ODM Gear)
     const isLeviActive = entity.isOdmMode ||
@@ -2369,6 +2504,113 @@ export class Renderer {
       ctx.ellipse(0, m.radius * 0.75, m.radius * 0.85, m.radius * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Kamikaze Exploder Priming Telegraph (Expanding red danger zone)
+      if (m.isPriming || (m.fuseTimer && m.fuseTimer > 0)) {
+        const explR = m.explosionRadius || 120;
+        const fuseDur = m.fuseDuration || 1.0;
+        const prog = Math.max(0, Math.min(1, 1 - (m.fuseTimer / fuseDur)));
+        const currentR = explR * (0.25 + 0.75 * prog);
+
+        ctx.save();
+        // Pulsing red danger radial fill
+        const pulseAlpha = 0.15 + Math.sin(m.animTime * 24) * 0.08;
+        ctx.fillStyle = `rgba(239, 68, 68, ${pulseAlpha})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, currentR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Expanding dashed hazard warning ring
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, currentR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Maximum blast perimeter boundary
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, explR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Countdown visual indicator text
+        ctx.font = '800 11px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#fee2e2';
+        ctx.textAlign = 'center';
+        ctx.fillText(`⚠️ DETONATING: ${Math.max(0, m.fuseTimer).toFixed(1)}s`, 0, -explR - 6);
+        ctx.restore();
+      }
+
+      // Shaman Support Buffer Channeling Sigil (Rotating golden runic array)
+      if (m.isBuffing || (m.channelTimer && m.channelTimer > 0)) {
+        const buffR = m.buffRadius || 220;
+        const spinAng = m.animTime * 2.2;
+        ctx.save();
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.07)';
+        ctx.beginPath();
+        ctx.arc(0, 0, buffR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rotating golden rune perimeter
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([14, 8]);
+        ctx.beginPath();
+        ctx.arc(0, 0, buffR, spinAng, spinAng + Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Orbiting rune nodes
+        ctx.fillStyle = '#fde047';
+        for (let r = 0; r < 6; r++) {
+          const rAng = spinAng + (r / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(Math.cos(rAng) * buffR, Math.sin(rAng) * buffR, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Inner harmonic wave
+        const waveR = (m.animTime * 140) % buffR;
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, waveR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Protective Ward Energy Shield Bubble (Absorbs up to 40 damage)
+      if (m.wardHp && m.wardHp > 0) {
+        ctx.save();
+        const wardPulse = Math.sin(m.animTime * 5.5) * 2;
+        const wardR = m.radius + 6 + wardPulse;
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, wardR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Shimmering hexagonal barrier facets
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let h = 0; h < 6; h++) {
+          const hAng = (h / 6) * Math.PI * 2 + m.animTime * 0.4;
+          const hx = Math.cos(hAng) * wardR;
+          const hy = Math.sin(hAng) * wardR;
+          if (h === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Hit Flash: White glow silhouette
       if (m.hitFlashTimer > 0) {
         ctx.fillStyle = '#ffffff';
@@ -2455,6 +2697,113 @@ export class Renderer {
         ctx.fillStyle = '#a855f7';
         ctx.fillRect(-m.radius, -8, 6, 6);
         ctx.fillRect(m.radius - 6, -8, 6, 6);
+      } else if (m.type === 'cursed_bomb_bug') {
+        // JJK: Volatile Curse Beetle (Kamikaze Exploder)
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // Scuttling insectoid legs
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let l = -1; l <= 1; l++) {
+          const lY = l * 8;
+          const legWiggle = Math.sin(m.animTime * 24 + l) * 4;
+          ctx.moveTo(-4, lY);
+          ctx.lineTo(-m.radius * 1.25, lY - 6 + legWiggle);
+          ctx.moveTo(4, lY);
+          ctx.lineTo(m.radius * 1.25, lY - 6 - legWiggle);
+        }
+        ctx.stroke();
+
+        // Molten glowing pulsing abdomen
+        const bombPulse = m.isPriming ? Math.sin(m.animTime * 32) * 0.4 + 0.6 : Math.sin(m.animTime * 8) * 0.2 + 0.8;
+        ctx.fillStyle = m.isPriming ? `rgba(239, 68, 68, ${bombPulse})` : '#7f1d1d';
+        ctx.beginPath();
+        ctx.ellipse(-6, 0, m.radius * 0.85, m.radius * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Armored thorax & head
+        ctx.fillStyle = '#1e1b4b';
+        ctx.beginPath();
+        ctx.arc(6, 0, m.radius * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Twin sharp pincers / mandibles
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(10, -5);
+        ctx.lineTo(18, -3);
+        ctx.lineTo(12, 0);
+        ctx.moveTo(10, 5);
+        ctx.lineTo(18, 3);
+        ctx.lineTo(12, 0);
+        ctx.fill();
+
+        // Glowing red optic eyes
+        ctx.fillStyle = '#fee2e2';
+        ctx.fillRect(8, -3, 3, 2);
+        ctx.fillRect(8, 1, 3, 2);
+        ctx.restore();
+      } else if (m.type === 'cursed_shaman') {
+        // JJK: Cursed Ward Shaman (Support Buffer)
+        // Robed occult sorcerer
+        ctx.fillStyle = '#1e1b4b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Flowing occult cowl hood
+        ctx.fillStyle = '#312e81';
+        ctx.beginPath();
+        ctx.arc(0, -3, m.radius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shimenawa straw rope sacred belt
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 2, m.radius * 0.85, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+        // Floating Paper Talismans (Ofuda) Orbiting Shaman
+        ctx.save();
+        for (let of = 0; of < 4; of++) {
+          const ofAngle = m.animTime * 3 + (of / 4) * Math.PI * 2;
+          const ofDist = m.radius + 12;
+          const ox = Math.cos(ofAngle) * ofDist;
+          const oy = Math.sin(ofAngle) * ofDist;
+
+          ctx.save();
+          ctx.translate(ox, oy);
+          ctx.rotate(ofAngle + Math.PI / 2);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(-3, -6, 6, 12);
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(-3, -6, 6, 12);
+          // Red talisman rune mark
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(-1.5, -3, 3, 6);
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Mysterious glowing occult eyes inside cowl
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(-4, -3, 2.5, 0, Math.PI * 2);
+        ctx.arc(4, -3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
       } else if (m.type === 'finger_bearer') {
         // JJK Boss: Special Grade Finger Bearer
         const isPhase2 = m.phase === 2;
@@ -2716,6 +3065,125 @@ export class Renderer {
           ctx.fill();
         }
         ctx.shadowBlur = 0;
+      } else if (m.type === 'arasaka_drone_suicide') {
+        // Cyberpunk Exploder: Arasaka Suicide Kamikaze Drone
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // Aerodynamic Swept Delta Wings (Matte Black with Crimson Trim)
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 1.1, 0); // Nose tip
+        ctx.lineTo(-m.radius * 0.9, -m.radius * 1.15); // Left wingtip
+        ctx.lineTo(-m.radius * 0.5, 0); // Rear center notch
+        ctx.lineTo(-m.radius * 0.9, m.radius * 1.15); // Right wingtip
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        // Twin Afterburner Thruster Flames (Blazing Orange/Red)
+        const flameLength = (m.isPriming ? 18 : 10) + Math.sin(m.animTime * 35) * 4;
+        ctx.fillStyle = m.isPriming ? '#facc15' : '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(-m.radius * 0.7, -m.radius * 0.45);
+        ctx.lineTo(-m.radius * 0.7 - flameLength, -m.radius * 0.45);
+        ctx.lineTo(-m.radius * 0.7, -m.radius * 0.2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(-m.radius * 0.7, m.radius * 0.2);
+        ctx.lineTo(-m.radius * 0.7 - flameLength, m.radius * 0.45);
+        ctx.lineTo(-m.radius * 0.7, m.radius * 0.45);
+        ctx.fill();
+
+        // High-Yield Volatile Warhead Nose Core
+        const warheadPulse = m.isPriming ? Math.sin(m.animTime * 36) * 0.5 + 0.5 : Math.sin(m.animTime * 10) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(239, 68, 68, ${warheadPulse})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = m.isPriming ? 16 : 6;
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.4, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Flashing Top Warning Strobe Light
+        const strobeGlow = Math.sin(m.animTime * (m.isPriming ? 40 : 12)) > 0;
+        ctx.fillStyle = strobeGlow ? '#fee2e2' : '#7f1d1d';
+        ctx.fillRect(-2, -3, 4, 6);
+
+        // Yellow Hazard Chevrons on wing surface
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-m.radius * 0.3, -m.radius * 0.7, 3, 5);
+        ctx.fillRect(-m.radius * 0.3, m.radius * 0.7 - 5, 3, 5);
+        ctx.restore();
+      } else if (m.type === 'netrunner_overseer') {
+        // Cyberpunk Shaman: Netrunner Overseer (Support Buffer & Signal Hacker)
+        ctx.save();
+        // Floating techwear coat with cyan neural circuits
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Cybernetic Trenchcoat Collar
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, -2, m.radius * 0.7, 0, Math.PI);
+        ctx.fill();
+
+        // High-Tech Cyberdeck Unit on Hip/Back
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-m.radius * 0.85, 4, m.radius * 1.7, 6);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-m.radius * 0.85, 4, m.radius * 1.7, 6);
+
+        // Holographic Neural Data Crown (Floating rotating cyber glyphs)
+        ctx.save();
+        const crownRot = m.animTime * 2.5;
+        ctx.translate(0, -m.radius * 0.65);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 4.5, crownRot * 0.3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Data nodes in crown
+        for (let cn = 0; cn < 4; cn++) {
+          const cAng = crownRot + (cn / 4) * Math.PI * 2;
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(Math.cos(cAng) * 10 - 1.5, Math.sin(cAng) * 4 - 1.5, 3, 3);
+        }
+        ctx.restore();
+
+        // Dual Glowing Cyan Netrunner Visor Slit
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(-6, -4, 12, 3);
+        ctx.shadowBlur = 0;
+
+        // Trailing Optical Cables with Golden Data Pulses
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        const cableWave = Math.sin(m.animTime * 6) * 4;
+        ctx.moveTo(-m.radius * 0.5, m.radius * 0.7);
+        ctx.lineTo(-m.radius * 0.8, m.radius * 1.35 + cableWave);
+        ctx.moveTo(m.radius * 0.5, m.radius * 0.7);
+        ctx.lineTo(m.radius * 0.8, m.radius * 1.35 - cableWave);
+        ctx.stroke();
+        ctx.restore();
       } else if (m.type === 'adam_smasher_prototype') {
         // Cyberpunk Boss: Adam Smasher Prototype (Titanium War Chassis)
         const isPhase2 = m.phase === 2;
@@ -2949,6 +3417,130 @@ export class Renderer {
         // Tactical gear harness belt
         ctx.fillStyle = '#451a03';
         ctx.fillRect(-m.radius * 0.6, 2, m.radius * 1.2, 4);
+      } else if (m.type === 'pure_titan_bomb') {
+        // AoT Exploder: Volatile Abnormal Titan (Kamikaze Exploder)
+        const walkBob = Math.sin(m.animTime * 18) * 3;
+        ctx.translate(0, walkBob);
+
+        // Bloated, Grotesquely Swollen Titan Torso
+        const bellyPulse = m.isPriming ? Math.sin(m.animTime * 28) * 3 : Math.sin(m.animTime * 8) * 1.5;
+        ctx.fillStyle = '#f87171';
+        ctx.beginPath();
+        ctx.ellipse(0, 2, m.radius * 1.05 + bellyPulse, m.radius * 0.88 + bellyPulse, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#b91c1c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Boiling Internal Red Core glowing through stretched pale skin
+        const coreAlpha = m.isPriming ? 0.7 + Math.sin(m.animTime * 34) * 0.3 : 0.45;
+        ctx.fillStyle = `rgba(239, 68, 68, ${coreAlpha})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = m.isPriming ? 18 : 6;
+        ctx.beginPath();
+        ctx.arc(0, 2, m.radius * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Scalding Steam Vents Hissing Puffing Clouds
+        for (let sv = 0; sv < 4; sv++) {
+          const svAng = (sv / 4) * Math.PI * 2 + m.animTime * 3;
+          const svDist = m.radius * 0.95;
+          const puffSize = 4 + Math.sin(m.animTime * 12 + sv) * 2;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.beginPath();
+          ctx.arc(Math.cos(svAng) * svDist, Math.sin(svAng) * svDist - 4, puffSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Twisted Abnormal Titan Face (Wide unnerving grin & popping eyes)
+        ctx.fillStyle = '#fecaca';
+        ctx.beginPath();
+        ctx.arc(0, -m.radius * 0.45, m.radius * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gaping unhinged mouth
+        ctx.fillStyle = '#450a0a';
+        ctx.beginPath();
+        ctx.ellipse(0, -m.radius * 0.35, 7, 4, 0, 0, Math.PI);
+        ctx.fill();
+
+        // Frenzied bulging bloodshot eyes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-4, -m.radius * 0.55, 3, 0, Math.PI * 2);
+        ctx.arc(4, -m.radius * 0.55, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(-4 + Math.cos(m.angle), -m.radius * 0.55 + Math.sin(m.angle), 1.6, 0, Math.PI * 2);
+        ctx.arc(4 + Math.cos(m.angle), -m.radius * 0.55 + Math.sin(m.angle), 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (m.type === 'marleyan_commander') {
+        // AoT Shaman: Marleyan Signal Commander (Support Buffer)
+        ctx.save();
+        // Crisp Marleyan Officer Uniform (Slate olive & gold buttons)
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Golden Braided Epaulets on Shoulders
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-m.radius * 0.95, -6, 7, 12);
+        ctx.fillRect(m.radius * 0.95 - 7, -6, 7, 12);
+
+        // Peaked Military Officer Cap
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(0, -m.radius * 0.55, m.radius * 0.72, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gold Emblem & Visor Brim
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-3, -m.radius * 0.65, 6, 4);
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(-m.radius * 0.6, -m.radius * 0.5, m.radius * 1.2, 3);
+
+        // Raised Arm with Brass Signal Flare Gun
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.fillStyle = '#d97706'; // Polished Brass
+        ctx.fillRect(m.radius * 0.35, -m.radius * 0.7, 14, 5);
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(m.radius * 0.35, -m.radius * 0.7 + 5, 5, 6); // Grip
+
+        // Golden Signal Flare / Spark Eruption from Muzzle
+        const flarePulse = 0.6 + Math.sin(m.animTime * 15) * 0.4;
+        ctx.fillStyle = `rgba(250, 204, 21, ${flarePulse})`;
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.35 + 16, -m.radius * 0.7 + 2.5, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Tactical Field Radio Antenna with Concentric Golden Signal Radiations
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -m.radius * 0.7);
+        ctx.lineTo(0, -m.radius * 1.3);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.75)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, -m.radius * 1.3, 4 + (m.animTime * 14) % 10, -Math.PI * 0.8, -Math.PI * 0.2);
+        ctx.stroke();
+        ctx.restore();
       } else if (m.type === 'hardened_brute') {
         // AoT Brute: Hardened Fist 4-Meter Class Titan
         if (m.windupTimer > 0) {
@@ -3175,6 +3767,16 @@ export class Renderer {
 
         ctx.fillStyle = hpPct > 0.3 ? '#ef4444' : '#dc2626';
         ctx.fillRect(-barW / 2, barY, barW * hpPct, barH);
+
+        // Protective Ward Shield Bar Overlay (Absorbs incoming damage before HP)
+        if (m.wardHp && m.wardHp > 0) {
+          const wardPct = Math.min(1.0, m.wardHp / 40);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(-barW / 2, barY - 3, barW * wardPct, 2.5);
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(-barW / 2, barY - 3, barW * wardPct, 2.5);
+        }
       }
 
       ctx.restore();

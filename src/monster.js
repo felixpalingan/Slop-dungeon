@@ -61,6 +61,32 @@ export class Monster {
     this.onBossAttack3 = null; // (player, phase) => {}
     this.onBossWindup = null;  // (attackType, phase, duration) => {}
 
+    // Shaman Ward & Speed Buff states
+    this.wardHp = options.wardHp || 0;
+    this.speedBuffTimer = 0;
+
+    // Exploder Kamikaze states
+    this.fuseTimer = 0;
+    this.fuseDuration = options.fuseDuration || 1.0;
+    this.isPriming = false;
+    this.explosionRadius = options.explosionRadius || 120;
+    this.explosionDamage = options.explosionDamage || 65;
+    this.hasExploded = false;
+    this.beepTimer = 0;
+    this.onPrimeStart = null;
+    this.onBeep = null;
+    this.onExplode = null;
+
+    // Shaman Support Buffer states
+    this.buffCooldown = options.buffCooldown || 5.0;
+    this.buffCooldownTimer = Math.random() * 2.0; // staggered start
+    this.isBuffing = false;
+    this.channelTimer = 0;
+    this.channelDuration = 2.0;
+    this.buffRadius = 220;
+    this.onChannelStart = null;
+    this.onShamanBuff = null;
+
     // Visual & animation properties
     this.animTime = Math.random() * 10;
     this.hitFlashTimer = 0;
@@ -77,6 +103,14 @@ export class Monster {
 
     if (attacker) {
       this.lastAttacker = attacker;
+    }
+
+    // Protective Ward Absorption
+    let absorbed = 0;
+    if (this.wardHp > 0) {
+      absorbed = Math.min(this.wardHp, damage);
+      this.wardHp -= absorbed;
+      damage -= absorbed;
     }
 
     this.hp = Math.max(0, this.hp - damage);
@@ -113,6 +147,7 @@ export class Monster {
         }
         return {
           damage,
+          absorbed,
           isDead: false,
           isCrit,
           remainingHp: 0
@@ -127,9 +162,11 @@ export class Monster {
 
     return {
       damage,
+      absorbed,
       isDead: this.isDead,
       isCrit,
-      remainingHp: this.hp
+      remainingHp: this.hp,
+      wardRemaining: this.wardHp
     };
   }
 
@@ -150,11 +187,15 @@ export class Monster {
     }
   }
 
-  update(dt, players = [], dungeon = null) {
+  update(dt, players = [], dungeon = null, allMonsters = []) {
     this.animTime += dt;
 
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer = Math.max(0, this.hitFlashTimer - dt);
+    }
+
+    if (this.speedBuffTimer > 0) {
+      this.speedBuffTimer = Math.max(0, this.speedBuffTimer - dt);
     }
 
     // Boss custom dying animation sequence
@@ -194,15 +235,16 @@ export class Monster {
       this.attackCooldownTimer = Math.max(0, this.attackCooldownTimer - dt);
     }
 
-    // 1. Find closest player
+    // 1. Find closest player (prioritizes active/standing players over downed crawlers)
     let closestPlayer = null;
     let closestDist = Infinity;
 
     for (const p of players) {
       if (!p || p.isDead) continue;
-      const d = Math.hypot(p.x - this.x, p.y - this.y);
-      if (d < closestDist) {
-        closestDist = d;
+      // Active/standing players have normal priority; downed crawlers get a 400px priority penalty
+      const effectiveDist = Math.hypot(p.x - this.x, p.y - this.y) + (p.isDowned ? 400 : 0);
+      if (effectiveDist < closestDist) {
+        closestDist = effectiveDist;
         closestPlayer = p;
       }
     }
@@ -210,17 +252,22 @@ export class Monster {
     this.target = closestPlayer;
 
     if (closestPlayer) {
+      const actualDist = Math.hypot(closestPlayer.x - this.x, closestPlayer.y - this.y);
       this.angle = Math.atan2(closestPlayer.y - this.y, closestPlayer.x - this.x);
 
       // Archetype specific movement & attack logic
       if (this.archetype === 'swarmer') {
-        this.updateSwarmer(dt, closestPlayer, closestDist);
+        this.updateSwarmer(dt, closestPlayer, actualDist);
       } else if (this.archetype === 'ranged') {
-        this.updateRanged(dt, closestPlayer, closestDist);
+        this.updateRanged(dt, closestPlayer, actualDist);
       } else if (this.archetype === 'brute') {
-        this.updateBrute(dt, closestPlayer, closestDist);
+        this.updateBrute(dt, closestPlayer, actualDist);
       } else if (this.archetype === 'boss') {
-        this.updateBoss(dt, closestPlayer, closestDist);
+        this.updateBoss(dt, closestPlayer, actualDist);
+      } else if (this.archetype === 'exploder') {
+        this.updateExploder(dt, closestPlayer, actualDist);
+      } else if (this.archetype === 'shaman') {
+        this.updateShaman(dt, closestPlayer, actualDist, allMonsters);
       }
     } else {
       this.vx = 0;
@@ -240,13 +287,101 @@ export class Monster {
     }
   }
 
+  updateExploder(dt, player, dist) {
+    if (this.isPriming) {
+      this.vx = 0;
+      this.vy = 0;
+      this.fuseTimer -= dt;
+      this.beepTimer -= dt;
+      if (this.beepTimer <= 0) {
+        this.beepTimer = Math.max(0.08, this.fuseTimer * 0.22);
+        if (this.onBeep) this.onBeep(this);
+      }
+      if (this.fuseTimer <= 0 && !this.hasExploded) {
+        this.hasExploded = true;
+        this.isDead = true;
+        if (this.onExplode) this.onExplode(this);
+      }
+      return;
+    }
+
+    if (dist > 85) {
+      const speedMult = this.speedBuffTimer > 0 ? 1.3 : 1.0;
+      const dirX = Math.cos(this.angle);
+      const dirY = Math.sin(this.angle);
+      this.vx = dirX * this.baseSpeed * speedMult;
+      this.vy = dirY * this.baseSpeed * speedMult;
+    } else {
+      // Within 85px: begin 1.0s expanding red warning circle priming!
+      this.isPriming = true;
+      this.fuseTimer = this.fuseDuration;
+      this.beepTimer = 0;
+      this.vx = 0;
+      this.vy = 0;
+      if (this.onPrimeStart) this.onPrimeStart(this);
+    }
+  }
+
+  updateShaman(dt, player, dist, allMonsters = []) {
+    if (this.isBuffing) {
+      this.vx = 0;
+      this.vy = 0;
+      this.channelTimer -= dt;
+      if (this.channelTimer <= 0) {
+        this.isBuffing = false;
+        this.buffCooldownTimer = this.buffCooldown;
+        // Cast protective ward and speed buff to all nearby living monsters
+        const targetMonsters = allMonsters.filter(m => m && !m.isDead && m !== this && Math.hypot(m.x - this.x, m.y - this.y) <= this.buffRadius);
+        for (const m of targetMonsters) {
+          m.wardHp = Math.min(40, (m.wardHp || 0) + 40);
+          m.speedBuffTimer = 4.0;
+        }
+        // Self-buff half ward
+        this.wardHp = Math.min(30, (this.wardHp || 0) + 30);
+        if (this.onShamanBuff) this.onShamanBuff(this, targetMonsters);
+      }
+      return;
+    }
+
+    this.buffCooldownTimer -= dt;
+    if (this.buffCooldownTimer <= 0) {
+      // Start 2.0s channeling
+      this.isBuffing = true;
+      this.channelTimer = this.channelDuration;
+      this.vx = 0;
+      this.vy = 0;
+      if (this.onChannelStart) this.onChannelStart(this);
+      return;
+    }
+
+    // Cowardly AI: Maintain ~230px safe distance
+    const speedMult = this.speedBuffTimer > 0 ? 1.3 : 1.0;
+    if (dist < 180) {
+      // Kite away from player
+      const awayX = -Math.cos(this.angle);
+      const awayY = -Math.sin(this.angle);
+      this.vx = awayX * this.baseSpeed * speedMult;
+      this.vy = awayY * this.baseSpeed * speedMult;
+    } else if (dist > 280) {
+      // Slowly advance towards combat
+      const dirX = Math.cos(this.angle);
+      const dirY = Math.sin(this.angle);
+      this.vx = dirX * (this.baseSpeed * 0.7) * speedMult;
+      this.vy = dirY * (this.baseSpeed * 0.7) * speedMult;
+    } else {
+      this.vx = 0;
+      this.vy = 0;
+    }
+  }
+
   updateSwarmer(dt, player, dist) {
+    const speedMult = this.speedBuffTimer > 0 ? 1.3 : 1.0;
     if (dist > this.attackRange) {
       // Rush towards player
       const dirX = Math.cos(this.angle);
       const dirY = Math.sin(this.angle);
-      this.vx = dirX * this.baseSpeed;
-      this.vy = dirY * this.baseSpeed;
+      this.vx = dirX * this.baseSpeed * speedMult;
+      this.vy = dirY * this.baseSpeed * speedMult;
     } else {
       // Within attack range: deal bite/attack
       this.vx = 0;
@@ -441,7 +576,10 @@ export class Monster {
       Math.round(this.hp),
       this.isDead ? 1 : 0,
       this.isStunned ? 1 : 0,
-      this.windupTimer > 0 ? 1 : 0
+      this.windupTimer > 0 ? 1 : 0,
+      Math.round(this.wardHp || 0),
+      this.isPriming ? 1 : (this.isBuffing ? 2 : 0),
+      Math.round((this.fuseTimer || 0) * 100) / 100
     ];
   }
 
@@ -449,7 +587,7 @@ export class Monster {
    * Applies network update on client peers
    */
   applyNetworkState(stateArray) {
-    const [id, type, x, y, angle, hp, isDead, isStunned, isWindingUp] = stateArray;
+    const [id, type, x, y, angle, hp, isDead, isStunned, isWindingUp, wardHp, specialState, fuseTimer] = stateArray;
     // Interpolate towards received position
     this.x += (x - this.x) * 0.45;
     this.y += (y - this.y) * 0.45;
@@ -458,6 +596,12 @@ export class Monster {
     this.isDead = isDead === 1;
     this.isStunned = isStunned === 1;
     this.isWindingUp = isWindingUp === 1;
+    if (wardHp !== undefined) this.wardHp = wardHp;
+    if (specialState !== undefined) {
+      this.isPriming = specialState === 1;
+      this.isBuffing = specialState === 2;
+    }
+    if (fuseTimer !== undefined) this.fuseTimer = fuseTimer;
   }
 }
 
@@ -527,7 +671,7 @@ export class MonsterManager {
     for (const m of this.monsters) {
       if (!m.isDead) {
         if (isHost) {
-          m.update(dt, players, dungeon);
+          m.update(dt, players, dungeon, this.monsters);
         } else {
           // Client simply updates animation time and decays knockback
           m.animTime += dt;

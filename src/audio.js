@@ -2172,4 +2172,465 @@ export class AudioManager {
       console.warn('Audio error in Rocket Explosion:', e);
     }
   }
+
+  /**
+   * Crisp card deal swoosh for Blackjack
+   */
+  playCardFlip() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } catch (e) {
+      console.warn('Audio error in Card Flip:', e);
+    }
+  }
+
+  /**
+   * Ceramic casino chip clink for placing bets
+   */
+  playChipClink() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(1600 + Math.random() * 200, now);
+      osc1.frequency.exponentialRampToValueAtTime(700, now + 0.06);
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(2400 + Math.random() * 300, now);
+      osc2.frequency.exponentialRampToValueAtTime(1100, now + 0.04);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.07);
+      osc2.stop(now + 0.07);
+    } catch (e) {
+      console.warn('Audio error in Chip Clink:', e);
+    }
+  }
+
+  /**
+   * Cheerful casino victory fanfare (Natural 21 / Dealer Bust)
+   */
+  playCasinoWin(isBlackjack = false) {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const notes = isBlackjack ? [523.25, 659.25, 783.99, 1046.50] : [440, 554.37, 659.25];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const t = now + idx * 0.08;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.28);
+      });
+    } catch (e) {
+      console.warn('Audio error in Casino Win:', e);
+    }
+  }
+
+  /**
+   * Low disappointed thud when player busts or loses hand
+   */
+  playCasinoBust() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.32);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch (e) {
+      console.warn('Audio error in Casino Bust:', e);
+    }
+  }
+
+  /**
+   * Cash register chime & dice tumble for shop reroll
+   */
+  playCashReroll() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Coin chime
+      const osc1 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(987.77, now); // B5
+      osc1.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+      gain1.gain.setValueAtTime(0.25, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(this.ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      // Dice rattle
+      for (let i = 0; i < 4; i++) {
+        const rattle = this.ctx.createOscillator();
+        const rattleGain = this.ctx.createGain();
+        const t = now + i * 0.04;
+        rattle.type = 'triangle';
+        rattle.frequency.setValueAtTime(350 + Math.random() * 150, t);
+        rattleGain.gain.setValueAtTime(0.12, t);
+        rattleGain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+        rattle.connect(rattleGain);
+        rattleGain.connect(this.ctx.destination);
+        rattle.start(t);
+        rattle.stop(t + 0.035);
+      }
+    } catch (e) {
+      console.warn('Audio error in Cash Reroll:', e);
+    }
+  }
+
+  /**
+   * Dramatic heavy impact & dissonant tritone cue when player enters Downed state
+   */
+  playPlayerDowned() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+
+      // Heavy sub-bass drop
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(175, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.55);
+
+      // Lowpass filter for heavy muffling
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, now);
+      filter.frequency.exponentialRampToValueAtTime(70, now + 0.55);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.55);
+
+      // Somber dissonant alarm stingers (tritone interval)
+      const freqs = [277.18, 392.0]; // C#4 & G4 tritone
+      freqs.forEach((f, idx) => {
+        const sting = this.ctx.createOscillator();
+        const stingGain = this.ctx.createGain();
+        sting.type = 'sine';
+        sting.frequency.setValueAtTime(f, now + 0.05);
+        stingGain.gain.setValueAtTime(0.18, now + 0.05);
+        stingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+
+        sting.connect(stingGain);
+        stingGain.connect(this.ctx.destination);
+        sting.start(now + 0.05);
+        sting.stop(now + 0.75);
+      });
+    } catch (e) {
+      console.warn('Audio error in Player Downed:', e);
+    }
+  }
+
+  /**
+   * Ethereal pulsing chime while holding [E] to revive
+   */
+  playRevivingPulse() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(380, now);
+      osc.frequency.exponentialRampToValueAtTime(560, now + 0.18);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch (e) {
+      console.warn('Audio error in Reviving Pulse:', e);
+    }
+  }
+
+  /**
+   * Triumphant golden arpeggio fanfare when teammate is successfully revived
+   */
+  playRevivedFanfare() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [
+        { f: 523.25, t: 0.00 }, // C5
+        { f: 659.25, t: 0.10 }, // E5
+        { f: 783.99, t: 0.20 }, // G5
+        { f: 1046.50, t: 0.32 } // C6
+      ];
+
+      notes.forEach((n) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.f, now + n.t);
+
+        gain.gain.setValueAtTime(0.22, now + n.t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + 0.38);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + n.t);
+        osc.stop(now + n.t + 0.38);
+      });
+    } catch (e) {
+      console.warn('Audio error in RevivedFanfare:', e);
+    }
+  }
+
+  /**
+   * Urgent high-pitched ticking beep when Kamikaze Exploder primes its fuse
+   */
+  playFuseBeep() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.linearRampToValueAtTime(2400, now + 0.08);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch (e) {
+      console.warn('Audio error in FuseBeep:', e);
+    }
+  }
+
+  /**
+   * Resonant celestial chord hum when Shaman channels protective ward & speed aura
+   */
+  playShamanBuff() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const chord = [392.00, 493.88, 587.33, 783.99]; // G major radiant triad (G4, B4, D5, G5)
+      chord.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.05, now + 0.8);
+
+        gain.gain.setValueAtTime(0.02, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.85);
+      });
+    } catch (e) {
+      console.warn('Audio error in ShamanBuff:', e);
+    }
+  }
+
+  /**
+   * Deep haunting dissonant gong when entire party wipes / game over
+   */
+  playGameOverGong() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Dissonant low frequency drone & metallic bell
+      const freqs = [55, 110, 155.56, 220, 233.08]; // Minor second dissonance
+      freqs.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = idx === 0 ? 'sawtooth' : 'triangle';
+        osc.frequency.setValueAtTime(f, now);
+        osc.frequency.exponentialRampToValueAtTime(f * 0.92, now + 3.2);
+
+        const vol = idx === 0 ? 0.35 : 0.18;
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
+
+        // Lowpass filter for muffled dark resonance
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(450, now);
+        filter.frequency.exponentialRampToValueAtTime(120, now + 3.2);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 3.2);
+      });
+    } catch (e) {
+      console.warn('Audio error in GameOverGong:', e);
+    }
+  }
+
+  /**
+   * Grand celebratory fanfare upon conquering the 3rd floor boss
+   */
+  playVictoryFanfare() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const melody = [
+        { f: 261.63, t: 0.00, d: 0.20 }, // C4
+        { f: 329.63, t: 0.16, d: 0.20 }, // E4
+        { f: 392.00, t: 0.32, d: 0.20 }, // G4
+        { f: 523.25, t: 0.48, d: 0.45 }, // C5
+        { f: 659.25, t: 0.85, d: 0.25 }, // E5
+        { f: 783.99, t: 1.05, d: 0.25 }, // G5
+        { f: 1046.5, t: 1.25, d: 1.20 }  // High C6 sustained triumphant
+      ];
+
+      melody.forEach((note) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(note.f, now + note.t);
+
+        gain.gain.setValueAtTime(0.24, now + note.t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + note.t + note.d);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + note.t);
+        osc.stop(now + note.t + note.d);
+      });
+    } catch (e) {
+      console.warn('Audio error in VictoryFanfare:', e);
+    }
+  }
+
+  /**
+   * Resonant golden treasure chest opening creak and celestial sparkle chime
+   */
+  playChestOpen() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+
+      // Heavy golden latch click
+      const click = this.ctx.createOscillator();
+      const clickGain = this.ctx.createGain();
+      click.type = 'square';
+      click.frequency.setValueAtTime(440, now);
+      click.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+      clickGain.gain.setValueAtTime(0.22, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      click.connect(clickGain);
+      clickGain.connect(this.ctx.destination);
+      click.start(now);
+      click.stop(now + 0.08);
+
+      // Celestial golden arpeggio chime [E5, G#5, B5, E6]
+      const notes = [659.25, 830.61, 987.77, 1318.51];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const noteTime = now + 0.06 + idx * 0.07;
+        osc.frequency.setValueAtTime(freq, noteTime);
+
+        gain.gain.setValueAtTime(0.18, noteTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(noteTime);
+        osc.stop(noteTime + 0.35);
+      });
+    } catch (e) {
+      console.warn('Audio error in ChestOpen:', e);
+    }
+  }
 }
+
+

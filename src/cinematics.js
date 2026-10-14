@@ -297,7 +297,8 @@ export class CinematicManager {
       maxDist: proj.maxDist || 500,
       angle: proj.angle !== undefined ? proj.angle : Math.atan2(proj.vy || 0, proj.vx || 1),
       isRemote: !!proj.isRemote,
-      hasHit: false
+      hasHit: false,
+      hitTargets: new Set()
     });
   }
 
@@ -374,6 +375,7 @@ export class CinematicManager {
             proj.vx = 0;
             proj.vy = 0;
             proj.life = Math.max(proj.life, c.timer + 1.2);
+            if (proj.hitTargets) proj.hitTargets.clear();
             if (!c.trappedProjectiles.includes(proj)) {
               c.trappedProjectiles.push(proj);
             }
@@ -422,6 +424,7 @@ export class CinematicManager {
             proj.trappedBy = null;
             proj.hasHit = false;
             proj.isRepelled = true;
+            if (proj.hitTargets) proj.hitTargets.clear();
             proj.isRemote = c.isRemote;
           });
 
@@ -568,6 +571,10 @@ export class CinematicManager {
 
       // Check collision with targets (ONLY local projectiles, NEVER remote projectiles!)
       if (!proj.isRemote) {
+        if (!proj.hitTargets) {
+          proj.hitTargets = new Set();
+        }
+
         for (const target of targets) {
           if (!target || target === proj.caster) continue;
           // Monsters do not shoot or hit fellow monsters
@@ -575,12 +582,18 @@ export class CinematicManager {
           if (proj.trappedBy === target) continue; // Trapped in Gojo's Mugen: deals 0 damage, cannot hit!
           if (target.isLimitlessBarrier && !proj.isRepelled) continue; // Barrier active: completely protects target!
 
+          // Don't hit the same target multiple times while the projectile passes through/overlaps them
+          const targetKey = target.id || target.peerId || target;
+          if (proj.hitTargets.has(target) || (targetKey && proj.hitTargets.has(targetKey))) continue;
+
           const dx = target.x - proj.x;
           const dy = target.y - proj.y;
           const dist = Math.hypot(dx, dy);
           const hitRadius = (proj.radius || (proj.width ? proj.width * 0.5 : 40)) + (target.radius || 24);
 
-          if (dist <= hitRadius && !proj.hasHit) {
+          if (dist <= hitRadius) {
+            proj.hitTargets.add(target);
+            if (targetKey) proj.hitTargets.add(targetKey);
             proj.hasHit = true;
             if (proj.type === 'shotgun_pellet') {
               proj.life = 0; // Pellet is consumed on hit

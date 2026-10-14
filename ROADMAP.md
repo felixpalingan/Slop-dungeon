@@ -43,7 +43,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 5.2: Game Over / Party Wipe & Victory Summary Screen [UPCOMING]│
 │    ├── Step 5.3: New Enemy Types (Kamikaze / Shaman Buffer) [UPCOMING]     │
 │    ├── Step 5.4: Room Hazards & Traps (Spike / Flame Pillar) [UPCOMING]    │
-│    ├── Step 5.5: Slop Merchant, Economy, Spin-a-Wheel Gacha & Trade-Up [UPCOMING] │
+│    ├── Step 5.5: Slop Merchant, Economy, In-World Wheel & Blackjack [IN PROGRESS 🔧] │
 │    ├── Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms [DONE ✅] │
 │    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [UPCOMING]     │
 │      ▼                                                                     │
@@ -111,11 +111,14 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 
 > Core goal: Make the dungeon feel dangerous, tense, rewarding, and addictively replayable with maximum friend-group chaos.
 
-- **Step 5.1: Downed / Revive Co-op System** `[UPCOMING]`
-  - HP reaching 0 triggers *Downed* crawl state (30s bleed-out, 60% speed penalty, cannot attack).
-  - Teammates hold `[E]` for 2.5s to revive (interruptible by incoming damage).
-  - Solo death → Ghost Spectator mode until team clears floor or descends.
-  - Full Party Wipe → **Game Over Screen**.
+- **Step 5.1: Downed / Revive Co-op System** `[COMPLETED ✅]`
+  - **Fatal Damage Overhaul**: Eliminated 1 HP immortality cap; player enters *Downed* crawl state at 0 HP.
+  - **Downed Crawl State**: 30-second bleed-out countdown, 35% crawl speed, blood pool, and actions locked (cannot roll, attack, or block).
+  - **Bleed-Out Acceleration**: Taking damage while downed deducts 3.0s per hit. If timer reaches 0s, player transitions to `isDead = true`.
+  - **Teammate Revive Channeling**: Living teammates within 75px can hold `[E]` for 2.5s to revive the downed player with 40% Max HP and 2.0s invulnerability i-frames.
+  - **Multiplayer WebRTC Sync**: State (`isDowned`, `downedTimer`, `isDead`, `reviveProgress`) synced in real-time across peers with `REVIVE_PROGRESS` and `PLAYER_REVIVED` packets.
+  - **Procedural Audio & Visual Cues**: Dramatic downed impact groan, looping revive energy pulse, triumphant arpeggio fanfare, overhead bleed-out gauge, green radial channel ring, and screen-space red vignette.
+  - **Monster AI De-prioritization**: Monsters prioritize standing players over downed crawlers with +400 distance penalty, allowing teammates to mount a rescue.
 
 - **Step 5.2: Game Over / Victory Summary Screen** `[UPCOMING]`
   - Party Wipe triggers dramatic screen shake + blood-red vignette fade into **Wipe Screen**.
@@ -136,21 +139,23 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - **Shared Party Wallet**: 1 shared Slops balance for all connected players — maximum co-op communication and chaotic spending!
   - **The Slop Merchant**:
     - Appears in dedicated Merchant Rooms.
-    - Sells survival consumables (Health Flask +50 HP, Stamina Tonic).
+    - Sells survival consumables (Health Flask +50 HP, Stamina Tonic) and tier-appropriate gear.
+    - **Paid Shop Refresh**: Pay 25 Slops to reroll the merchant's wares on demand.
     - **Item Buyback / Scrap**: Unwanted items can ONLY be sold/scrapped directly to the Slop Merchant for Slops.
-    - **Spelunky RPG Retaliation Mechanic**: If a player attacks, damages, or slaps the Slop Merchant, he does *not* go on an endless party-wiping rampage. Instead, he shoulders an RPG rocket launcher, locks on with a red dashed laser sight and crosshair for a dramatic 1.8-second windup delay, and fires a single high-damage explosive rocket directly at the culprit! Features an AoE splash blast that can damage teammates caught nearby.
-    - **Homing Slop Coins**: Defeated monsters drop Slop coins that initially scatter and can be picked up; if uncollected after 1 second, they automatically accelerate and fly directly towards the player who made the kill.
-    - **Clean Uniform Trader UI**: Redesigned modal with equal-sized tab buttons, standardized action buttons, uniform card heights, and structured grids preventing elements from covering or overlapping each other.
-    - *No throwables* (focused strictly on core gear, potions, and upgrades).
+    - **Spelunky RPG Retaliation Mechanic**: If attacked or slapped, the merchant shoulders an RPG with a 1.8s lock-on laser windup and launches an explosive rocket at the culprit!
+    - **Homing Slop Coins**: Defeated monsters drop Slop coins that scatter, then accelerate toward the killer after 1 second.
   - **Trade-Up Forge (3-for-1)**:
-    - Must sacrifice **3 items of the exact same rarity** (e.g. 3 Rares).
-    - Guarantees 1 random item of the **next higher rarity tier** (e.g. 1 random Epic).
-  - **Spin-a-Wheel Gacha Altar**:
-    - Bet 1 item + Slops fee → spins a dramatic fortune wheel.
-    - **Strict Probabilities** (No pity system):
-      - 💥 **Ancur / Shattered (50%)**: Item is completely destroyed into ash.
-      - ⬆️ **Upgrade (45%)**: Item upgrades to the next rarity tier with boosted stats.
-      - 🎰 **Jackpot (5%)**: Secret Anime Mythic / Legendary item drop!
+    - Sacrifice 3 items of the exact same rarity → guarantees 1 random item of the next higher tier.
+  - **In-World Wheel of Slop Prop (Sequential Turns / Gantian)**:
+    - Physical fortune wheel prop placed in the Merchant Room.
+    - Full party can gather around and watch spins live in real-time on the dungeon floor with ticking SFX.
+    - Sequential turn rule: Only 1 player can spin at a time while others watch; wheel locks with "In Use" status until the spin concludes.
+    - Outcomes: 💥 **Shattered (50%)**, ⬆️ **Upgrade (45%)**, 🎰 **Jackpot (5%)**.
+  - **In-World Blackjack Table (Bet Slops)**:
+    - Semicircular green-felt casino blackjack table prop in the Merchant Room.
+    - Interactive `[E] PLAY BLACKJACK` — players bet Slops against the Dealer (the Slop Merchant).
+    - Features: Hit, Stand, Double Down, standard 52-card deck, Dealer stands on 17+, Blackjack pays 3:2.
+    - Dealer quips overhead based on player wins and busts; party members can watch nearby!
 
 - **Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms** `[COMPLETED ✅]`
   - Procedural grid layout (e.g., dynamic grid graph of rooms).

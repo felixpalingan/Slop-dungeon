@@ -17,7 +17,9 @@ export class InputManager {
       t: false,
       tab: false,
       r: false,
-      f: false
+      f: false,
+      g: false,
+      space: false
     };
 
     this.mouse = {
@@ -34,6 +36,8 @@ export class InputManager {
     this.justPressedT = false;
     this.justPressedR = false;
     this.justPressedF = false;
+    this.justPressedG = false;
+    this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
 
@@ -41,7 +45,32 @@ export class InputManager {
   }
 
   setupListeners() {
+    const isTextInput = (target) => {
+      const active = document.activeElement;
+      const check = (el) => el && (
+        el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' ||
+        el.isContentEditable
+      );
+      return check(target) || check(active);
+    };
+
+    window.addEventListener('focusin', (e) => {
+      if (isTextInput(e.target)) {
+        for (const k in this.keys) {
+          this.keys[k] = false;
+        }
+      }
+    });
+
     window.addEventListener('keydown', (e) => {
+      if (isTextInput(e.target)) {
+        if (e.key === 'Escape' && e.target && typeof e.target.blur === 'function') {
+          e.target.blur();
+        }
+        return;
+      }
       const key = e.key.toLowerCase();
       if (key === 'w' || key === 'arrowup') this.keys.w = true;
       if (key === 'a' || key === 'arrowleft') this.keys.a = true;
@@ -71,6 +100,14 @@ export class InputManager {
         if (!this.keys.f && !e.repeat) this.justPressedF = true;
         this.keys.f = true;
       }
+      if (key === 'g') {
+        if (!this.keys.g && !e.repeat) this.justPressedG = true;
+        this.keys.g = true;
+      }
+      if (key === ' ' || e.code === 'Space') {
+        if (!this.keys.space && !e.repeat) this.justPressedSpace = true;
+        this.keys.space = true;
+      }
       if (key === 'tab') {
         e.preventDefault();
         this.keys.tab = true;
@@ -82,6 +119,7 @@ export class InputManager {
     });
 
     window.addEventListener('keyup', (e) => {
+      if (isTextInput(e.target)) return;
       const key = e.key.toLowerCase();
       if (key === 'w' || key === 'arrowup') this.keys.w = false;
       if (key === 'a' || key === 'arrowleft') this.keys.a = false;
@@ -93,6 +131,8 @@ export class InputManager {
       if (key === 'i') this.keys.i = false;
       if (key === 'r') this.keys.r = false;
       if (key === 'f') this.keys.f = false;
+      if (key === 'g') this.keys.g = false;
+      if (key === ' ' || e.code === 'Space') this.keys.space = false;
       if (key === 'tab') this.keys.tab = false;
       if (e.code === 'ShiftLeft' || key === 'shift') this.keys.shift = false;
     });
@@ -154,6 +194,8 @@ export class InputManager {
     this.justPressedI = false;
     this.justPressedR = false;
     this.justPressedF = false;
+    this.justPressedG = false;
+    this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
   }

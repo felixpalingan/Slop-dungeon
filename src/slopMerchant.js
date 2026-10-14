@@ -26,14 +26,237 @@ export class SlopMerchant {
     this.targetCulprit = null;
     this.aimAngle = 0;
 
+    this.lastQuip = null;
+
+    // 1. Idle Dungeon Banter (20+ lines)
     this.idleQuips = [
       'Welcome to the Slop Emporium! Got Slops? 💰',
       'Got unwanted gear? Sell it to me for cold hard Slops! 🪙',
       'Three of a kind? Melt them at my Trade-Up Forge! ⚒️',
-      'Feeling lucky? Take a spin on the Wheel of Slop! 🎲',
+      'Feeling lucky? Check the Wheel of Slop or hit the Blackjack table! 🎲♠️',
       'Don’t touch what you can’t afford, crawler! 👀',
-      'No refunds once Adam Smasher cleaves you! Hehehe. 💀'
+      'No refunds once the Boss cleaves you! Hehehe. 💀',
+      'I smell Slops... sweet, greasy Slops! 💰',
+      'Keep your weapons sheathed! My RPG has a very sensitive trigger! 🚀',
+      'Discount? The only discount is leaving with your limbs attached! 😈',
+      'Need potions? Don’t be stingy, dead crawlers carry no coin! 🧪',
+      'Card counting at the Blackjack table will get you a missile to the face! ♠️💥',
+      'Heard someone pulled a Secret Mythic on the wheel... wasn’t you, was it? 🎡',
+      'The deeper you go, the more you’ll wish you bought more supplies! 🕯️',
+      'Step right up, heroes and cannon fodder alike! 🎪',
+      'Gold shines, but Slops keep the crypt warm! 🪙✨',
+      'You look like you’re one hit away from meeting your ancestors. Buy a flask! 🍷',
+      'Business is booming! Mostly because crawlers keep dying and leaving their loot! ⚰️',
+      'I don’t ask where you got that gear, and you don’t ask where I got this RPG. Deal? 🤝',
+      'Gambling is 99% luck and 1% praying to RNGesus! 🎲',
+      'Hands off the wares unless your party vault is loaded! 🪙',
+      'Hurry up and buy! These crypt drafts are bad for my joints! 💀',
+      'The house always wins, crawler... but you’re welcome to try! ♠️',
+      'Fresh dungeon deliveries arriving daily! Minus the bloodstains! 📦'
     ];
+
+    // 2. Greeting Lines (when opening shop)
+    this.greetingQuips = [
+      'Welcome to the Slop Emporium! Best prices in the crypts! 💰',
+      'Ah, valued customers! Or soon-to-be corpses. Either way, welcome! 😈',
+      'Looking to gear up before the boss butcher arrives? Take a look! 🛡️',
+      'Fresh stock! Straight out of the catacombs! 📦',
+      'Got Slops in that shared party vault? Let’s make a deal! 🪙',
+      'Browse all you like, but break it and my RPG breaks YOU! 🚀',
+      'Looking for survival gear? Looking at your HP, you definitely need it! 🍷',
+      'Spend your Slops wisely, crawler! No layaway in hell! 💸',
+      'Welcome! What can the premier dungeon merchant get for you today? ✨',
+      'Step up, step up! Everything is for sale for the right price! 🪙'
+    ];
+
+    // 3. Shop Reroll / Refresh Lines
+    this.refreshQuips = [
+      'Fresh shipment straight from the abyss! Take a look! 📦✨',
+      'Rerolled! New toys for dangerous crawlers! 🔄',
+      'Shuffling the inventory! Hope you find what you need! 🛍️',
+      'Out with the old, in with the shiny! 🔄✨',
+      'New wares arrived! Don’t let your party spend all the Slops first! 💰',
+      'Reroll complete! Feast your eyes on these beauties! 👀',
+      'Restocked! Fresh out of the dungeon black market! 📦💀',
+      'More gear unpacked! Good luck finding something that saves your skin! 🛡️'
+    ];
+
+    // 4. Buying Item Lines
+    this.buyQuips = [
+      'Pleasure doing business! Don’t drop it in a spike pit! 🛍️',
+      'A fine choice! May it keep you breathing a bit longer! ✨',
+      'Sold! Slops received, satisfaction guaranteed! 🪙',
+      'Money well spent! Your survival odds just jumped 3%! 📈',
+      'Pleasure! Come back when you need more supplies! 💰',
+      'Treat it with care, crawler! Or don’t, you can always buy another! 💸',
+      'A wise purchase! Don’t let the curses scratch it! 🛡️'
+    ];
+
+    // 5. Selling Item Lines
+    this.sellQuips = [
+      'I’ll take that scrap off your hands! Here’s your Slops! 🪙',
+      'One crawler’s trash is my future profit! Hehehe! 💰',
+      'Fair trade! Into the furnace it goes! 🔥',
+      'Good deal! More funds for your party vault! 🤝',
+      'Pleasure buying your junk! Keep ’em coming! 📦',
+      'Scrapped and cashed out! Spend it before you drop dead! 💀💸',
+      'Thanks for the salvage! Always happy to buy loot! 🪙'
+    ];
+
+    // 6. Attacked / Enraged Lines
+    this.attackedQuips = [
+      'YOU WANNA DIE?! LOOK AT MY ROCKET! 🚀💥',
+      'BIG MISTAKE, CRAWLER! EAT HIGH EXPLOSIVE! 🚀',
+      'SHOPLIFTERS AND THUGS WILL BE VAPORIZED! 🚀💥',
+      'YOU DARE ATTACK THE MERCHANT?! DIE! 💣',
+      'SAY HELLO TO MY LITTLE RPG! 🚀🔥',
+      'I WAS A HIGH-TIER BOSS BEFORE THIS! EAT LEAD! 🚀💀'
+    ];
+
+    // 7. Wheel of Slop Lines
+    this.wheelStartQuips = [
+      'A daring wager by {name}! Let the wheel decide! 🎲',
+      'Round and round it goes! Where it stops, nobody knows! 🎡',
+      'Place your prayers to RNGesus, {name}! 🎲✨',
+      'Oho! That’s a brave item to bet, {name}! 👀',
+      'The wheel spins! May the odds be ever in your favor! 🎡',
+      'High stakes, high drama! Let’s see what fate has in store! 🌟'
+    ];
+
+    this.wheelShatterQuips = [
+      'HAHAHA! The wheel devoured it! Better luck next time! 😈',
+      'CRUNCH! Turned to pure dust! My condolences, {name}! 💥💀',
+      'Oof! The wheel was hungry today! 💀',
+      'Gone! Reduced to atoms! Don’t cry, gamble more! 😈',
+      'RNGesus gives, and RNGesus pulverizes! 💥'
+    ];
+
+    this.wheelUpgradeQuips = [
+      'Oho! The gods smiled upon {name}! Shiny upgrade! ✨',
+      'Nice pull! That’s a serious power spike! ⬆️',
+      'Winner winner! Don’t let it go to your head, {name}! 💎',
+      'Promoted to higher glory! The wheel was generous! 🌟',
+      'Sweet upgrade! Now go cleave some curses with it! ⚔️'
+    ];
+
+    this.wheelJackpotQuips = [
+      'WHAT?! A JACKPOT FOR {name}?! You cleaned me out, crawler! 😱',
+      'IMPOSSIBLE! Secret Mythic?! The house is in shambles! 👑',
+      'HOLY SLOP! JACKPOT! You’ve got the devil’s own luck, {name}! 🎰👑',
+      'A MYTHIC DROP?! I didn’t even know that was in the wheel! 🏆✨'
+    ];
+
+    // 8. Blackjack Welcome Lines
+    this.bjWelcomeQuips = [
+      'Feeling lucky, {name}? Welcome to the high-stakes table! ♠️♥️',
+      'Step up, {name}! Dealer hits on soft 16, stands on 17! 🃏',
+      'Ready to gamble the party’s Slops, {name}? Don’t bust! 🪙',
+      'Cards are shuffled, shoe is hot! Place your bets! ♣️♦️',
+      'Welcome to the green felt, {name}! The house awaits! 🎩'
+    ];
+
+    // Shop stock & refresh cost
+    this.refreshCost = 25;
+    this.stock = [];
+  }
+
+  pickRandom(arr) {
+    if (!arr || arr.length === 0) return '';
+    if (arr.length === 1) return arr[0];
+    let pick = arr[Math.floor(Math.random() * arr.length)];
+    if (pick === this.lastQuip) {
+      pick = arr[Math.floor(Math.random() * arr.length)];
+    }
+    this.lastQuip = pick;
+    return pick;
+  }
+
+  sayRandomGreeting() {
+    this.say(this.pickRandom(this.greetingQuips), '#fbbf24', 4.0);
+  }
+
+  sayRandomBuy(itemName) {
+    this.say(this.pickRandom(this.buyQuips), '#4ade80', 3.5);
+  }
+
+  sayRandomSell() {
+    this.say(this.pickRandom(this.sellQuips), '#38bdf8', 3.5);
+  }
+
+  sayRandomRefresh() {
+    this.say(this.pickRandom(this.refreshQuips), '#38bdf8', 3.5);
+  }
+
+  sayRandomWheelStart(playerName = 'crawler') {
+    const q = this.pickRandom(this.wheelStartQuips).replace(/{name}/g, playerName);
+    this.say(q, '#fbbf24', 4.0);
+  }
+
+  sayRandomWheelResult(result, itemName, playerName = 'crawler') {
+    if (result === 'shattered') {
+      const q = this.pickRandom(this.wheelShatterQuips).replace(/{name}/g, playerName);
+      this.say(q, '#ef4444', 4.0);
+    } else if (result === 'upgrade') {
+      const q = this.pickRandom(this.wheelUpgradeQuips).replace(/{name}/g, playerName);
+      this.say(q, '#38bdf8', 4.0);
+    } else if (result === 'jackpot') {
+      const q = this.pickRandom(this.wheelJackpotQuips).replace(/{name}/g, playerName);
+      this.say(q, '#fbbf24', 5.0);
+    }
+  }
+
+  sayRandomBjWelcome(playerName = 'crawler') {
+    const q = this.pickRandom(this.bjWelcomeQuips).replace(/{name}/g, playerName);
+    this.say(q, '#10b981', 4.0);
+  }
+
+  /**
+   * Generates or refreshes the shop stock based on current floor level
+   */
+  generateWares(floorNumber = 1, itemCatalog = {}) {
+    const list = [
+      { item: itemCatalog['health_flask'] || { id: 'health_flask', name: 'Health Flask', slot: 'consumable', rarity: 'COMMON', desc: 'Restores +45 HP instantly on use!' }, price: 25 },
+      { item: itemCatalog['stamina_tonic'] || { id: 'stamina_tonic', name: 'Stamina Tonic', slot: 'consumable', rarity: 'COMMON', desc: 'Refills stamina & grants +20% move speed!' }, price: 20 }
+    ];
+
+    // Floor gear pools
+    const poolFloor1 = ['crystal_blade', 'knight_shield', 'iron_visor', 'leather_tunic', 'travel_boots', 'cloth_pants'];
+    const poolFloor2 = ['titan_greatsword', 'iron_tower_shield', 'horned_barbarian_helm', 'spiked_cuirass', 'winged_boots', 'arcane_tome'];
+    const poolFloor3 = ['thunder_warhammer', 'arcane_tome', 'shadow_hood', 'guts_greaves', 'scout_trousers', 'david_sneakers'];
+
+    let chosenPool = poolFloor1;
+    if (floorNumber === 2) chosenPool = [...poolFloor1.slice(2), ...poolFloor2];
+    else if (floorNumber >= 3) chosenPool = [...poolFloor2.slice(2), ...poolFloor3];
+
+    // Shuffle and pick 4 unique pieces of equipment
+    const shuffled = [...chosenPool].sort(() => Math.random() - 0.5);
+    const selectedKeys = shuffled.slice(0, 4);
+
+    const rarityPriceMap = {
+      COMMON: 45,
+      RARE: 75,
+      EPIC: 120,
+      LEGENDARY: 190,
+      MYTHIC: 320
+    };
+
+    for (const key of selectedKeys) {
+      const item = itemCatalog[key];
+      if (item) {
+        const basePrice = rarityPriceMap[item.rarity] || 60;
+        const jitter = Math.floor((Math.random() - 0.5) * 15);
+        list.push({ item, price: Math.max(30, basePrice + jitter) });
+      }
+    }
+
+    this.stock = list;
+    return this.stock;
+  }
+
+  refreshStock(floorNumber = 1, itemCatalog = {}) {
+    this.generateWares(floorNumber, itemCatalog);
+    this.sayRandomRefresh();
+    return this.stock;
   }
 
   isNear(player) {
@@ -63,7 +286,8 @@ export class SlopMerchant {
     this.targetCulprit = attacker;
     this.aimAngle = Math.atan2(attacker.y - this.y, attacker.x - this.x);
 
-    this.say('YOU WANNA DIE?! LOOK AT MY ROCKET! 🚀💥', '#ef4444', 3.5);
+    const atkQuip = this.pickRandom(this.attackedQuips);
+    this.say(atkQuip, '#ef4444', 3.5);
 
     if (audio) {
       if (audio.playShieldLock) audio.playShieldLock(); // Arming click

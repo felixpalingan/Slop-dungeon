@@ -166,10 +166,19 @@ export class Player {
     // Inventory backpack slots (holds up to 10 unequipped items)
     this.inventory = [];
     this.maxInventorySize = 10;
+
+    // Downed & Revive Co-op System State
+    this.isDowned = false;
+    this.downedTimer = 0;
+    this.maxDownedTimer = 30.0;
+    this.isDead = false;
+    this.reviveProgress = 0;
+    this.maxReviveProgress = 2.5;
+    this.invulnerableTimer = 0;
   }
 
   triggerAttack() {
-    if (this.isStunned || this.isAttacking || this.attackCooldownTimer > 0) return false;
+    if (this.isDowned || this.isDead || this.isStunned || this.isAttacking || this.attackCooldownTimer > 0) return false;
 
     const weapon = this.equipment?.weapon;
     const isShotgun = weapon?.visual === 'david_shotgun';
@@ -201,13 +210,13 @@ export class Player {
   }
 
   startShotgunReload() {
-    if (this.isReloadingShotgun) return;
+    if (this.isDowned || this.isDead || this.isReloadingShotgun) return;
     this.isReloadingShotgun = true;
     this.shotgunReloadTimer = 1.4;
   }
 
   triggerSlap() {
-    if (this.isStunned || this.isSlapping || this.slapCooldownTimer > 0) return false;
+    if (this.isDowned || this.isDead || this.isStunned || this.isSlapping || this.slapCooldownTimer > 0) return false;
     this.isSlapping = true;
     this.slapTimer = this.slapDuration;
     this.slapCooldownTimer = 0.24;
@@ -216,7 +225,7 @@ export class Player {
   }
 
   triggerLeftAttack() {
-    if (this.isStunned || this.isLeftAttacking || this.leftAttackCooldownTimer > 0) return false;
+    if (this.isDowned || this.isDead || this.isStunned || this.isLeftAttacking || this.leftAttackCooldownTimer > 0) return false;
     this.isLeftAttacking = true;
     this.leftAttackDuration = 0.14;
     this.leftAttackTimer = 0.14;
@@ -226,7 +235,7 @@ export class Player {
   }
 
   triggerRightAttack() {
-    if (this.isStunned || this.isRightAttacking || this.rightAttackCooldownTimer > 0) return false;
+    if (this.isDowned || this.isDead || this.isStunned || this.isRightAttacking || this.rightAttackCooldownTimer > 0) return false;
     this.isRightAttacking = true;
     this.rightAttackDuration = 0.14;
     this.rightAttackTimer = 0.14;
@@ -240,7 +249,7 @@ export class Player {
    * Fires a single ODM high-tension cable towards wall anchor (Fanny MLBB mechanic)
    */
   fireOdmCable(targetX, targetY, audio = null, particles = null, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }) {
-    if (this.odmGas < 10) return false;
+    if (this.isDowned || this.isDead || this.odmGas < 10) return false;
     this.odmGas = Math.max(0, this.odmGas - 10);
 
     // Calculate wall collision point along the aim ray (unlimited reach to wall)
@@ -370,8 +379,35 @@ export class Player {
     this.rollCost = Math.max(15, 35 - rollCostReduction);
   }
 
-  takeDamage(amount, angle = 0, knockback = 0) {
-    if (this.isInvulnerable || this.isRolling) return false;
+  takeDamage(amount, angle = 0, knockback = 0, canBeDowned = true) {
+    if (this.isDead || this.isInvulnerable || this.isRolling || (this.invulnerableTimer && this.invulnerableTimer > 0)) {
+      return false;
+    }
+
+    // If player is ALREADY downed, incoming hits accelerate bleed-out by 3 seconds!
+    if (this.isDowned) {
+      this.downedTimer = Math.max(0, this.downedTimer - 3.0);
+      const becameDead = this.downedTimer <= 0;
+      if (becameDead) {
+        this.isDead = true;
+        this.isDowned = false;
+        this.downedTimer = 0;
+      }
+      if (knockback > 0) {
+        this.applyKnockback(Math.cos(angle) * (knockback * 0.4), Math.sin(angle) * (knockback * 0.4));
+      }
+      return {
+        damage: amount,
+        isBlocked: false,
+        isBerserk: false,
+        isDowned: true,
+        isBleedAccelerated: true,
+        downedTimer: this.downedTimer,
+        becameDead,
+        becameDowned: false
+      };
+    }
+
     let finalDamage = amount;
     const isBlocked = this.isBlocking;
     if (isBlocked) {
@@ -382,14 +418,144 @@ export class Player {
       // Berserker armor absorbs 35% damage
       finalDamage = Math.max(1, Math.round(finalDamage * 0.65));
     }
-    this.hp = Math.max(1, this.hp - finalDamage);
+
+    this.hp = Math.max(0, this.hp - finalDamage);
+
+    // Fatal damage: transition into Downed Crawl State (if teammates alive) or Instant Death (if alone / last standing)!
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.reviveProgress = 0;
+      this.isRolling = false;
+      this.isAttacking = false;
+      this.isSlapping = false;
+      this.isLeftAttacking = false;
+      this.isRightAttacking = false;
+      this.isBlocking = false;
+      this.isAirborne = false;
+      this.activeCables = [];
+      this.isBerserk = false;
+      this.isSandevistan = false;
+      this.isOvercharged = false;
+
+      if (knockback > 0) {
+        this.applyKnockback(Math.cos(angle) * (knockback * 0.7), Math.sin(angle) * (knockback * 0.7));
+      }
+
+      if (canBeDowned) {
+        this.isDowned = true;
+        this.downedTimer = this.maxDownedTimer; // 30s
+        return {
+          damage: finalDamage,
+          isBlocked,
+          isBerserk: false,
+          isDowned: true,
+          becameDowned: true,
+          becameDead: false
+        };
+      } else {
+        this.isDead = true;
+        this.isDowned = false;
+        this.downedTimer = 0;
+        this.vx = 0;
+        this.vy = 0;
+        return {
+          damage: finalDamage,
+          isBlocked,
+          isBerserk: false,
+          isDowned: false,
+          becameDowned: false,
+          becameDead: true
+        };
+      }
+    }
+
     if (knockback > 0 && !this.isBerserk) {
       this.applyKnockback(Math.cos(angle) * knockback, Math.sin(angle) * knockback);
     }
-    return { damage: finalDamage, isBlocked, isBerserk: this.isBerserk };
+    return {
+      damage: finalDamage,
+      isBlocked,
+      isBerserk: this.isBerserk,
+      becameDowned: false,
+      becameDead: false
+    };
   }
 
   update(dt, input, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }) {
+    // 0. Invulnerability i-frames timer countdown
+    if (this.invulnerableTimer > 0) {
+      this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
+    }
+
+    // Dead state: completely halted
+    if (this.isDead) {
+      this.vx = 0;
+      this.vy = 0;
+      for (let i = this.afterImages.length - 1; i >= 0; i--) {
+        this.afterImages[i].alpha -= dt * 2.5;
+        if (this.afterImages[i].alpha <= 0) {
+          this.afterImages.splice(i, 1);
+        }
+      }
+      return;
+    }
+
+    // Downed Crawl State
+    if (this.isDowned) {
+      this.downedTimer -= dt;
+      if (this.downedTimer <= 0) {
+        this.downedTimer = 0;
+        this.isDowned = false;
+        this.isDead = true;
+        this.vx = 0;
+        this.vy = 0;
+        return;
+      }
+
+      // 35% speed crawl movement
+      const { dx, dy } = input ? input.getMovementVector() : { dx: 0, dy: 0 };
+      const crawlSpeed = this.baseSpeed * 0.35;
+      const targetVx = dx * crawlSpeed;
+      const targetVy = dy * crawlSpeed;
+      const accel = 14;
+
+      this.vx += (targetVx - this.vx) * Math.min(1, accel * dt);
+      this.vy += (targetVy - this.vy) * Math.min(1, accel * dt);
+
+      if (dx !== 0 || dy !== 0) {
+        this.angle = Math.atan2(dy, dx);
+      }
+
+      // Update position with crawl velocity & knockback
+      this.x += (this.vx + this.knockbackVx) * dt;
+      this.y += (this.vy + this.knockbackVy) * dt;
+
+      this.knockbackVx *= Math.pow(0.001, dt);
+      this.knockbackVy *= Math.pow(0.001, dt);
+
+      // Bounds constraint
+      const radius = this.radius;
+      if (bounds && typeof bounds.resolveCircleCollision === 'function') {
+        const col = bounds.resolveCircleCollision(this.x, this.y, radius);
+        this.x = col.x;
+        this.y = col.y;
+      } else if (bounds) {
+        if (this.x - radius < bounds.minX) { this.x = bounds.minX + radius; this.vx = 0; }
+        if (this.x + radius > bounds.maxX) { this.x = bounds.maxX - radius; this.vx = 0; }
+        if (this.y - radius < bounds.minY) { this.y = bounds.minY + radius; this.vy = 0; }
+        if (this.y + radius > bounds.maxY) { this.y = bounds.maxY - radius; this.vy = 0; }
+      }
+
+      // Decay after-image trails
+      for (let i = this.afterImages.length - 1; i >= 0; i--) {
+        this.afterImages[i].alpha -= dt * 2.5;
+        if (this.afterImages[i].alpha <= 0) {
+          this.afterImages.splice(i, 1);
+        }
+      }
+      return;
+    }
+
     // 0. Cooldown timers
     this.attackCooldownTimer = Math.max(0, this.attackCooldownTimer - dt);
     this.slapCooldownTimer = Math.max(0, this.slapCooldownTimer - dt);
@@ -797,15 +963,37 @@ export class Player {
     }
   }
 
+  revive(reviveHpRatio = 0.40) {
+    this.isDowned = false;
+    this.isDead = false;
+    this.downedTimer = 0;
+    this.reviveProgress = 0;
+    this.hp = Math.round(this.maxHp * reviveHpRatio);
+    this.invulnerableTimer = 2.0; // 2.0s invulnerability i-frames
+    this.syncHUD();
+  }
+
   syncHUD() {
     const hpFill = document.getElementById('hud-hp-fill');
     const hpText = document.getElementById('hud-hp-text');
     const staminaFill = document.getElementById('hud-stamina-fill');
 
     if (hpFill && hpText) {
-      const hpPct = Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100));
-      hpFill.style.width = `${hpPct}%`;
-      hpText.textContent = `${Math.ceil(this.hp)} / ${this.maxHp}`;
+      if (this.isDead) {
+        hpFill.style.width = '0%';
+        hpFill.style.backgroundColor = '#64748b';
+        hpText.textContent = 'DEAD 💀';
+      } else if (this.isDowned) {
+        const downedPct = Math.max(0, Math.min(100, (this.downedTimer / this.maxDownedTimer) * 100));
+        hpFill.style.width = `${downedPct}%`;
+        hpFill.style.backgroundColor = '#ef4444';
+        hpText.textContent = `DOWNED [${Math.ceil(this.downedTimer)}s] 🩸`;
+      } else {
+        const hpPct = Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100));
+        hpFill.style.width = `${hpPct}%`;
+        hpFill.style.backgroundColor = '#00ff88';
+        hpText.textContent = `${Math.ceil(this.hp)} / ${this.maxHp}`;
+      }
     }
 
     if (staminaFill) {

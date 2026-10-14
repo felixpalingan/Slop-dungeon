@@ -50,6 +50,7 @@
       </div>
 
       <div class="hud-top-right">
+        <button id="btn-hud-dev-armory" class="dev-armory-hud-btn" title="Open Dev Sandbox Gear Selector [G]">🛠️ DEV ARMORY [G]</button>
         <div class="network-badge" id="hud-network-badge">
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
@@ -256,12 +257,16 @@
             <button class="merchant-tab-btn active" data-tab="shop">🛒 SUPPLIES SHOP</button>
             <button class="merchant-tab-btn" data-tab="sell">🏷️ SELL ITEMS</button>
             <button class="merchant-tab-btn" data-tab="forge">⚒️ TRADE-UP FORGE</button>
-            <button class="merchant-tab-btn" data-tab="wheel">🎡 SPIN-A-WHEEL</button>
           </div>
 
           <!-- Tab Content: Shop -->
           <div class="merchant-tab-pane active" id="pane-shop">
-            <p class="tab-description">Vital consumables & rare dungeon gear. Paid from the party's shared Slops vault.</p>
+            <div class="shop-tab-toolbar">
+              <p class="tab-description">Vital consumables & rare dungeon gear. Paid from the party's shared Slops vault.</p>
+              <button id="btn-refresh-shop" class="btn-refresh-shop" title="Reroll wares for 25 Slops">
+                <span class="refresh-icon">🔄</span> REROLL WARES (<span id="refresh-cost-text">25</span> SLOPS)
+              </button>
+            </div>
             <div class="shop-grid" id="shop-items-grid"></div>
           </div>
 
@@ -309,37 +314,269 @@
             </div>
           </div>
 
-          <!-- Tab Content: Spin-a-Wheel Gacha -->
-          <div class="merchant-tab-pane" id="pane-wheel">
-            <p class="tab-description">Wager 1 piece of equipment on the Slop Wheel! (50% Ancur, 45% Upgrade, 5% Secret Mythic. No pity!)</p>
-            <div class="wheel-game-container">
-              <div class="wheel-canvas-wrapper">
-                <canvas id="wheel-canvas" width="260" height="260"></canvas>
-                <div class="wheel-pointer">▼</div>
-              </div>
-              <div class="wheel-side-panel">
-                <div class="wheel-wager-box">
-                  <span class="sub-label">Wagered Item:</span>
-                  <div class="forge-slot wager-slot" id="wheel-wager-slot">Select Item</div>
-                </div>
-                <div class="wheel-odds-legend">
-                  <div class="odds-item odds-red"><span class="odds-pct">50%</span> 💀 Ancur (Destroyed)</div>
-                  <div class="odds-item odds-green"><span class="odds-pct">45%</span> ⬆️ Rarity Upgrade</div>
-                  <div class="odds-item odds-gold"><span class="odds-pct">5%</span> 👑 Secret Mythic Drop</div>
-                </div>
-                <button id="btn-spin-wheel" class="action-btn primary-btn spin-btn uniform-action-btn" disabled>🎡 SPIN WHEEL</button>
-                <div id="wheel-result-message" class="wheel-result-msg hidden"></div>
-              </div>
-            </div>
-            <div class="wheel-inventory-picker">
-              <span class="picker-title">Choose item from backpack to wager:</span>
-              <div class="backpack-grid mini-grid" id="wheel-inventory-grid"></div>
-            </div>
-          </div>
-
           <div class="merchant-footer">
             <span class="hint-text">⚠️ Caution: The merchant is armed with an RPG. Attacking him will provoke explosive retaliation!</span>
             <button id="btn-close-merchant" class="action-btn primary-btn uniform-action-btn">LEAVE SHOP [ESC / E]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-World Wheel of Slop Dedicated Altar Modal -->
+      <div id="wheel-altar-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card wheel-altar-card">
+          <div class="wheel-altar-header">
+            <div class="wheel-altar-title-box">
+              <span class="altar-badge">SANCTUM CASINO</span>
+              <h2 class="modal-title">WHEEL OF SLOP 🎲</h2>
+              <p class="modal-subtitle">Wager 1 piece of equipment. The entire party watches the in-world wheel spin live!</p>
+            </div>
+            <button id="btn-close-wheel-altar" class="modal-close-btn">&times;</button>
+          </div>
+
+          <div class="wheel-altar-body">
+            <div class="wheel-altar-wager-pane">
+              <div class="wheel-wager-box">
+                <span class="sub-label">ITEM ON THE ALTAR:</span>
+                <div class="forge-slot wager-slot" id="altar-wager-slot">Select Item Below</div>
+              </div>
+              <div class="wheel-odds-legend">
+                <div class="odds-item odds-red"><span class="odds-pct">50%</span> 💀 Shattered (Destroyed into ash)</div>
+                <div class="odds-item odds-green"><span class="odds-pct">45%</span> ⬆️ Rarity Upgrade (+1 Tier)</div>
+                <div class="odds-item odds-gold"><span class="odds-pct">5%</span> 👑 Secret Anime Mythic Drop</div>
+              </div>
+              <button id="btn-altar-spin-wheel" class="action-btn primary-btn spin-btn uniform-action-btn" disabled>
+                🎲 SPIN IN-WORLD WHEEL!
+              </button>
+              <div id="altar-result-message" class="wheel-result-msg hidden"></div>
+            </div>
+
+            <div class="wheel-altar-picker-pane">
+              <span class="picker-title">Select an item from your backpack to wager:</span>
+              <div class="backpack-grid mini-grid" id="altar-inventory-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-World Blackjack Table Casino Modal -->
+      <div id="blackjack-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card blackjack-card">
+          <!-- Casino Felt Header -->
+          <div class="bj-header">
+            <div class="bj-title-group">
+              <span class="casino-badge">♠️ SLOP CASINO ♥️</span>
+              <h2 class="bj-title">HIGH ROLLER BLACKJACK</h2>
+            </div>
+            <div class="bj-vault-badge">
+              <span class="wallet-icon">🪙</span>
+              <div>
+                <div class="wallet-label">SHARED VAULT</div>
+                <strong id="bj-slops-amount">0 SLOPS</strong>
+              </div>
+            </div>
+            <button id="btn-close-blackjack" class="modal-close-btn">&times;</button>
+          </div>
+
+          <!-- Table Felt Arena -->
+          <div class="bj-table-felt">
+            <!-- Dealer Area -->
+            <div class="bj-dealer-zone">
+              <div class="bj-dealer-info">
+                <div class="bj-dealer-avatar">💰</div>
+                <div class="bj-dealer-text">
+                  <span class="bj-dealer-name">Dealer: The Slop Merchant</span>
+                  <div id="bj-dealer-bubble" class="bj-speech-bubble">"Place your bets! The house is ready."</div>
+                </div>
+                <div class="bj-score-pill" id="bj-dealer-score-pill">
+                  SCORE: <span id="bj-dealer-score">?</span>
+                </div>
+              </div>
+              <div class="bj-cards-row" id="bj-dealer-cards">
+                <!-- Dealt dealer cards -->
+              </div>
+            </div>
+
+            <!-- Table Center Status Banner & Bet Box -->
+            <div class="bj-felt-center">
+              <div class="bj-arc-text">BLACKJACK PAYS 3 TO 2 • DEALER STANDS ON 17</div>
+              <div id="bj-status-banner" class="bj-status-banner">PLACE YOUR BET</div>
+              <div class="bj-bet-display">
+                CURRENT BET: <span id="bj-current-bet-val" class="highlight-slop">25</span> SLOPS
+              </div>
+            </div>
+
+            <!-- Player Area -->
+            <div class="bj-player-zone">
+              <div class="bj-cards-row" id="bj-player-cards">
+                <!-- Dealt player cards -->
+              </div>
+              <div class="bj-player-info">
+                <div class="bj-score-pill" id="bj-player-score-pill">
+                  YOUR HAND: <span id="bj-player-score">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Casino Controls Bar -->
+          <div class="bj-controls-bar">
+            <!-- Betting Phase Controls -->
+            <div id="bj-bet-controls" class="bj-control-group">
+              <span class="bj-ctrl-label">BET CHIPS:</span>
+              <div class="bj-chips-row">
+                <button class="bj-chip-btn chip-10" data-amount="10">+10</button>
+                <button class="bj-chip-btn chip-25" data-amount="25">+25</button>
+                <button class="bj-chip-btn chip-50" data-amount="50">+50</button>
+                <button class="bj-chip-btn chip-100" data-amount="100">+100</button>
+                <button class="bj-chip-btn chip-clear" id="btn-bj-clear-bet">CLEAR</button>
+                <button class="bj-chip-btn chip-max" id="btn-bj-max-bet">ALL-IN</button>
+              </div>
+              <button id="btn-bj-deal" class="action-btn primary-btn bj-deal-btn uniform-action-btn">
+                🎲 DEAL CARDS (<span id="bj-deal-btn-amount">25</span> SLOPS)
+              </button>
+            </div>
+
+            <!-- Player Action Phase Controls -->
+            <div id="bj-action-controls" class="bj-control-group hidden">
+              <button id="btn-bj-hit" class="action-btn primary-btn bj-action-btn">🃏 HIT</button>
+              <button id="btn-bj-stand" class="action-btn outline-btn bj-action-btn">✋ STAND</button>
+              <button id="btn-bj-double" class="action-btn special-btn bj-action-btn">⚡ DOUBLE DOWN</button>
+            </div>
+
+            <!-- Round Finished Controls -->
+            <div id="bj-resolved-controls" class="bj-control-group hidden">
+              <button id="btn-bj-play-again" class="action-btn primary-btn uniform-action-btn">
+                🔄 PLAY ANOTHER HAND
+              </button>
+            </div>
+          </div>
+      <!-- Game Over / Party Wipe Modal -->
+      <div id="game-over-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card game-over-card">
+          <div class="game-over-banner">
+            <div class="skull-badge">💀</div>
+            <h1 class="game-over-title">PARTY WIPED</h1>
+            <p class="game-over-subtitle" id="game-over-subtitle">The curses of the dungeon have claimed your souls.</p>
+          </div>
+
+          <div class="run-stats-grid">
+            <div class="run-stat-item">
+              <span class="stat-label">FLOOR REACHED</span>
+              <strong class="stat-val red-val" id="go-stat-floor">FLOOR 1</strong>
+            </div>
+            <div class="run-stat-item">
+              <span class="stat-label">TIME SURVIVED</span>
+              <strong class="stat-val" id="go-stat-time">00:00</strong>
+            </div>
+            <div class="run-stat-item">
+              <span class="stat-label">CURSES SLAIN</span>
+              <strong class="stat-val" id="go-stat-kills">0</strong>
+            </div>
+            <div class="run-stat-item">
+              <span class="stat-label">SLOPS EARNED</span>
+              <strong class="stat-val gold-val" id="go-stat-slops">0</strong>
+            </div>
+          </div>
+
+          <!-- Run MVP Award -->
+          <div class="run-mvp-box" id="go-mvp-container">
+            <div class="mvp-crown">👑</div>
+            <div class="mvp-details">
+              <span class="mvp-tag">RUN MVP</span>
+              <strong class="mvp-name" id="go-mvp-name">Player</strong>
+              <span class="mvp-damage" id="go-mvp-dmg">0 Total Damage</span>
+            </div>
+          </div>
+
+          <!-- Party Summary List -->
+          <div class="party-wipe-roster-box">
+            <span class="wipe-roster-label">FALLEN ADVENTURERS:</span>
+            <div class="party-wipe-roster" id="go-party-roster"></div>
+          </div>
+
+          <div class="modal-actions-dual">
+            <button id="btn-retry-run" class="action-btn danger-btn run-decision-btn">
+              🔄 RETRY RUN
+            </button>
+            <button id="btn-return-lobby-from-go" class="action-btn outline-btn run-decision-btn">
+              🏕️ RETURN TO BASE CAMP
+            </button>
+          </div>
+          <span class="host-notice" id="go-host-notice" style="display:none;">Waiting for Room Host to decide next move...</span>
+        </div>
+      </div>
+
+      <!-- Dev Armory Sandbox Modal -->
+      <div id="dev-armory-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card dev-armory-card">
+          <div class="dev-armory-header">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="armory-icon">🛠️</span>
+                <div>
+                  <h2 class="modal-title">DEV ARMORY CHEST</h2>
+                  <p class="modal-subtitle">Instant Sandbox Gear Selector — Equip any Anime Set or Item instantly for testing!</p>
+                </div>
+              </div>
+              <button id="btn-close-dev-armory" class="modal-close-btn">&times;</button>
+            </div>
+          </div>
+
+          <!-- Quick Full Set Equippers -->
+          <div class="armory-section">
+            <div class="armory-section-title">✨ INSTANT ANIME SET SELECTOR:</div>
+            <div class="armory-sets-grid">
+              <button class="armory-set-btn gojo-set-btn" data-set="gojo">
+                <span class="set-btn-name">⚡ THE HONORED ONE</span>
+                <span class="set-btn-sub">Limitless + Hollow Purple</span>
+              </button>
+              <button class="armory-set-btn sukuna-set-btn" data-set="sukuna">
+                <span class="set-btn-name">🗡️ KING OF CURSES</span>
+                <span class="set-btn-sub">Dismantle + World Slash</span>
+              </button>
+              <button class="armory-set-btn toji-set-btn" data-set="toji">
+                <span class="set-btn-name">⛓️ SORCERER KILLER</span>
+                <span class="set-btn-sub">Heavenly Restriction + Inverted Spear</span>
+              </button>
+              <button class="armory-set-btn guts-set-btn" data-set="guts">
+                <span class="set-btn-name">⚔️ THE BLACK SWORDSMAN</span>
+                <span class="set-btn-sub">Dragon Slayer + Beast Armor</span>
+              </button>
+              <button class="armory-set-btn levi-set-btn" data-set="levi">
+                <span class="set-btn-name">🌪️ HUMANITY'S STRONGEST</span>
+                <span class="set-btn-sub">Dual Snap Blades + ODM Mode</span>
+              </button>
+              <button class="armory-set-btn david-set-btn" data-set="david">
+                <span class="set-btn-name">⚡ NIGHT CITY LEGEND</span>
+                <span class="set-btn-sub">Carnage + Sandevistan Time Dilation</span>
+              </button>
+              <button class="armory-set-btn starter-set-btn" data-set="starter">
+                <span class="set-btn-name">🛡️ STARTER ADVENTURER</span>
+                <span class="set-btn-sub">Rusty Sword + Cloth Tunic</span>
+              </button>
+              <button class="armory-set-btn unequip-set-btn" data-set="strip">
+                <span class="set-btn-name">🚫 STRIP ALL GEAR</span>
+                <span class="set-btn-sub">Unequip everything</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Individual Item Browser Filter Tabs & Grid -->
+          <div class="armory-section">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div class="armory-section-title">📦 INDIVIDUAL ITEMS CATALOG:</div>
+              <div class="armory-filter-tabs">
+                <button class="armory-tab-btn active" data-filter="all">ALL</button>
+                <button class="armory-tab-btn" data-filter="weapon">WEAPONS</button>
+                <button class="armory-tab-btn" data-filter="armor">ARMOR</button>
+                <button class="armory-tab-btn" data-filter="anime">ANIME SETS</button>
+              </div>
+            </div>
+            <div id="armory-items-grid" class="armory-items-grid"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+            <button id="btn-close-dev-armory-bottom" class="action-btn outline-btn" style="min-width: 140px;">CLOSE [ESC]</button>
           </div>
         </div>
       </div>
@@ -360,6 +597,7 @@
           <span><kbd>R-CLICK</kbd> Block</span>
           <span><kbd>Q</kbd> Ability</span>
           <span><kbd>I</kbd> / <kbd>TAB</kbd> Inventory</span>
+          <span class="dev-hint"><kbd>G</kbd> Dev Menu</span>
         </div>
       </div>
     </div>

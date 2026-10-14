@@ -96,7 +96,7 @@ export class Dummy {
     this.isChargingAttack = false;
   }
 
-  update(dt, players = []) {
+  update(dt, players = [], isAuthority = true) {
     const now = performance.now() / 1000;
 
     // Update stun
@@ -135,7 +135,7 @@ export class Dummy {
         if (this.attackTimer >= 2.4) {
           this.attackTimer = 0;
           this.isChargingAttack = false;
-          if (this.onShoot) {
+          if (isAuthority && this.onShoot) {
             this.onShoot({
               type: 'bot_energy_orb',
               caster: this,
@@ -168,7 +168,7 @@ export class Dummy {
         if (this.attackTimer >= 1.7) {
           this.attackTimer = 0;
           this.isChargingAttack = false;
-          if (nearestDist <= 75 && this.onMeleeHit) {
+          if (isAuthority && nearestDist <= 75 && this.onMeleeHit) {
             this.onMeleeHit(nearestTarget, 18, this.aimAngle);
           }
         }

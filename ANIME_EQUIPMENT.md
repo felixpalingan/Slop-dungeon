@@ -10,12 +10,12 @@ Setiap item memiliki stats unik, rendering grafis 2D prosedural, audio sound eff
 1. [Sistem Rarity & Nilai Jual Slops](#-sistem-rarity--nilai-jual-slops)
 2. [Tabel Ringkasan Seluruh Item (Master List)](#-tabel-ringkasan-seluruh-item-master-list)
 3. [Daftar Lengkap Anime Equipment Sets (Batch 1 & 2)](#-daftar-lengkap-anime-equipment-sets-batch-1--2)
-   - [Gojo Satoru — The Honored One (JJK)](#1-gojo-satoru--the-honored-one-jujutsu-kaisen)
-   - [Ryomen Sukuna — King of Curses (JJK)](#2-ryomen-sukuna--king-of-curses-jujutsu-kaisen)
-   - [Toji Fushiguro — Sorcerer Killer (JJK)](#3-toji-fushiguro--sorcerer-killer-jujutsu-kaisen)
-   - [Guts — The Black Swordsman (Berserk)](#4-guts--the-black-swordsman-berserk)
-   - [Levi Ackerman — Humanity's Strongest (AoT)](#5-levi-ackerman--humanitys-strongest-soldier-attack-on-titan)
-   - [David Martinez — Night City Legend (Cyberpunk)](#6-david-martinez--night-city-legend-cyberpunk-edgerunners)
+   - [The Honored One (Cursed Sorcery)](#1-the-honored-one-cursed-sorcery)
+   - [King of Curses (The Disgraced Sovereign)](#2-king-of-curses-the-disgraced-sovereign)
+   - [The Sorcerer Killer (Heavenly Restriction)](#3-the-sorcerer-killer-heavenly-restriction)
+   - [The Black Swordsman (The Berserker)](#4-the-black-swordsman-the-berserker)
+   - [Humanity's Strongest Soldier (Titan Hunter)](#5-humanitys-strongest-soldier-titan-hunter)
+   - [Night City Legend (Cyber Sandevistan)](#6-night-city-legend-cyber-sandevistan)
 4. [Daftar Lengkap Baseline / Dungeon Fantasy Gear](#-daftar-lengkap-baseline--dungeon-fantasy-gear)
    - [Senjata (Weapons)](#senjata-weapons)
    - [Tangan Kiri / Perisai (Off-Hand)](#tangan-kiri--perisai-off-hand)
@@ -49,41 +49,41 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
 
 | No | Item ID | Nama Item | Slot | Hands | Rarity | Set Anime | Stat Utama / Efek Khusus | Harga Jual |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: |
-| 1 | `gojo_blindfold` | Blindfold of the Six Eyes | Helmet | 1H | MYTHIC | Gojo | HP +35, Armor +6, CDR -20% | 150 🪙 |
-| 2 | `gojo_tunic` | High-Collar Jujutsu Tunic | Chest | 1H | MYTHIC | Gojo | HP +55, Armor +15, Base Q: Limitless Barrier | 150 🪙 |
-| 3 | `gojo_slacks` | Sorcerer Black Slacks | Pants | 1H | LEGENDARY | Gojo | HP +25, Armor +8, Move Speed +22 | 75 🪙 |
-| 4 | `gojo_loafers` | Polished Black Loafers | Boots | 1H | LEGENDARY | Gojo | Move Speed +30, Dash Stamina -12 | 75 🪙 |
-| 5 | `lapse_blue` | Cursed Technique: Lapse Blue | Weapon | 1H | MYTHIC | Gojo | Dmg 42, Spd 1.15, Gravity Suction Pulses | 150 🪙 |
-| 6 | `reversal_red` | Cursed Technique: Reversal Red | Off-Hand | 1H | MYTHIC | Gojo | Dmg Buff +18, Armor +10, Repulsion Blast | 150 🪙 |
-| 7 | `sukuna_crown` | Crown of the Disgraced One | Helmet | 1H | MYTHIC | Sukuna | HP +30, Crit Chance +25%, 4 Red Eyes | 150 🪙 |
-| 8 | `sukuna_robe` | Robe of Malevolence | Chest | 1H | MYTHIC | Sukuna | HP +50, Armor +18, Base Q: Dismantle | 150 🪙 |
-| 9 | `sukuna_hakama` | Baggy Hakama Trousers | Pants | 1H | LEGENDARY | Sukuna | HP +30, Armor +12, Stamina Regen +10 | 75 🪙 |
-| 10 | `sukuna_zori` | Cursed Straw Zori | Boots | 1H | LEGENDARY | Sukuna | Move Speed +28 | 75 🪙 |
-| 11 | `sukuna_kamutoke` | Kamutoke Vajra Dagger | Weapon | 1H | MYTHIC | Sukuna | Dmg 48, Spd 1.35, Arcing Lightning Sparks | 150 🪙 |
-| 12 | `sukuna_cleaver` | Malevolent Cleaver | Weapon | **2H** | MYTHIC | Sukuna | Dmg 88, Spd 0.85, Reach 82, Cleave Arc | 150 🪙 |
-| 13 | `sukuna_hiten` | Hiten Cursed Spear | Off-Hand | 1H | MYTHIC | Sukuna | Armor +12, Dmg Buff +15, Flame Thrust | 150 🪙 |
-| 14 | `sukuna_finger` | Sukuna's Sealed Finger | Off-Hand | 1H | MYTHIC | Sukuna | Max HP +50, Dmg Buff +35, Armor +18 | 150 🪙 |
-| 15 | `toji_worm` | Coiled Inventory Curse | Helmet | 1H | EPIC | Toji | HP +20, Armor +8 | 35 🪙 |
-| 16 | `toji_shirt` | Compression Combat Shirt | Chest | 1H | EPIC | Toji | HP +45, Armor +14, Base Q: Spartan Kick | 35 🪙 |
-| 17 | `toji_pants` | Baggy Gi Training Pants | Pants | 1H | EPIC | Toji | HP +25, Armor +10, Stamina Regen +12 | 35 🪙 |
-| 18 | `toji_slippers` | Heavenly Restriction Slippers | Boots | 1H | EPIC | Toji | Sprint Speed +35, Silent Steps | 35 🪙 |
-| 19 | `inverted_spear_chain` | Inverted Spear & 1000-Mile Chain | Weapon | **2H** | MYTHIC | Toji | Dmg 75, Spd 0.95, Shield Nullifier, 360° Spin | 150 🪙 |
-| 20 | `guts_beast_helm` | Berserker Beast Helm | Helmet | 1H | MYTHIC | Guts | HP +40, Armor +16, Crit Chance +18% | 150 🪙 |
-| 21 | `guts_berserker_plate`| Berserker Armor Plate | Chest | 1H | MYTHIC | Guts | HP +85, Armor +28, Base Q: Cannon Arm | 150 🪙 |
-| 22 | `guts_greaves` | Black Iron Greaves | Pants | 1H | LEGENDARY | Guts | HP +35, Armor +18, Knockback Resistance | 75 🪙 |
-| 23 | `guts_sollerets` | Heavy War Sollerets | Boots | 1H | LEGENDARY | Guts | Move Speed +15, Armor +12, Trap Immunity | 75 🪙 |
-| 24 | `dragon_slayer` | Dragon Slayer | Weapon | **2H** | MYTHIC | Guts | Dmg 105, Spd 0.65, Reach 92, Heavy Cleave | 150 🪙 |
-| 25 | `scout_hood` | Survey Corps Hooded Cloak | Helmet | 1H | MYTHIC | Levi | HP +30, Armor +8, Speed +16, CDR -15% | 150 🪙 |
-| 26 | `odm_harness` | 3D Maneuver Gear & Gas Tanks | Chest | 1H | MYTHIC | Levi | HP +55, Armor +14, Stamina +15, Base Q: Gas | 150 🪙 |
-| 27 | `scout_trousers` | Scout Cavalry Trousers | Pants | 1H | LEGENDARY | Levi | HP +25, Armor +10, Speed +18, Roll Cost -25%| 75 🪙 |
-| 28 | `scout_boots` | Scout Knee-High Riding Boots | Boots | 1H | LEGENDARY | Levi | Move Speed +32, Armor +8 | 75 🪙 |
-| 29 | `dual_snap_blades` | Dual Ultrahard Steel Snap Blades| Weapon | **2H** | MYTHIC | Levi | Dmg 48, Spd 1.25, Dual Slices, Crit +25% | 150 🪙 |
-| 30 | `david_kiroshi` | Kiroshi Optics Mk. 4 | Helmet | 1H | MYTHIC | David | HP +30, Crit Chance +25%, Lock-on HUD | 150 🪙 |
-| 31 | `david_jacket` | Gloria's High-Vis EMT Jacket | Chest | 1H | MYTHIC | David | HP +45, Armor +14, Base Q: Overcharge | 150 🪙 |
-| 32 | `david_pants` | Streetkid Cargo Pants | Pants | 1H | LEGENDARY | David | HP +20, Armor +8, Speed +20, Stamina +15 | 75 🪙 |
-| 33 | `david_sneakers` | Chrome Cyber-Sneakers | Boots | 1H | LEGENDARY | David | Speed +28, Dash Cost -12% | 75 🪙 |
-| 34 | `david_shotgun` | Carnage Shotgun | Weapon | 1H | MYTHIC | David | Dmg 14x6 (84 dmg), Spd 0.45, 4 Shells Pump | 150 🪙 |
-| 35 | `david_gorilla_arms` | Gorilla Arms Cyberware | Off-Hand | 1H | MYTHIC | David | Dmg Buff +20, Punch Dmg 50, Armor Pen 35% | 150 🪙 |
+| 1 | `gojo_blindfold` | Blindfold of the Six Eyes | Helmet | 1H | MYTHIC | The Honored One | HP +35, Armor +6, CDR -20% | 150 🪙 |
+| 2 | `gojo_tunic` | High-Collar Jujutsu Tunic | Chest | 1H | MYTHIC | The Honored One | HP +55, Armor +15, Base Q: Limitless Barrier | 150 🪙 |
+| 3 | `gojo_slacks` | Sorcerer Black Slacks | Pants | 1H | LEGENDARY | The Honored One | HP +25, Armor +8, Move Speed +22 | 75 🪙 |
+| 4 | `gojo_loafers` | Polished Black Loafers | Boots | 1H | LEGENDARY | The Honored One | Move Speed +30, Dash Stamina -12 | 75 🪙 |
+| 5 | `lapse_blue` | Cursed Technique: Lapse Blue | Weapon | 1H | MYTHIC | The Honored One | Dmg 42, Spd 1.15, Gravity Suction Pulses | 150 🪙 |
+| 6 | `reversal_red` | Cursed Technique: Reversal Red | Off-Hand | 1H | MYTHIC | The Honored One | Dmg Buff +18, Armor +10, Repulsion Blast | 150 🪙 |
+| 7 | `sukuna_crown` | Crown of the Disgraced One | Helmet | 1H | MYTHIC | King of Curses | HP +30, Crit Chance +25%, 4 Red Eyes | 150 🪙 |
+| 8 | `sukuna_robe` | Robe of Malevolence | Chest | 1H | MYTHIC | King of Curses | HP +50, Armor +18, Base Q: Dismantle | 150 🪙 |
+| 9 | `sukuna_hakama` | Baggy Hakama Trousers | Pants | 1H | LEGENDARY | King of Curses | HP +30, Armor +12, Stamina Regen +10 | 75 🪙 |
+| 10 | `sukuna_zori` | Cursed Straw Zori | Boots | 1H | LEGENDARY | King of Curses | Move Speed +28 | 75 🪙 |
+| 11 | `sukuna_kamutoke` | Kamutoke Vajra Dagger | Weapon | 1H | MYTHIC | King of Curses | Dmg 48, Spd 1.35, Arcing Lightning Sparks | 150 🪙 |
+| 12 | `sukuna_cleaver` | Malevolent Cleaver | Weapon | **2H** | MYTHIC | King of Curses | Dmg 88, Spd 0.85, Reach 82, Cleave Arc | 150 🪙 |
+| 13 | `sukuna_hiten` | Hiten Cursed Spear | Off-Hand | 1H | MYTHIC | King of Curses | Armor +12, Dmg Buff +15, Flame Thrust | 150 🪙 |
+| 14 | `sukuna_finger` | Sealed Cursed Finger | Off-Hand | 1H | MYTHIC | King of Curses | Max HP +50, Dmg Buff +35, Armor +18 | 150 🪙 |
+| 15 | `toji_worm` | Coiled Inventory Curse | Helmet | 1H | EPIC | Sorcerer Killer | HP +20, Armor +8 | 35 🪙 |
+| 16 | `toji_shirt` | Compression Combat Shirt | Chest | 1H | EPIC | Sorcerer Killer | HP +45, Armor +14, Base Q: Spartan Kick | 35 🪙 |
+| 17 | `toji_pants` | Baggy Gi Training Pants | Pants | 1H | EPIC | Sorcerer Killer | HP +25, Armor +10, Stamina Regen +12 | 35 🪙 |
+| 18 | `toji_slippers` | Heavenly Restriction Slippers | Boots | 1H | EPIC | Sorcerer Killer | Sprint Speed +35, Silent Steps | 35 🪙 |
+| 19 | `inverted_spear_chain` | Inverted Spear & 1000-Mile Chain | Weapon | **2H** | MYTHIC | Sorcerer Killer | Dmg 75, Spd 0.95, Shield Nullifier, 360° Spin | 150 🪙 |
+| 20 | `guts_beast_helm` | Berserker Beast Helm | Helmet | 1H | MYTHIC | The Black Swordsman | HP +40, Armor +16, Crit Chance +18% | 150 🪙 |
+| 21 | `guts_berserker_plate`| Berserker Armor Plate | Chest | 1H | MYTHIC | The Black Swordsman | HP +85, Armor +28, Base Q: Cannon Arm | 150 🪙 |
+| 22 | `guts_greaves` | Black Iron Greaves | Pants | 1H | LEGENDARY | The Black Swordsman | HP +35, Armor +18, Knockback Resistance | 75 🪙 |
+| 23 | `guts_sollerets` | Heavy War Sollerets | Boots | 1H | LEGENDARY | The Black Swordsman | Move Speed +15, Armor +12, Trap Immunity | 75 🪙 |
+| 24 | `dragon_slayer` | Dragon Slayer | Weapon | **2H** | MYTHIC | The Black Swordsman | Dmg 105, Spd 0.65, Reach 92, Heavy Cleave | 150 🪙 |
+| 25 | `scout_hood` | Survey Corps Hooded Cloak | Helmet | 1H | MYTHIC | Humanity's Strongest | HP +30, Armor +8, Speed +16, CDR -15% | 150 🪙 |
+| 26 | `odm_harness` | 3D Maneuver Gear & Gas Tanks | Chest | 1H | MYTHIC | Humanity's Strongest | HP +55, Armor +14, Stamina +15, Base Q: Gas | 150 🪙 |
+| 27 | `scout_trousers` | Scout Cavalry Trousers | Pants | 1H | LEGENDARY | Humanity's Strongest | HP +25, Armor +10, Speed +18, Roll Cost -25%| 75 🪙 |
+| 28 | `scout_boots` | Scout Knee-High Riding Boots | Boots | 1H | LEGENDARY | Humanity's Strongest | Move Speed +32, Armor +8 | 75 🪙 |
+| 29 | `dual_snap_blades` | Dual Ultrahard Steel Snap Blades| Weapon | **2H** | MYTHIC | Humanity's Strongest | Dmg 48, Spd 1.25, Dual Slices, Crit +25% | 150 🪙 |
+| 30 | `david_kiroshi` | Kiroshi Optics Mk. 4 | Helmet | 1H | MYTHIC | Night City Legend | HP +30, Crit Chance +25%, Lock-on HUD | 150 🪙 |
+| 31 | `david_jacket` | High-Vis Cyber EMT Jacket | Chest | 1H | MYTHIC | Night City Legend | HP +45, Armor +14, Base Q: Overcharge | 150 🪙 |
+| 32 | `david_pants` | Streetkid Cargo Pants | Pants | 1H | LEGENDARY | Night City Legend | HP +20, Armor +8, Speed +20, Stamina +15 | 75 🪙 |
+| 33 | `david_sneakers` | Chrome Cyber-Sneakers | Boots | 1H | LEGENDARY | Night City Legend | Speed +28, Dash Cost -12% | 75 🪙 |
+| 34 | `david_shotgun` | Carnage Shotgun | Weapon | 1H | MYTHIC | Night City Legend | Dmg 14x6 (84 dmg), Spd 0.45, 4 Shells Pump | 150 🪙 |
+| 35 | `david_gorilla_arms` | Gorilla Arms Cyberware | Off-Hand | 1H | MYTHIC | Night City Legend | Dmg Buff +20, Punch Dmg 50, Armor Pen 35% | 150 🪙 |
 | 36 | `rusty_sword` | Rusty Shortsword | Weapon | 1H | COMMON | — | Dmg 22, Spd 1.0, Reach 58 | 5 🪙 |
 | 37 | `crystal_blade` | Crystal Scimitar | Weapon | 1H | RARE | — | Dmg 34, Spd 1.25, Reach 64 | 15 🪙 |
 | 38 | `titan_greatsword` | Titan Greatsword | Weapon | **2H** | EPIC | — | Dmg 68, Spd 0.72, Reach 84, Sweeping Cleave| 35 🪙 |
@@ -108,7 +108,7 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
 
 ## 🥋 Daftar Lengkap Anime Equipment Sets (Batch 1 & 2)
 
-### 1. Gojo Satoru — *The Honored One* (Jujutsu Kaisen)
+### 1. The Honored One (Cursed Sorcery)
 > *"Throughout Heaven and Earth, I alone am the honored one."*
 
 * **Tema Visual**: Seragam gelap berkerah tinggi khas SMA Jujutsu, visor penutup mata hitam dengan kilau cyan bercahaya, dan dua bola energi melayang (Biru & Merah).
@@ -129,7 +129,7 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
 
 ---
 
-### 2. Ryomen Sukuna — *King of Curses* (Jujutsu Kaisen)
+### 2. King of Curses (The Disgraced Sovereign)
 > *"Know your place, fool."*
 
 * **Tema Visual**: Kimono putih bertato kutukan hitam, 4 mata merah menyala di dahi, serta pilihan senjata petir atau golok algojo raksasa.
@@ -144,7 +144,7 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
      - `Malevolent Cleaver` (`sukuna_cleaver`, **2H**, Mythic) — Dmg 88, Kecepatan 0.85, Reach 82. Golok algojo dua tangan raksasa dengan tebasan sabit darah dan pola silang `X`.
   6. **Off-Hand Opsional**:
      - `Hiten Cursed Spear` (`sukuna_hiten`, Mythic) — Tombak trisula api kutukan. Right-Click meluncurkan tusukan bara api (+15 Dmg Buff, +12 Armor).
-     - `Sukuna's Sealed Finger` (`sukuna_finger`, Mythic) — Jari mumi bertalisman terkutuk yang sangat langka. Meningkatkan Max HP +50, Damage Buff +35, dan Armor +18!
+     - `Sealed Cursed Finger` (`sukuna_finger`, Mythic) — Jari mumi bertalisman terkutuk yang sangat langka. Meningkatkan Max HP +50, Damage Buff +35, dan Armor +18!
 * 💀 **FULL SET BONUS — World Cutting Slash (世界を断つ斬撃)**:
   - Menggantikan tombol `Q` dengan **World Cutting Slash**!
   - **Efek Sinematik Layar Penuh**:
@@ -155,7 +155,7 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
 
 ---
 
-### 3. Toji Fushiguro — *Sorcerer Killer* (Jujutsu Kaisen)
+### 3. The Sorcerer Killer (Heavenly Restriction)
 > *"Zero cursed energy. Pure physical perfection."*
 
 * **Tema Visual**: Baju kompresi hitam ketat, kutukan ulat inventaris melingkar di leher dan pundak, mengayunkan rantai besi seribu mil.
@@ -169,12 +169,12 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
      - Left-Click: Tusukan jarak jauh Inverted Spear yang menembus dan **menonaktifkan perisai musuh** (75 Dmg).
      - Right-Click: Mengayunkan rantai besi berputar 360 derajat.
 * ⛓️ **FULL SET BONUS — Inverted Chain Rampage**:
-  - Menggantikan tombol `Q` dengan pusaran badai rantai besi berkecepatan tinggi yang merobek seluruh musuh di sekeliling Toji tanpa henti, memantulkan serangan musuh.
+  - Menggantikan tombol `Q` dengan pusaran badai rantai besi berkecepatan tinggi yang merobek seluruh musuh di sekeliling karakter tanpa henti, memantulkan serangan musuh.
   - Audio: Gemerincing rantai besi berat dan dentang tajam pisau jitte.
 
 ---
 
-### 4. Guts — *The Black Swordsman* (Berserk)
+### 4. The Black Swordsman (The Berserker)
 > *"Even if we painstakingly piece together something lost, it doesn't mean things will ever go back to how they were."*
 
 * **Tema Visual**: Pelindung baja hitam bersudut tajam (*Berserker Armor*), helm kepala serigala demonic dengan celah mata merah membara, serta pedang besi Dragon Slayer raksasa.
@@ -196,7 +196,7 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
 
 ---
 
-### 5. Levi Ackerman — *Humanity's Strongest Soldier* (Attack on Titan)
+### 5. Humanity's Strongest Soldier (Titan Hunter)
 > *"If you don't fight, you can't win."*
 
 * **Tema Visual**: Jubah hijau Survey Corps berlogo *Wings of Freedom*, sabuk pengikat harness kulit, tabung gas bertekanan tinggi di pinggang, dan sepasang bilah baja snap blade.
@@ -207,22 +207,22 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
   3. **Pants**: `Scout Cavalry Trousers` (`scout_trousers`, Legendary) — HP +25, Armor +10, Kecepatan Gerak +18, Pengurangan Biaya Dash -25%.
   4. **Boots**: `Scout Knee-High Riding Boots` (`scout_boots`, Legendary) — Kecepatan Gerak +32, Armor +8.
   5. **Weapon (2H / Dual-wield)**: `Dual Ultrahard Steel Snap Blades` (`dual_snap_blades`, Mythic) — Dmg 48, Kecepatan 1.25, Crit Chance +25%. Menyerang dengan tebasan ganda menyilang secepat kilat.
-* ⚔️ **FULL SET BONUS — Levi Grapple Whirlwind (ODM Mode)**:
+* ⚔️ **FULL SET BONUS — ODM Grapple Whirlwind (ODM Mode)**:
   - Menekan `Q` mengaktifkan **Mode Manuver ODM 3D Penuh**:
   - Klik Kiri menembakkan kabel jangkar (*grapple cable*) berjarak tak terbatas ke arah kursor (dinding atau musuh).
-  - Levi ditarik meluncur dengan akselerasi supersonik. **Kebal tabrakan (pass-through)** saat meluncur, berputar 360° mencincang musuh dengan **80 Dmg per putaran**!
+  - Karakter ditarik meluncur dengan akselerasi supersonik. **Kebal tabrakan (pass-through)** saat meluncur, berputar 360° mencincang musuh dengan **80 Dmg per putaran**!
   - Gas terisi kembali saat mendarat di tanah.
   - Audio: Desisan pneumatik gas bertekanan tinggi (`PSSSSHH!`) dan bunyi desingan bilah baja memotong udara.
 
 ---
 
-### 6. David Martinez — *Night City Legend* (Cyberpunk: Edgerunners)
+### 6. Night City Legend (Cyber Sandevistan)
 > *"I'm built different."*
 
-* **Tema Visual**: Jaket EMT kuning neon milik Gloria, chassis cyberware Sandevistan di tulang punggung, dan sepatu sneakers cyber chrome.
+* **Tema Visual**: Jaket EMT kuning neon bergaris pengaman reflektif, chassis cyberware Sandevistan di tulang punggung, dan sepatu sneakers cyber chrome.
 * **Komponen Set (6 Bagian)**:
   1. **Helmet**: `Kiroshi Optics Mk. 4` (`david_kiroshi`, Mythic) — HP +30, Crit Chance +25%, menampilkan overlay analisis target taktis.
-  2. **Chest**: `Gloria's High-Vis EMT Jacket` (`david_jacket`, Mythic) — HP +45, Armor +14.
+  2. **Chest**: `High-Vis Cyber EMT Jacket` (`david_jacket`, Mythic) — HP +45, Armor +14.
      - *Base Q*: **Overcharge Boost** — Akselerasi sirkuit listrik memberikan +35% kecepatan lari selama 3.0 detik.
   3. **Pants**: `Streetkid Cargo Pants` (`david_pants`, Legendary) — HP +20, Armor +8, Kecepatan Gerak +20, Max Stamina +15.
   4. **Boots**: `Chrome Cyber-Sneakers` (`david_sneakers`, Legendary) — Kecepatan Gerak +28, Pengurangan Biaya Dash Roll -12%.
@@ -233,8 +233,8 @@ Berikut tabel ringkasan 54 item yang terdaftar secara aktif di dalam kode game (
   - **Efek Sinematik Layar Penuh**:
     - Suara boot digital ikonik (`BWEEEEE-SHOOOM`) terdengar.
     - **Global Slow-Mo**: Waktu di seluruh dunia (semua monster, proyektil, dan pemain lain) melambat drastis menjadi **10% dari kecepatan normal** selama 4.0 detik!
-    - **David adalah satu-satunya entitas yang bergerak dengan kecepatan 100% normal**!
-    - Layar dibalut overlay grid matriks hijau cyberpunk dan bayangan ghost-trail berwarna cyan dan lime neon yang tertinggal saat David bermanuver bebas membantai musuh yang membeku.
+    - **Pengguna adalah satu-satunya entitas yang bergerak dengan kecepatan 100% normal**!
+    - Layar dibalut overlay grid matriks hijau cyberpunk dan bayangan ghost-trail berwarna cyan dan lime neon yang tertinggal saat bermanuver bebas membantai musuh yang membeku.
 
 ---
 
@@ -352,21 +352,21 @@ Item habis pakai ini dapat dibeli dari **The Slop Merchant** di Ruang Merchant m
 
 Sesuai dengan dokumen roadmap game, set anime berikutnya yang akan segera ditambahkan meliputi:
 
-1. **Saitama — The Caped Baldy (One Punch Man)**
+1. **The Caped Baldy (One-Punch Hero)**
    - Set: *Hero's Polished Bald Scalp*, *Yellow Hero Suit & Cape*, *Hero Tights*, *Red Rubber Boots*, *Red Hero Glove*, *Grocery Bag*.
    - **Full Set Bonus Q**: **Serious Punch (マジ殴り)** — Layar beralih ke gaya manga hitam-putih kontras tinggi, melepaskan hantaman udara kerucut raksasa berkekuatan **350 True Damage**.
-2. **Shinra Kusakabe — Devil's Footprints (Fire Force)**
+2. **Devil's Footprints (Flame Ignition Soldier)**
    - Set: *Fire Brigade Visor*, *Bunker Coat*, *Turnout Pants*, *Devil's Ignition Boots*, *Flame Claws*.
    - **Full Set Bonus Q**: **Adolla Flight & Light-Speed Kick** — Melesat dengan jejak api Adolla melintasi ruangan dan meledakkan musuh dalam ledakan hitam-oranye.
-3. **Arthur Boyle — Knight King (Fire Force)**
+3. **The Knight King (Plasma Paladin)**
    - Set: *Knight's Circlet*, *White Surcoat*, *Paladin Breeches*, *Excalibur (Plasma Blade)*.
    - **Full Set Bonus Q**: **Violet Flash: Earth Divider** — Memanjangkan pedang plasma ungu melintasi layar horizontal.
-4. **Rimuru Tempest — True Demon Lord (Tensura)**
-   - Set: *Shizu's Anti-Magic Mask*, *Demon Lord Coat*, *Demon Katana*, *Water Orb*.
-   - **Full Set Bonus Q**: **Beelzebuth (Gluttony)** — Menghisap seluruh musuh dan proyektil ke dalam lubang hitam, memulihkan HP Rimuru.
-5. **Light Yagami — Kira (Death Note)**
-   - Set: *Kira's Glasses*, *School Uniform Blazer*, *Dress Shoes*, *The Death Note*.
+4. **True Demon Lord (Slime Sovereign)**
+   - Set: *Anti-Magic Mask*, *Demon Lord Coat*, *Demon Katana*, *Water Orb*.
+   - **Full Set Bonus Q**: **Beelzebuth (Gluttony)** — Menghisap seluruh musuh dan proyektil ke dalam lubang hitam, memulihkan HP pengguna.
+5. **The God of Judgment (Kira)**
+   - Set: *Judgment Spectacles*, *School Uniform Blazer*, *Dress Shoes*, *The Death Note*.
    - **Full Set Bonus Q**: **Heart Attack Judgment (40 Seconds)** — Menjatuhkan vonis kematian instan pada target bos.
-6. **Subaru Natsuki & Rem (Re:Zero)**
-   - Set Subaru: *Legendary Tracksuit*, *Return by Death* (Passive rewind saat mati) & *Cor Leonis*.
-   - Set Rem: *Maid Ribbon & Horn*, *Frilled Apron*, *Spiked Morningstar Flail (2H)*, *Oni Rampage*.
+6. **The Death Returner & The Oni Maid**
+   - Set Death Returner: *Legendary Tracksuit*, *Return by Death* (Passive rewind saat mati) & *Cor Leonis*.
+   - Set Oni Maid: *Maid Ribbon & Horn*, *Frilled Apron*, *Spiked Morningstar Flail (2H)*, *Oni Rampage*.
