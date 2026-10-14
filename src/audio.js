@@ -6,21 +6,47 @@
 export class AudioManager {
   constructor() {
     this.ctx = null;
+    this.rawCtx = null;
+    this.masterGain = null;
+    this.sfxGain = null;
     this.isMuted = false;
+    this.masterVolume = 0.8;
+    this.sfxVolume = 0.8;
     this.initialized = false;
+    this.lastPlayTimes = new Map();
   }
 
   init() {
     try {
-      if (!this.ctx) {
+      if (!this.rawCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (AudioContext) {
-          this.ctx = new AudioContext();
+          const raw = new AudioContext();
+          this.rawCtx = raw;
+
+          this.masterGain = raw.createGain();
+          this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.masterVolume, raw.currentTime);
+          this.masterGain.connect(raw.destination);
+
+          this.sfxGain = raw.createGain();
+          this.sfxGain.gain.setValueAtTime(this.sfxVolume, raw.currentTime);
+          this.sfxGain.connect(this.masterGain);
+
+          const sfxNode = this.sfxGain;
+          this.ctx = new Proxy(raw, {
+            get(target, prop) {
+              if (prop === 'destination') {
+                return sfxNode;
+              }
+              const val = target[prop];
+              return typeof val === 'function' ? val.bind(target) : val;
+            }
+          });
           this.initialized = true;
         }
       }
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume();
+      if (this.rawCtx && this.rawCtx.state === 'suspended') {
+        this.rawCtx.resume();
       }
     } catch (e) {
       console.warn('Web Audio API not supported', e);
@@ -29,6 +55,36 @@ export class AudioManager {
 
   ensureContext() {
     this.init();
+  }
+
+  setMasterVolume(val) {
+    this.masterVolume = Math.max(0, Math.min(1, val));
+    if (this.masterGain && this.rawCtx) {
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.masterVolume, this.rawCtx.currentTime);
+    }
+  }
+
+  setSfxVolume(val) {
+    this.sfxVolume = Math.max(0, Math.min(1, val));
+    if (this.sfxGain && this.rawCtx) {
+      this.sfxGain.gain.setValueAtTime(this.sfxVolume, this.rawCtx.currentTime);
+    }
+  }
+
+  setMuted(muted) {
+    this.isMuted = !!muted;
+    if (this.masterGain && this.rawCtx) {
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.masterVolume, this.rawCtx.currentTime);
+    }
+  }
+
+  canPlay(key = 'default', throttleMs = 35) {
+    if (this.isMuted || this.masterVolume <= 0 || this.sfxVolume <= 0) return false;
+    const now = performance.now();
+    const last = this.lastPlayTimes.get(key) || 0;
+    if (now - last < throttleMs) return false;
+    this.lastPlayTimes.set(key, now);
+    return true;
   }
 
   // =========================================================================

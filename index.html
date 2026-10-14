@@ -51,11 +51,13 @@
       </div>
 
       <div class="hud-top-right">
+        <div class="fps-badge" id="hud-fps-badge">60 FPS</div>
         <div class="network-badge" id="hud-network-badge">
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
         <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Bikin Room / Mabar Co-op">🎮 BIKIN LOBBY / MABAR</button>
+        <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]">⚙️ SETTINGS</button>
       </div>
 
       <!-- Floor Selection & Level Testing Modal (Triggered by [F] or Altar in Lobby) -->
@@ -584,6 +586,131 @@
         </div>
       </div>
 
+      <!-- Settings & Optimization Modal (Graphics & Audio FX) -->
+      <div id="settings-modal" class="modal-backdrop interactive hidden">
+        <div class="modal-card settings-card">
+          <div class="settings-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="settings-title-icon">⚙️</span>
+              <div>
+                <h2 class="modal-title">SETTINGS & OPTIMIZATION</h2>
+                <p class="modal-subtitle">Sesuaikan grafik & suara untuk performa maksimal 60+ FPS tanpa lag</p>
+              </div>
+            </div>
+            <button id="btn-close-settings" class="modal-close-btn">&times;</button>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="settings-group">
+            <span class="settings-label">⚡ QUICK PERFORMANCE PRESET:</span>
+            <div class="preset-buttons-row">
+              <button class="preset-btn" data-preset="potato" id="preset-potato">
+                <span class="preset-name">🥔 POTATO (ULTRA FPS)</span>
+                <span class="preset-desc">Glow OFF, Partikel Minimal, Tanpa Lag</span>
+              </button>
+              <button class="preset-btn active" data-preset="balanced" id="preset-balanced">
+                <span class="preset-name">⚖️ BALANCED (REKOMENDASI)</span>
+                <span class="preset-desc">60 FPS Stabil, Partikel Sedang, Ringan</span>
+              </button>
+              <button class="preset-btn" data-preset="high" id="preset-high">
+                <span class="preset-name">✨ HIGH / ULTRA FX</span>
+                <span class="preset-desc">Glow Neon Penuh, Partikel Maksimal</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Detailed Graphics Settings -->
+          <div class="settings-section">
+            <div class="settings-section-title">🎨 GRAFIK & EFEK VISUAL:</div>
+            
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Glow & Bloom Lighting (ShadowBlur)</strong>
+                <span>Efek pendar neon. Matikan ini untuk boost FPS hingga 5x lipat!</span>
+              </div>
+              <button id="toggle-glow" class="toggle-btn">OFF (CEPAT)</button>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Kualitas Partikel & Ledakan</strong>
+                <span>Kepadatan partikel tebasan, dash, dan proyektil.</span>
+              </div>
+              <div class="select-btn-group" id="group-particles">
+                <button class="choice-btn" data-val="low">RENDAH (30%)</button>
+                <button class="choice-btn active" data-val="medium">SEDANG (60%)</button>
+                <button class="choice-btn" data-val="high">PENUH (100%)</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Floating Damage & Comic Popups</strong>
+                <span>Teks angka damage, 'DODGE!', 'SWOOSH!', 'BONK!'.</span>
+              </div>
+              <div class="select-btn-group" id="group-damage-text">
+                <button class="choice-btn" data-val="minimal">MINIMAL</button>
+                <button class="choice-btn active" data-val="full">PENUH</button>
+                <button class="choice-btn" data-val="off">MATI</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Guncangan Layar (Screen Shake)</strong>
+                <span>Efek getar kamera saat ledakan & tebasan maut.</span>
+              </div>
+              <div class="select-btn-group" id="group-screen-shake">
+                <button class="choice-btn" data-val="off">MATI (0%)</button>
+                <button class="choice-btn active" data-val="reduced">HALUS (50%)</button>
+                <button class="choice-btn" data-val="full">PENUH (100%)</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Indikator FPS di Layar</strong>
+                <span>Tampilkan frame rate real-time di pojok atas layar.</span>
+              </div>
+              <button id="toggle-fps" class="toggle-btn active">HIDUP</button>
+            </div>
+          </div>
+
+          <!-- Audio & SFX Settings -->
+          <div class="settings-section">
+            <div class="settings-section-title">🔊 AUDIO & EFEK SUARA:</div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Master Volume (<span id="val-master-vol">80%</span>)</strong>
+                <span>Volume keseluruhan game</span>
+              </div>
+              <input type="range" id="slider-master-vol" min="0" max="100" value="80" class="settings-slider" />
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>SFX Volume (<span id="val-sfx-vol">80%</span>)</strong>
+                <span>Efek serangan, senjata, proyektil, dan monster</span>
+              </div>
+              <input type="range" id="slider-sfx-vol" min="0" max="100" value="80" class="settings-slider" />
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Mute Audio / Suara</strong>
+                <span>Nonaktifkan semua output Web Audio API</span>
+              </div>
+              <button id="toggle-mute" class="toggle-btn">MUTE: OFF</button>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+            <button id="btn-save-settings" class="action-btn primary-btn" style="min-width: 140px;">SIMPAN & TUTUP [ESC]</button>
+          </div>
+        </div>
+      </div>
+
       <div class="hud-bottom-center">
         <!-- Simple Clean ODM Gas Bar HUD Overlay -->
         <div id="odm-tactical-hud" class="odm-gas-bar-container hidden">
@@ -600,6 +727,7 @@
           <span><kbd>R-CLICK</kbd> Block</span>
           <span><kbd>Q</kbd> Ability</span>
           <span><kbd>I</kbd> / <kbd>TAB</kbd> Inventory</span>
+          <span><kbd>O</kbd> Settings</span>
           <span class="dev-hint"><kbd>G</kbd> Dev Menu</span>
         </div>
       </div>

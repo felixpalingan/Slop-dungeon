@@ -19,6 +19,7 @@ import { WheelAltar } from './wheelAltar.js';
 import { BlackjackTable } from './blackjackTable.js';
 import { BlackjackGame } from './blackjack.js';
 import { DevArmoryChest } from './devArmoryChest.js';
+import { SettingsManager } from './settings.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -36,11 +37,16 @@ player.inventory.push(
   ITEM_CATALOG['wooden_buckler']
 );
 
+const settings = new SettingsManager();
 const audio = new AudioManager();
-const particles = new ParticleManager();
+audio.setMasterVolume(settings.settings.masterVolume / 100);
+audio.setSfxVolume(settings.settings.sfxVolume / 100);
+audio.setMuted(settings.settings.isMuted);
+
+const particles = new ParticleManager(settings);
 const network = new NetworkManager();
 const combat = new CombatSystem(audio, particles);
-const cinematics = new CinematicManager();
+const cinematics = new CinematicManager(settings);
 
 // Lobby entities
 const dummy = new Dummy(0, -180);
@@ -2970,6 +2976,210 @@ if (btnCloseDevArmoryBottom) {
   btnCloseDevArmoryBottom.addEventListener('click', closeDevArmoryModal);
 }
 
+// --- SETTINGS & GRAPHICS / AUDIO CONFIG LOGIC ---
+const settingsModal = document.getElementById('settings-modal');
+const btnOpenSettings = document.getElementById('btn-open-settings');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+const btnSaveSettings = document.getElementById('btn-save-settings');
+
+function openSettingsModal() {
+  if (!settingsModal) return;
+  audio.playFootstep();
+  updateSettingsUIFromState();
+  settingsModal.classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  if (!settingsModal) return;
+  settingsModal.classList.add('hidden');
+  audio.playFootstep();
+}
+
+function toggleSettingsModal() {
+  if (!settingsModal) return;
+  if (settingsModal.classList.contains('hidden')) {
+    openSettingsModal();
+  } else {
+    closeSettingsModal();
+  }
+}
+
+function updateSettingsUIFromState() {
+  const current = settings.settings;
+
+  // Preset Buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-preset') === current.preset);
+  });
+
+  // Toggle Glow
+  const toggleGlow = document.getElementById('toggle-glow');
+  if (toggleGlow) {
+    toggleGlow.textContent = current.enableGlow ? 'ON (BERKILAU)' : 'OFF (CEPAT)';
+    toggleGlow.classList.toggle('active', current.enableGlow);
+  }
+
+  // Particle Quality
+  document.querySelectorAll('#group-particles .choice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-val') === current.particleQuality);
+  });
+
+  // Damage Text
+  const dmgVal = !current.showDamageText ? 'off' : 'full';
+  document.querySelectorAll('#group-damage-text .choice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-val') === dmgVal);
+  });
+
+  // Screen Shake
+  document.querySelectorAll('#group-screen-shake .choice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-val') === current.screenShake);
+  });
+
+  // FPS Counter Toggle
+  const toggleFps = document.getElementById('toggle-fps');
+  if (toggleFps) {
+    toggleFps.textContent = current.showFps ? 'HIDUP' : 'MATI';
+    toggleFps.classList.toggle('active', current.showFps);
+  }
+  const hudBadge = document.getElementById('hud-fps-badge');
+  if (hudBadge) {
+    hudBadge.classList.toggle('hidden', !current.showFps);
+  }
+
+  // Sliders
+  const sliderMaster = document.getElementById('slider-master-vol');
+  const valMaster = document.getElementById('val-master-vol');
+  if (sliderMaster && valMaster) {
+    sliderMaster.value = current.masterVolume;
+    valMaster.textContent = `${current.masterVolume}%`;
+  }
+
+  const sliderSfx = document.getElementById('slider-sfx-vol');
+  const valSfx = document.getElementById('val-sfx-vol');
+  if (sliderSfx && valSfx) {
+    sliderSfx.value = current.sfxVolume;
+    valSfx.textContent = `${current.sfxVolume}%`;
+  }
+
+  // Mute Button
+  const toggleMute = document.getElementById('toggle-mute');
+  if (toggleMute) {
+    toggleMute.textContent = current.isMuted ? 'MUTED: ON' : 'MUTE: OFF';
+    toggleMute.classList.toggle('active', current.isMuted);
+  }
+}
+
+function initSettingsUI() {
+  if (btnOpenSettings) {
+    btnOpenSettings.addEventListener('click', openSettingsModal);
+  }
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener('click', closeSettingsModal);
+  }
+  if (btnSaveSettings) {
+    btnSaveSettings.addEventListener('click', closeSettingsModal);
+  }
+
+  // Presets
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const presetKey = btn.getAttribute('data-preset');
+      settings.applyPreset(presetKey);
+      audio.playCoinPickup();
+      updateSettingsUIFromState();
+    });
+  });
+
+  // Glow Toggle
+  const toggleGlow = document.getElementById('toggle-glow');
+  if (toggleGlow) {
+    toggleGlow.addEventListener('click', () => {
+      settings.update({ enableGlow: !settings.settings.enableGlow });
+      audio.playFootstep();
+      updateSettingsUIFromState();
+    });
+  }
+
+  // Particle Quality
+  document.querySelectorAll('#group-particles .choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.getAttribute('data-val');
+      settings.update({ particleQuality: val });
+      audio.playFootstep();
+      updateSettingsUIFromState();
+    });
+  });
+
+  // Damage Text
+  document.querySelectorAll('#group-damage-text .choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.getAttribute('data-val');
+      settings.update({ showDamageText: val !== 'off' });
+      audio.playFootstep();
+      updateSettingsUIFromState();
+    });
+  });
+
+  // Screen Shake
+  document.querySelectorAll('#group-screen-shake .choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.getAttribute('data-val');
+      settings.update({ screenShake: val });
+      audio.playFootstep();
+      updateSettingsUIFromState();
+    });
+  });
+
+  // FPS Counter Toggle
+  const toggleFps = document.getElementById('toggle-fps');
+  if (toggleFps) {
+    toggleFps.addEventListener('click', () => {
+      settings.update({ showFps: !settings.settings.showFps });
+      audio.playFootstep();
+      updateSettingsUIFromState();
+    });
+  }
+
+  // Sliders
+  const sliderMaster = document.getElementById('slider-master-vol');
+  if (sliderMaster) {
+    sliderMaster.addEventListener('input', (e) => {
+      const vol = Number(e.target.value);
+      settings.update({ masterVolume: vol });
+      audio.setMasterVolume(vol / 100);
+      const valMaster = document.getElementById('val-master-vol');
+      if (valMaster) valMaster.textContent = `${vol}%`;
+    });
+  }
+
+  const sliderSfx = document.getElementById('slider-sfx-vol');
+  if (sliderSfx) {
+    sliderSfx.addEventListener('input', (e) => {
+      const vol = Number(e.target.value);
+      settings.update({ sfxVolume: vol });
+      audio.setSfxVolume(vol / 100);
+      const valSfx = document.getElementById('val-sfx-vol');
+      if (valSfx) valSfx.textContent = `${vol}%`;
+    });
+  }
+
+  // Mute Toggle
+  const toggleMute = document.getElementById('toggle-mute');
+  if (toggleMute) {
+    toggleMute.addEventListener('click', () => {
+      const nextMuted = !settings.settings.isMuted;
+      settings.update({ isMuted: nextMuted });
+      audio.setMuted(nextMuted);
+      updateSettingsUIFromState();
+    });
+  }
+
+  // Initialize UI state
+  updateSettingsUIFromState();
+}
+
+initSettingsUI();
+
 // Quick Set Equippers
 document.querySelectorAll('.armory-set-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -4012,11 +4222,40 @@ let lastTime = performance.now();
 let wasSandevistanActive = false;
 let slowMoTickTimer = 0;
 let revivePulseSoundTimer = 0;
+let frameCount = 0;
+let lastFpsUpdateTime = performance.now();
+const hudFpsBadge = document.getElementById('hud-fps-badge');
 
 function gameLoop(now) {
   try {
     const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
+
+    // Real-time FPS calculation & HUD update
+    frameCount++;
+    if (now - lastFpsUpdateTime >= 400) {
+      const currentFps = Math.round((frameCount * 1000) / Math.max(1, (now - lastFpsUpdateTime)));
+      frameCount = 0;
+      lastFpsUpdateTime = now;
+      if (hudFpsBadge) {
+        if (settings.settings.showFps) {
+          hudFpsBadge.classList.remove('hidden');
+          hudFpsBadge.textContent = `${currentFps} FPS`;
+          if (currentFps >= 50) {
+            hudFpsBadge.style.color = '#22c55e';
+            hudFpsBadge.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+          } else if (currentFps >= 30) {
+            hudFpsBadge.style.color = '#eab308';
+            hudFpsBadge.style.borderColor = 'rgba(234, 179, 8, 0.4)';
+          } else {
+            hudFpsBadge.style.color = '#ef4444';
+            hudFpsBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          }
+        } else {
+          hudFpsBadge.classList.add('hidden');
+        }
+      }
+    }
 
   const wasRolling = player.isRolling;
   const modalsOpen =
@@ -4028,7 +4267,8 @@ function gameLoop(now) {
     (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) ||
     (blackjackModal && !blackjackModal.classList.contains('hidden')) ||
     (gameOverModal && !gameOverModal.classList.contains('hidden')) ||
-    (devArmoryModal && !devArmoryModal.classList.contains('hidden'));
+    (devArmoryModal && !devArmoryModal.classList.contains('hidden')) ||
+    (settingsModal && !settingsModal.classList.contains('hidden'));
 
   // Inventory toggle hotkeys: I or Tab
   if (input.justPressedI || (input.keys.tab && !input.tabHandled)) {
@@ -4036,6 +4276,11 @@ function gameLoop(now) {
     toggleInventory();
   }
   if (!input.keys.tab) input.tabHandled = false;
+
+  // Settings toggle hotkey: O
+  if (input.justPressedO) {
+    toggleSettingsModal();
+  }
 
   // ESC closes any open modal
   if (input.keys.escape) {
@@ -4047,6 +4292,7 @@ function gameLoop(now) {
     if (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) closeWheelAltarModal();
     if (blackjackModal && !blackjackModal.classList.contains('hidden')) closeBlackjackModal();
     if (devArmoryModal && !devArmoryModal.classList.contains('hidden')) closeDevArmoryModal();
+    if (settingsModal && !settingsModal.classList.contains('hidden')) closeSettingsModal();
   }
 
   // Handle Shield Blocking
@@ -4988,18 +5234,22 @@ function gameLoop(now) {
       slopMerchant.draw(renderer.ctx, slopMerchant.isNear(player), now * 0.001);
     }
 
-    // Slop Coins
+    // Slop Coins (frustum culled)
     for (const coin of slopCoins) {
-      coin.draw(renderer.ctx);
+      if (renderer.isEntityVisible(coin.x, coin.y, 25)) {
+        coin.draw(renderer.ctx);
+      }
     }
 
     // Themed Anime Monsters (Fly Heads, Masked Ino, Cursed Brutes, Boss Finger Bearer)
     renderer.drawMonsters(monsterManager.monsters, now * 0.001);
   }
 
-  // Ground Loot Items (with glowing rarity beams and proximity [E] pickup)
+  // Ground Loot Items (frustum culled with glowing rarity beams and proximity [E] pickup)
   for (const [_, loot] of groundItems.entries()) {
-    loot.draw(renderer.ctx, loot.isNear(player));
+    if (renderer.isEntityVisible(loot.x, loot.y, 45)) {
+      loot.draw(renderer.ctx, loot.isNear(player));
+    }
   }
 
   // Dash after-images & particles
@@ -5007,7 +5257,7 @@ function gameLoop(now) {
   particles.draw(renderer.ctx);
 
   // Draw in-world cinematic projectiles (Hollow Purple, World Cutting Slash, Chains)
-  cinematics.drawWorld(renderer.ctx);
+  cinematics.drawWorld(renderer.ctx, renderer);
 
   // Draw remote peers
   for (const [_, remote] of network.remotePlayers.entries()) {

@@ -5,7 +5,8 @@
  */
 
 export class CinematicManager {
-  constructor() {
+  constructor(settings = null) {
+    this.settings = settings;
     this.activeCinematics = []; // Array of active cinematics { type, timer, duration, caster, x, y, angle }
     this.projectiles = []; // e.g. Hollow Purple orbs, Dismantle wind blades, Spartan Kick
     this.screenShake = 0;
@@ -307,10 +308,11 @@ export class CinematicManager {
   }
 
   getShakeOffset() {
-    if (this.screenShake <= 0.1) return { x: 0, y: 0 };
+    const mult = this.settings ? this.settings.getScreenShakeMultiplier() : 1.0;
+    if (this.screenShake <= 0.1 || mult <= 0) return { x: 0, y: 0 };
     return {
-      x: (Math.random() - 0.5) * this.screenShake * 2,
-      y: (Math.random() - 0.5) * this.screenShake * 2
+      x: (Math.random() - 0.5) * this.screenShake * 2 * mult,
+      y: (Math.random() - 0.5) * this.screenShake * 2 * mult
     };
   }
 
@@ -614,9 +616,15 @@ export class CinematicManager {
   /**
    * Draws world-space cinematic effects (projectiles, slashes, chain whirlwinds)
    */
-  drawWorld(ctx) {
+  drawWorld(ctx, renderer = null) {
     // 1. Draw Projectiles
     for (const proj of this.projectiles) {
+      // Frustum culling: skip offscreen projectiles
+      if (renderer && typeof renderer.isEntityVisible === 'function') {
+        const rad = (proj.radius || (proj.width ? proj.width * 0.5 : 35)) + 80;
+        if (!renderer.isEntityVisible(proj.x, proj.y, rad)) continue;
+      }
+
       ctx.save();
       ctx.translate(proj.x, proj.y);
 

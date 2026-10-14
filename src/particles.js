@@ -4,7 +4,8 @@
  */
 
 export class ParticleManager {
-  constructor() {
+  constructor(settings = null) {
+    this.settings = settings;
     this.particles = [];
     this.comicTexts = [];
     this.onComicTextSpawned = null;
@@ -15,8 +16,21 @@ export class ParticleManager {
    */
   spawnComicText(x, y, text, color = '#ffea00', broadcast = true) {
     const isCooldown = text.includes('COOLDOWN');
+    if (this.settings) {
+      const mode = this.settings.settings.damageNumbers;
+      if (mode === 'off' && !isCooldown) return;
+      if (mode === 'minimal' && !isCooldown) {
+        // In minimal mode, only display critical events, drops, and set bonuses
+        const isImportant = text.includes('!') || text.includes('CRIT') || text.includes('DROPPED') || text.includes('BLEED');
+        if (!isImportant) return;
+      }
+      if (!this.settings.settings.showDamageText && !isCooldown) {
+        return;
+      }
+    }
+
     if (isCooldown) {
-      // Clear any previous cooldown indicators so they never overlap into an unreadable mess
+      // Clear any previous cooldown indicators so they never overlap
       this.comicTexts = this.comicTexts.filter((t) => !t.text.includes('COOLDOWN'));
     }
 
@@ -42,7 +56,8 @@ export class ParticleManager {
    * Spawns directional dash burst particles
    */
   spawnDashBurst(x, y, angle, color = '#00f0ff') {
-    const count = 12;
+    const mult = this.settings ? this.settings.getParticleMultiplier() : 1.0;
+    const count = Math.max(3, Math.round(12 * mult));
     for (let i = 0; i < count; i++) {
       const spread = (Math.random() - 0.5) * 1.2;
       const speed = 80 + Math.random() * 120;
@@ -63,7 +78,8 @@ export class ParticleManager {
    * Spawns circular blade whirlwind / slice spiral particles (Levi ODM attack)
    */
   spawnBladeWhirlwind(x, y, color = '#10b981') {
-    const count = 16;
+    const mult = this.settings ? this.settings.getParticleMultiplier() : 1.0;
+    const count = Math.max(4, Math.round(16 * mult));
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const speed = 140 + Math.random() * 90;
@@ -81,6 +97,14 @@ export class ParticleManager {
   }
 
   update(dt) {
+    const maxP = this.settings ? this.settings.getMaxParticles() : 300;
+    if (this.particles.length > maxP) {
+      this.particles.splice(0, this.particles.length - maxP);
+    }
+    if (this.comicTexts.length > 40) {
+      this.comicTexts.splice(0, this.comicTexts.length - 40);
+    }
+
     // 1. Update particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -106,17 +130,18 @@ export class ParticleManager {
   }
 
   /**
-   * Renders particles and comic texts
+   * Renders particles and comic texts with fast batching
    */
   draw(ctx) {
-    // Particles
-    for (const p of this.particles) {
+    if (this.particles.length > 0) {
       ctx.save();
-      ctx.globalAlpha = Math.max(0, p.alpha);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fill();
+      for (const p of this.particles) {
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -128,17 +153,14 @@ export class ParticleManager {
       ctx.scale(t.scale, t.scale);
       ctx.globalAlpha = Math.max(0, t.alpha);
 
-      // Comic font styling
       ctx.font = '900 18px "Outfit", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Thick black comic outline
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 4;
       ctx.strokeText(t.text, 0, 0);
 
-      // Vibrant fill
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, 0, 0);
 

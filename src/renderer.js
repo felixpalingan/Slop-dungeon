@@ -43,6 +43,18 @@ export class Renderer {
     this.ctx.restore();
   }
 
+  isEntityVisible(x, y, radius = 64) {
+    const zoom = this.camera.zoom || 1.0;
+    const halfW = (this.width / 2) / zoom + radius;
+    const halfH = (this.height / 2) / zoom + radius;
+    return (
+      x >= this.camera.x - halfW &&
+      x <= this.camera.x + halfW &&
+      y >= this.camera.y - halfH &&
+      y <= this.camera.y + halfH
+    );
+  }
+
   drawDungeonFloor(bounds = { minX: -800, minY: -800, maxX: 800, maxY: 800 }) {
     const ctx = this.ctx;
     const size = this.tileSize;
@@ -2479,6 +2491,8 @@ export class Renderer {
 
     for (const m of monsters) {
       if (m.isDead) continue;
+      // Frustum Culling: skip rendering monsters that are offscreen
+      if (!this.isEntityVisible(m.x, m.y, (m.radius || 24) + 60)) continue;
 
       // Draw monster after-images (e.g. Adam Smasher Sandevistan trail)
       if (m.afterImages && m.afterImages.length > 0) {

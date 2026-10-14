@@ -19,6 +19,7 @@ export class InputManager {
       r: false,
       f: false,
       g: false,
+      o: false,
       space: false
     };
 
@@ -37,6 +38,7 @@ export class InputManager {
     this.justPressedR = false;
     this.justPressedF = false;
     this.justPressedG = false;
+    this.justPressedO = false;
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
@@ -104,6 +106,10 @@ export class InputManager {
         if (!this.keys.g && !e.repeat) this.justPressedG = true;
         this.keys.g = true;
       }
+      if (key === 'o') {
+        if (!this.keys.o && !e.repeat) this.justPressedO = true;
+        this.keys.o = true;
+      }
       if (key === ' ' || e.code === 'Space') {
         if (!this.keys.space && !e.repeat) this.justPressedSpace = true;
         this.keys.space = true;
@@ -132,6 +138,7 @@ export class InputManager {
       if (key === 'r') this.keys.r = false;
       if (key === 'f') this.keys.f = false;
       if (key === 'g') this.keys.g = false;
+      if (key === 'o') this.keys.o = false;
       if (key === ' ' || e.code === 'Space') this.keys.space = false;
       if (key === 'tab') this.keys.tab = false;
       if (e.code === 'ShiftLeft' || key === 'shift') this.keys.shift = false;
@@ -195,6 +202,7 @@ export class InputManager {
     this.justPressedR = false;
     this.justPressedF = false;
     this.justPressedG = false;
+    this.justPressedO = false;
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;

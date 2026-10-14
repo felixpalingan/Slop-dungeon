@@ -692,17 +692,24 @@ export class MonsterManager {
       }
     }
 
-    // Separate overlapping monsters so packs form realistic mobs
+    // Separate overlapping active monsters in the same room (optimized spatial pruning)
     if (isHost) {
       for (let i = 0; i < alive.length; i++) {
+        const m1 = alive[i];
+        if (!m1.isActive) continue;
+
         for (let j = i + 1; j < alive.length; j++) {
-          const m1 = alive[i];
           const m2 = alive[j];
+          if (!m2.isActive) continue;
+          if (m1.roomId && m2.roomId && m1.roomId !== m2.roomId) continue;
+
           const dx = m2.x - m1.x;
           const dy = m2.y - m1.y;
-          const dist = Math.hypot(dx, dy);
           const minDist = m1.radius + m2.radius;
+          // Fast bounding box rejection before Math.hypot
+          if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
 
+          const dist = Math.hypot(dx, dy);
           if (dist > 0 && dist < minDist) {
             const overlap = (minDist - dist) * 0.5;
             const nx = dx / dist;
