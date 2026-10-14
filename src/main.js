@@ -3027,15 +3027,27 @@ const btnSaveSettings = document.getElementById('btn-save-settings');
 
 function openSettingsModal() {
   if (!settingsModal) return;
-  audio.playFootstep();
-  updateSettingsUIFromState();
+  try {
+    audio.playFootstep();
+  } catch (e) {
+    // context not ready yet, safe to ignore
+  }
+  try {
+    updateSettingsUIFromState();
+  } catch (e) {
+    console.warn('updateSettingsUIFromState error:', e);
+  }
   settingsModal.classList.remove('hidden');
 }
 
 function closeSettingsModal() {
   if (!settingsModal) return;
   settingsModal.classList.add('hidden');
-  audio.playFootstep();
+  try {
+    audio.playFootstep();
+  } catch (e) {
+    // safe to ignore
+  }
 }
 
 function toggleSettingsModal() {
@@ -3048,6 +3060,7 @@ function toggleSettingsModal() {
 }
 
 function updateSettingsUIFromState() {
+  if (!settings || !settings.settings) return;
   const current = settings.settings;
 
   // Preset Buttons
@@ -3059,7 +3072,7 @@ function updateSettingsUIFromState() {
   const toggleGlow = document.getElementById('toggle-glow');
   if (toggleGlow) {
     toggleGlow.textContent = current.enableGlow ? 'ON (BERKILAU)' : 'OFF (CEPAT)';
-    toggleGlow.classList.toggle('active', current.enableGlow);
+    toggleGlow.classList.toggle('active', !!current.enableGlow);
   }
 
   // Particle Quality
@@ -3067,8 +3080,8 @@ function updateSettingsUIFromState() {
     btn.classList.toggle('active', btn.getAttribute('data-val') === current.particleQuality);
   });
 
-  // Damage Text
-  const dmgVal = !current.showDamageText ? 'off' : 'full';
+  // Damage Text (syncs with damageNumbers and showDamageText)
+  const dmgVal = current.damageNumbers || (current.showDamageText === false ? 'off' : 'full');
   document.querySelectorAll('#group-damage-text .choice-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-val') === dmgVal);
   });
@@ -3082,7 +3095,7 @@ function updateSettingsUIFromState() {
   const toggleFps = document.getElementById('toggle-fps');
   if (toggleFps) {
     toggleFps.textContent = current.showFps ? 'HIDUP' : 'MATI';
-    toggleFps.classList.toggle('active', current.showFps);
+    toggleFps.classList.toggle('active', !!current.showFps);
   }
   const hudBadge = document.getElementById('hud-fps-badge');
   if (hudBadge) {
@@ -3093,8 +3106,8 @@ function updateSettingsUIFromState() {
   const sliderMaster = document.getElementById('slider-master-vol');
   const valMaster = document.getElementById('val-master-vol');
   if (sliderMaster && valMaster) {
-    sliderMaster.value = current.masterVolume;
-    valMaster.textContent = `${current.masterVolume}%`;
+    sliderMaster.value = current.masterVolume ?? 80;
+    valMaster.textContent = `${sliderMaster.value}%`;
   }
 
   const sliderBgm = document.getElementById('slider-bgm-vol');
@@ -3107,32 +3120,54 @@ function updateSettingsUIFromState() {
   const sliderSfx = document.getElementById('slider-sfx-vol');
   const valSfx = document.getElementById('val-sfx-vol');
   if (sliderSfx && valSfx) {
-    sliderSfx.value = current.sfxVolume;
-    valSfx.textContent = `${current.sfxVolume}%`;
+    sliderSfx.value = current.sfxVolume ?? 80;
+    valSfx.textContent = `${sliderSfx.value}%`;
   }
 
   // Mute Button
   const toggleMute = document.getElementById('toggle-mute');
   if (toggleMute) {
     toggleMute.textContent = current.isMuted ? 'MUTED: ON' : 'MUTE: OFF';
-    toggleMute.classList.toggle('active', current.isMuted);
+    toggleMute.classList.toggle('active', !!current.isMuted);
   }
 }
 
 function initSettingsUI() {
   if (btnOpenSettings) {
-    btnOpenSettings.addEventListener('click', openSettingsModal);
+    btnOpenSettings.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      openSettingsModal();
+    });
   }
   if (btnCloseSettings) {
-    btnCloseSettings.addEventListener('click', closeSettingsModal);
+    btnCloseSettings.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      closeSettingsModal();
+    });
   }
   if (btnSaveSettings) {
-    btnSaveSettings.addEventListener('click', closeSettingsModal);
+    btnSaveSettings.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      closeSettingsModal();
+    });
+  }
+
+  // Close when clicking directly on backdrop
+  if (settingsModal) {
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        closeSettingsModal();
+      }
+    });
   }
 
   // Presets
   document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const presetKey = btn.getAttribute('data-preset');
       settings.applyPreset(presetKey);
       audio.playCoinPickup();
@@ -3143,7 +3178,8 @@ function initSettingsUI() {
   // Glow Toggle
   const toggleGlow = document.getElementById('toggle-glow');
   if (toggleGlow) {
-    toggleGlow.addEventListener('click', () => {
+    toggleGlow.addEventListener('click', (e) => {
+      e.stopPropagation();
       settings.update({ enableGlow: !settings.settings.enableGlow });
       audio.playFootstep();
       updateSettingsUIFromState();
@@ -3152,7 +3188,8 @@ function initSettingsUI() {
 
   // Particle Quality
   document.querySelectorAll('#group-particles .choice-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const val = btn.getAttribute('data-val');
       settings.update({ particleQuality: val });
       audio.playFootstep();
@@ -3162,9 +3199,10 @@ function initSettingsUI() {
 
   // Damage Text
   document.querySelectorAll('#group-damage-text .choice-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const val = btn.getAttribute('data-val');
-      settings.update({ showDamageText: val !== 'off' });
+      settings.update({ damageNumbers: val, showDamageText: val !== 'off' });
       audio.playFootstep();
       updateSettingsUIFromState();
     });
@@ -3172,7 +3210,8 @@ function initSettingsUI() {
 
   // Screen Shake
   document.querySelectorAll('#group-screen-shake .choice-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const val = btn.getAttribute('data-val');
       settings.update({ screenShake: val });
       audio.playFootstep();
@@ -3183,7 +3222,8 @@ function initSettingsUI() {
   // FPS Counter Toggle
   const toggleFps = document.getElementById('toggle-fps');
   if (toggleFps) {
-    toggleFps.addEventListener('click', () => {
+    toggleFps.addEventListener('click', (e) => {
+      e.stopPropagation();
       settings.update({ showFps: !settings.settings.showFps });
       audio.playFootstep();
       updateSettingsUIFromState();
@@ -3227,7 +3267,8 @@ function initSettingsUI() {
   // Mute Toggle
   const toggleMute = document.getElementById('toggle-mute');
   if (toggleMute) {
-    toggleMute.addEventListener('click', () => {
+    toggleMute.addEventListener('click', (e) => {
+      e.stopPropagation();
       const nextMuted = !settings.settings.isMuted;
       settings.update({ isMuted: nextMuted });
       audio.setMuted(nextMuted);

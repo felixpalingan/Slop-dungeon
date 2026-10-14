@@ -247,7 +247,8 @@ html, body {
   align-items: center;
   gap: 10px;
   width: auto;
-  pointer-events: auto;
+  z-index: 50;
+  pointer-events: auto !important;
 }
 
 .network-badge {
@@ -2716,12 +2717,23 @@ kbd {
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none;
+  transition: all 0.15s ease;
+  position: relative;
+  z-index: 50;
 }
 
 .settings-hud-btn:hover {
   background: #334155;
   border-color: #38bdf8;
   color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.settings-hud-btn:active {
+  transform: translateY(1px);
 }
 
 .fps-badge {
@@ -2736,6 +2748,21 @@ kbd {
   display: flex;
   align-items: center;
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+#settings-modal {
+  z-index: 200;
+  pointer-events: auto !important;
+}
+
+#settings-modal .modal-card {
+  pointer-events: auto !important;
+}
+
+#settings-modal button,
+#settings-modal input {
+  pointer-events: auto !important;
+  cursor: pointer;
 }
 
 .settings-card {

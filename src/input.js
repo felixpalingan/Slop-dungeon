@@ -113,7 +113,7 @@ export class InputManager {
         if (!this.keys.g && !e.repeat) this.justPressedG = true;
         this.keys.g = true;
       }
-      if (key === 'o') {
+      if (key === 'o' || e.code === 'KeyO') {
         if (!this.keys.o && !e.repeat) this.justPressedO = true;
         this.keys.o = true;
       }
@@ -153,7 +153,7 @@ export class InputManager {
       if (key === 'r') this.keys.r = false;
       if (key === 'f') this.keys.f = false;
       if (key === 'g') this.keys.g = false;
-      if (key === 'o') this.keys.o = false;
+      if (key === 'o' || e.code === 'KeyO') this.keys.o = false;
       if (key === 'escape') this.keys.escape = false;
       if (key === ' ' || e.code === 'Space') this.keys.space = false;
       if (key === 'tab') this.keys.tab = false;
