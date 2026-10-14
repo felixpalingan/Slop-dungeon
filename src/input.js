@@ -20,6 +20,7 @@ export class InputManager {
       f: false,
       g: false,
       o: false,
+      escape: false,
       space: false
     };
 
@@ -39,6 +40,7 @@ export class InputManager {
     this.justPressedF = false;
     this.justPressedG = false;
     this.justPressedO = false;
+    this.justPressedEscape = false;
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
@@ -67,10 +69,15 @@ export class InputManager {
     });
 
     window.addEventListener('keydown', (e) => {
-      if (isTextInput(e.target)) {
-        if (e.key === 'Escape' && e.target && typeof e.target.blur === 'function') {
+      if (e.key === 'Escape') {
+        if (!this.keys.escape && !e.repeat) this.justPressedEscape = true;
+        this.keys.escape = true;
+        if (isTextInput(e.target) && e.target && typeof e.target.blur === 'function') {
           e.target.blur();
         }
+        return;
+      }
+      if (isTextInput(e.target)) {
         return;
       }
       const key = e.key.toLowerCase();
@@ -110,6 +117,10 @@ export class InputManager {
         if (!this.keys.o && !e.repeat) this.justPressedO = true;
         this.keys.o = true;
       }
+      if (key === 'escape') {
+        if (!this.keys.escape && !e.repeat) this.justPressedEscape = true;
+        this.keys.escape = true;
+      }
       if (key === ' ' || e.code === 'Space') {
         if (!this.keys.space && !e.repeat) this.justPressedSpace = true;
         this.keys.space = true;
@@ -125,6 +136,10 @@ export class InputManager {
     });
 
     window.addEventListener('keyup', (e) => {
+      if (e.key === 'Escape') {
+        this.keys.escape = false;
+        return;
+      }
       if (isTextInput(e.target)) return;
       const key = e.key.toLowerCase();
       if (key === 'w' || key === 'arrowup') this.keys.w = false;
@@ -139,6 +154,7 @@ export class InputManager {
       if (key === 'f') this.keys.f = false;
       if (key === 'g') this.keys.g = false;
       if (key === 'o') this.keys.o = false;
+      if (key === 'escape') this.keys.escape = false;
       if (key === ' ' || e.code === 'Space') this.keys.space = false;
       if (key === 'tab') this.keys.tab = false;
       if (e.code === 'ShiftLeft' || key === 'shift') this.keys.shift = false;
@@ -203,6 +219,7 @@ export class InputManager {
     this.justPressedF = false;
     this.justPressedG = false;
     this.justPressedO = false;
+    this.justPressedEscape = false;
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;

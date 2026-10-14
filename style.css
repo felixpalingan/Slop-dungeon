@@ -162,6 +162,31 @@ html, body {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.run-timer-badge {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  color: #facc15;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.5px;
+}
+
+.run-timer-badge.hidden {
+  display: none !important;
 }
 
 .floor-badge,

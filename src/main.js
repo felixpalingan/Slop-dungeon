@@ -1505,8 +1505,13 @@ function dropAllPlayerItemsOnDeath(deadPlayer) {
 }
 
 function startFloorDescent(floorNumber, broadcast = true) {
+  // Ensure any dev or floor menus are closed
+  closeDevArmoryModal();
+  closeFloorModal();
+
+  const wasFromLobby = currentFloor === 0;
   // If descending from lobby (currentFloor === 0), reset lobby armor to starter gear!
-  if (currentFloor === 0) {
+  if (wasFromLobby) {
     resetPlayerToStarterGear();
     particles.spawnComicText(player.x, player.y - 30, 'LOBBY GEAR RESET TO STARTER! 🛡️', '#38bdf8');
   }
@@ -1515,7 +1520,8 @@ function startFloorDescent(floorNumber, broadcast = true) {
   audio.playDescentFanfare();
   cinematics.addScreenShake(10);
 
-  if (floorNumber === 1) {
+  // Initialize or reset run stats when entering any dungeon floor from base camp or on Floor 1
+  if (wasFromLobby || floorNumber === 1 || !runStats.startTime) {
     runStats.startTime = performance.now();
     runStats.totalKills = 0;
     runStats.slopsEarned = 0;
@@ -1590,20 +1596,25 @@ function startFloorDescent(floorNumber, broadcast = true) {
     hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
   }
 
-  // Broadcast floor generation to connected peers if host
+  // Broadcast floor generation and synced run timer to connected peers if host
   if (broadcast && network.isHost) {
     network.broadcast({
       type: 'DUNGEON_FLOOR_SYNC',
       floorNumber: currentFloor,
+      runElapsedMs: runStats.startTime ? Math.max(0, performance.now() - runStats.startTime) : 0,
       dungeonData: currentDungeon.getSyncData(),
       merchantStock: slopMerchant ? slopMerchant.stock.map(s => ({ itemId: s.item.id, price: s.price })) : null
     });
   }
 
-  // Hide SOLO status and LOBBY button while inside the dungeon
-  const topRightHud = document.querySelector('.hud-top-right');
-  if (topRightHud) {
-    topRightHud.style.display = 'none';
+  // Hide LOBBY button and dev hints inside the dungeon (keep settings button & FPS counter visible)
+  const btnOpenLobby = document.getElementById('btn-open-lobby');
+  if (btnOpenLobby) {
+    btnOpenLobby.style.display = 'none';
+  }
+  const hudDevHint = document.getElementById('hud-dev-hint');
+  if (hudDevHint) {
+    hudDevHint.classList.add('hidden');
   }
 
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
@@ -1626,6 +1637,10 @@ function returnToLobby(broadcast = true) {
   groundItems.clear();
 
   runStats.isRunOver = false;
+  runStats.startTime = null;
+  const hudRunTimer = document.getElementById('hud-run-timer');
+  if (hudRunTimer) hudRunTimer.classList.add('hidden');
+
   player.isDowned = false;
   player.isDead = false;
   player.hasDroppedLootOnDeath = false;
@@ -1652,10 +1667,14 @@ function returnToLobby(broadcast = true) {
     hudFloor.style.textShadow = 'none';
   }
 
-  // Restore SOLO status and LOBBY button when returning to lobby
-  const topRightHud = document.querySelector('.hud-top-right');
-  if (topRightHud) {
-    topRightHud.style.display = 'flex';
+  // Restore LOBBY button and dev hints when returning to lobby
+  const btnOpenLobby = document.getElementById('btn-open-lobby');
+  if (btnOpenLobby) {
+    btnOpenLobby.style.display = '';
+  }
+  const hudDevHint = document.getElementById('hud-dev-hint');
+  if (hudDevHint) {
+    hudDevHint.classList.remove('hidden');
   }
 
   audio.playDescentFanfare();
@@ -2924,6 +2943,9 @@ if (btnRetryRun) {
     const isAuthority = network.isHost || isSolo;
     if (!isAuthority) return;
     if (gameOverModal) gameOverModal.classList.add('hidden');
+    runStats.startTime = performance.now();
+    runStats.totalKills = 0;
+    runStats.slopsEarned = 0;
     if (network.isHost) {
       network.broadcast({ type: 'DUNGEON_RETRY' });
     }
@@ -2949,6 +2971,11 @@ let currentArmoryFilter = 'all';
 
 function openDevArmoryModal() {
   if (!devArmoryModal) return;
+  if (currentFloor >= 1) {
+    particles.spawnComicText(player.x, player.y - 30, 'DEV ARMORY DISABLED IN DUNGEON!', '#ef4444');
+    audio.playBonk();
+    return;
+  }
   audio.playChestOpen();
   renderArmoryItems(currentArmoryFilter);
   devArmoryModal.classList.remove('hidden');
@@ -2962,6 +2989,7 @@ function closeDevArmoryModal() {
 
 function toggleDevArmoryModal() {
   if (!devArmoryModal) return;
+  if (currentFloor >= 1) return;
   if (devArmoryModal.classList.contains('hidden')) {
     openDevArmoryModal();
   } else {
@@ -3179,6 +3207,54 @@ function initSettingsUI() {
 }
 
 initSettingsUI();
+
+// --- UNIVERSAL MODAL ESCAPE / CLOSE HANDLER ---
+function closeAnyOpenModal() {
+  let closedAny = false;
+  if (invModal && !invModal.classList.contains('hidden')) {
+    closeInventory();
+    closedAny = true;
+  }
+  if (wardrobeModal && !wardrobeModal.classList.contains('hidden')) {
+    closeWardrobe();
+    closedAny = true;
+  }
+  if (lobbyModal && !lobbyModal.classList.contains('hidden')) {
+    lobbyModal.classList.add('hidden');
+    closedAny = true;
+  }
+  if (floorModal && !floorModal.classList.contains('hidden')) {
+    closeFloorModal();
+    closedAny = true;
+  }
+  if (merchantModal && !merchantModal.classList.contains('hidden')) {
+    closeMerchantModal();
+    closedAny = true;
+  }
+  if (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) {
+    closeWheelAltarModal();
+    closedAny = true;
+  }
+  if (blackjackModal && !blackjackModal.classList.contains('hidden')) {
+    closeBlackjackModal();
+    closedAny = true;
+  }
+  if (devArmoryModal && !devArmoryModal.classList.contains('hidden')) {
+    closeDevArmoryModal();
+    closedAny = true;
+  }
+  if (settingsModal && !settingsModal.classList.contains('hidden')) {
+    closeSettingsModal();
+    closedAny = true;
+  }
+  return closedAny;
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeAnyOpenModal();
+  }
+});
 
 // Quick Set Equippers
 document.querySelectorAll('.armory-set-btn').forEach(btn => {
@@ -3605,12 +3681,18 @@ network.onMessageReceived = (fromPeerId, msg) => {
       }
     }
   } else if (msg.type === 'DUNGEON_FLOOR_SYNC') {
+    closeDevArmoryModal();
     if (currentFloor === 0) {
       resetPlayerToStarterGear();
       particles.spawnComicText(player.x, player.y - 30, 'LOBBY GEAR RESET TO STARTER! 🛡️', '#38bdf8');
     }
     currentFloor = msg.floorNumber;
     runStats.isRunOver = false;
+    if (msg.runElapsedMs !== undefined) {
+      runStats.startTime = performance.now() - msg.runElapsedMs;
+    } else if (!runStats.startTime) {
+      runStats.startTime = performance.now();
+    }
     const wasDead = player.isDead || player.isDowned;
     player.isDowned = false;
     player.isDead = false;
@@ -3670,9 +3752,14 @@ network.onMessageReceived = (fromPeerId, msg) => {
       hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
     }
 
-    const topRightHud = document.querySelector('.hud-top-right');
-    if (topRightHud) {
-      topRightHud.style.display = 'none';
+    // Hide LOBBY button and dev hints inside the dungeon
+    const btnOpenLobby = document.getElementById('btn-open-lobby');
+    if (btnOpenLobby) {
+      btnOpenLobby.style.display = 'none';
+    }
+    const hudDevHint = document.getElementById('hud-dev-hint');
+    if (hudDevHint) {
+      hudDevHint.classList.add('hidden');
     }
 
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
@@ -3688,6 +3775,9 @@ network.onMessageReceived = (fromPeerId, msg) => {
     const gameOverModalEl = document.getElementById('game-over-modal');
     if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
     runStats.isRunOver = false;
+    runStats.startTime = performance.now();
+    runStats.totalKills = 0;
+    runStats.slopsEarned = 0;
     player.isDowned = false;
     player.isDead = false;
     player.hp = player.maxHp;
@@ -4257,6 +4347,21 @@ function gameLoop(now) {
       }
     }
 
+    // Live Run Survival Timer update
+    const hudRunTimer = document.getElementById('hud-run-timer');
+    const hudRunTimerVal = document.getElementById('hud-run-timer-val');
+    if (hudRunTimer && hudRunTimerVal) {
+      if (currentFloor >= 1 && runStats.startTime && !runStats.isRunOver) {
+        hudRunTimer.classList.remove('hidden');
+        const curSec = Math.max(0, Math.floor((now - runStats.startTime) / 1000));
+        const m = Math.floor(curSec / 60).toString().padStart(2, '0');
+        const s = (curSec % 60).toString().padStart(2, '0');
+        hudRunTimerVal.textContent = `${m}:${s}`;
+      } else {
+        hudRunTimer.classList.add('hidden');
+      }
+    }
+
   const wasRolling = player.isRolling;
   const modalsOpen =
     !wardrobeModal.classList.contains('hidden') ||
@@ -4283,16 +4388,8 @@ function gameLoop(now) {
   }
 
   // ESC closes any open modal
-  if (input.keys.escape) {
-    if (!invModal.classList.contains('hidden')) closeInventory();
-    if (!wardrobeModal.classList.contains('hidden')) closeWardrobe();
-    if (!lobbyModal.classList.contains('hidden')) lobbyModal.classList.add('hidden');
-    if (floorModal && !floorModal.classList.contains('hidden')) closeFloorModal();
-    if (merchantModal && !merchantModal.classList.contains('hidden')) closeMerchantModal();
-    if (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) closeWheelAltarModal();
-    if (blackjackModal && !blackjackModal.classList.contains('hidden')) closeBlackjackModal();
-    if (devArmoryModal && !devArmoryModal.classList.contains('hidden')) closeDevArmoryModal();
-    if (settingsModal && !settingsModal.classList.contains('hidden')) closeSettingsModal();
+  if (input.justPressedEscape || input.keys.escape) {
+    closeAnyOpenModal();
   }
 
   // Handle Shield Blocking
@@ -4999,8 +5096,8 @@ function gameLoop(now) {
     toggleFloorModal();
   }
 
-  // [G] Key: Toggle Dev Armory Sandbox Gear anytime for instant testing!
-  if (input.justPressedG && !modalsOpen && !player.isDowned && !player.isDead) {
+  // [G] Key: Toggle Dev Armory Sandbox Gear ONLY at Base Camp (currentFloor === 0)!
+  if (input.justPressedG && currentFloor === 0 && !modalsOpen && !player.isDowned && !player.isDead) {
     toggleDevArmoryModal();
   }
 

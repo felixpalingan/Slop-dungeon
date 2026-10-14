@@ -48,6 +48,10 @@
           <span class="floor-number" id="hud-floor">1</span>
           <span class="floor-dropdown-arrow">▾ [F]</span>
         </button>
+        <div id="hud-run-timer" class="run-timer-badge hidden" title="Time Survived in Dungeon">
+          <span class="timer-icon">⏱️</span>
+          <span id="hud-run-timer-val">00:00</span>
+        </div>
       </div>
 
       <div class="hud-top-right">
@@ -728,7 +732,7 @@
           <span><kbd>Q</kbd> Ability</span>
           <span><kbd>I</kbd> / <kbd>TAB</kbd> Inventory</span>
           <span><kbd>O</kbd> Settings</span>
-          <span class="dev-hint"><kbd>G</kbd> Dev Menu</span>
+          <span class="dev-hint" id="hud-dev-hint"><kbd>G</kbd> Dev Menu</span>
         </div>
       </div>
     </div>
