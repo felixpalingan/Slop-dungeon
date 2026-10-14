@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="./assets/logo.jpg" alt="Slop Dungeon Logo" width="220" style="border-radius: 20px; box-shadow: 0 12px 36px rgba(0,0,0,0.6);" />
   <h1 align="center">🗡️ SLOP DUNGEON 🎲</h1>
   <p align="center">
     <strong>A chaotic 1–6 player cooperative roguelike dungeon crawler built with pure HTML5 Canvas & WebRTC Peer-to-Peer multiplayer.</strong>
