@@ -38,14 +38,14 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 4.6: Boss Multi-Phase Attacks & Phase 2 Enrage [DONE ✅]       │
 │    └── Step 4.7: Floor Selector & Dev Test Hub [DONE ✅]                   │
 │      ▼                                                                     │
-│  Phase 5: Gameplay Refinement & Content Depth [IN PROGRESS 🔧]             │
-│    ├── Step 5.1: Downed / Revive Co-op System [UPCOMING]                   │
-│    ├── Step 5.2: Game Over / Party Wipe & Victory Summary Screen [UPCOMING]│
-│    ├── Step 5.3: New Enemy Types (Kamikaze / Shaman Buffer) [UPCOMING]     │
+│  Phase 5: Gameplay Refinement & Content Depth [ACTIVE ✅]                   │
+│    ├── Step 5.1: Downed / Revive Co-op System [DONE ✅]                    │
+│    ├── Step 5.2: Game Over / Party Wipe & Summary Screen [DONE ✅]         │
+│    ├── Step 5.3: New Enemy Types (Kamikaze / Shaman Buffer) [DONE ✅]      │
 │    ├── Step 5.4: Room Hazards & Traps (Spike / Flame Pillar) [UPCOMING]    │
-│    ├── Step 5.5: Slop Merchant, Economy, In-World Wheel & Blackjack [IN PROGRESS 🔧] │
+│    ├── Step 5.5: Slop Merchant, Economy, In-World Wheel & Blackjack [DONE ✅]│
 │    ├── Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms [DONE ✅] │
-│    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [UPCOMING]     │
+│    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [DONE ✅]       │
 │      ▼                                                                     │
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
 └────────────────────────────────────────────────────────────────────────────┘
@@ -120,13 +120,13 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - **Procedural Audio & Visual Cues**: Dramatic downed impact groan, looping revive energy pulse, triumphant arpeggio fanfare, overhead bleed-out gauge, green radial channel ring, and screen-space red vignette.
   - **Monster AI De-prioritization**: Monsters prioritize standing players over downed crawlers with +400 distance penalty, allowing teammates to mount a rescue.
 
-- **Step 5.2: Game Over / Victory Summary Screen** `[UPCOMING]`
+- **Step 5.2: Game Over / Party Wipe & Summary Screen** `[COMPLETED ✅]`
   - Party Wipe triggers dramatic screen shake + blood-red vignette fade into **Wipe Screen**.
   - Stats: Total Kills, Damage Dealt, Floors Reached, Time Survived, and top MVP player.
   - Buttons: *Restart to Lobby* / *Try Again from Floor 1*.
-  - Boss-clear victory banner and "Descend Deeper?" prompt after Floor 3.
+  - Pure roguelike loop: Endless descent until total party wipe.
 
-- **Step 5.3: New Enemy Types** `[UPCOMING]`
+- **Step 5.3: New Enemy Types** `[COMPLETED ✅]`
   - **Kamikaze Exploder** (`cursed_bomb` / `suicide_drone`): Sprints toward player, flashes red, detonates with a 1-second AoE warning circle and a massive explosion. Reward: large Slops drop.
   - **Shaman / Buffer** (`curse_chanter`): Kites away while emitting an aura shield or HP regen to nearby allies. Priority target — players must hunt this one first or fight unkillable mobs.
 
@@ -167,10 +167,10 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
     - At least 1 **Merchant** room
     - At least 1 **Boss** room
 
-- **Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest)** `[UPCOMING]`
-  - In **live mode**: Lobby spawns only with default starter gear (Rusty Sword / Leather Tunic).
-  - Move all Batch 1/2 demo gear into a **Dev Armory Chest** prop in the lobby corner, only visible in dev/test mode.
-  - Players must earn anime gear through dungeon loot progression and the Slop Merchant / Gacha.
+- **Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest)** `[COMPLETED ✅]`
+  - In **live mode**: Lobby spawns with clean starter gear (Rusty Sword / Leather Tunic / Cloth Pants / Travel Boots / Wooden Buckler).
+  - Demo gear organized into an in-world golden **Dev Armory Chest** prop in the lobby corner, with `[G]` hotkey, HUD button, and quick set selectors.
+  - Players earn anime gear naturally through dungeon loot progression and the Slop Merchant / Gacha.
 
 ---
 

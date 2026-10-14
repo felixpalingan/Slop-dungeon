@@ -1,4 +1,29 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Operating System files
 .DS_Store
+Thumbs.db
 *.local
+*.log
+
+# IDE & Editor files
+.vscode/
+.idea/
+
+# AI Artifacts & Agent handovers
+.agents/
+AI_HANDOVER_MEMORY.md
+agent.txt
+skills-lock.json
