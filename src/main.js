@@ -1418,7 +1418,93 @@ function populateFloorMonsters(dungeon) {
   }
 }
 
+function resetPlayerToStarterGear() {
+  if (player.equipment) {
+    player.equipment.helmet = null;
+    player.equipment.chest = null;
+    player.equipment.pants = null;
+    player.equipment.boots = null;
+    player.equipment.weapon = null;
+    player.equipment.offhand = null;
+  }
+  player.inventory = [];
+
+  if (ITEM_CATALOG['rusty_sword']) player.equipItem(ITEM_CATALOG['rusty_sword']);
+  if (ITEM_CATALOG['leather_tunic']) player.equipItem(ITEM_CATALOG['leather_tunic']);
+  if (ITEM_CATALOG['cloth_pants']) player.equipItem(ITEM_CATALOG['cloth_pants']);
+  if (ITEM_CATALOG['travel_boots']) player.equipItem(ITEM_CATALOG['travel_boots']);
+  if (ITEM_CATALOG['wooden_buckler']) player.inventory.push(ITEM_CATALOG['wooden_buckler']);
+
+  player.odmGasCharges = player.maxOdmGasCharges || 10;
+  player.shotgunAmmo = player.maxShotgunAmmo || 4;
+
+  player.syncHUD();
+  if (invModal && !invModal.classList.contains('hidden')) renderInventoryUI();
+  broadcastMyState();
+}
+
+function dropAllPlayerItemsOnDeath(deadPlayer) {
+  if (currentFloor === 0) return; // Only in dungeon floors
+
+  const itemsToDrop = [];
+
+  // Drop all equipped gear
+  if (deadPlayer.equipment) {
+    const slots = ['helmet', 'chest', 'pants', 'boots', 'weapon', 'offhand'];
+    for (const slot of slots) {
+      if (deadPlayer.equipment[slot]) {
+        itemsToDrop.push(deadPlayer.equipment[slot]);
+        deadPlayer.equipment[slot] = null;
+      }
+    }
+  }
+
+  // Drop all backpack inventory items
+  if (deadPlayer.inventory && deadPlayer.inventory.length > 0) {
+    while (deadPlayer.inventory.length > 0) {
+      itemsToDrop.push(deadPlayer.inventory.pop());
+    }
+  }
+
+  if (itemsToDrop.length === 0) return;
+
+  // Scatter items around death position
+  itemsToDrop.forEach((item, idx) => {
+    const angle = (idx / itemsToDrop.length) * Math.PI * 2;
+    const dist = 36 + (idx % 2) * 16;
+    const dropX = deadPlayer.x + Math.cos(angle) * dist;
+    const dropY = deadPlayer.y + Math.sin(angle) * dist;
+    const dropId = `death_drop_${Date.now()}_${idx}_${Math.floor(Math.random() * 1000)}`;
+    const newDrop = new GroundLoot(item, dropX, dropY, dropId);
+    groundItems.set(newDrop.id, newDrop);
+
+    const dropMsg = {
+      type: 'LOOT_SPAWNED',
+      id: newDrop.id,
+      item: newDrop.item,
+      x: dropX,
+      y: dropY
+    };
+    if (network.isHost) network.broadcast(dropMsg);
+    else network.sendToHost(dropMsg);
+  });
+
+  audio.playBonk();
+  cinematics.addScreenShake(8);
+  particles.spawnComicText(deadPlayer.x, deadPlayer.y - 40, '💥 DROPPED GEAR! 🎒', '#f87171');
+
+  deadPlayer.syncHUD();
+  if (invModal && !invModal.classList.contains('hidden')) renderInventoryUI();
+  broadcastMyState();
+}
+
 function startFloorDescent(floorNumber, broadcast = true) {
+  // If descending from lobby (currentFloor === 0), reset lobby armor to starter gear!
+  if (currentFloor === 0) {
+    resetPlayerToStarterGear();
+    particles.spawnComicText(player.x, player.y - 30, 'LOBBY GEAR RESET TO STARTER! 🛡️', '#38bdf8');
+  }
+
   currentFloor = floorNumber;
   audio.playDescentFanfare();
   cinematics.addScreenShake(10);
@@ -1434,12 +1520,22 @@ function startFloorDescent(floorNumber, broadcast = true) {
   runStats.highestFloor = Math.max(runStats.highestFloor, floorNumber);
 
   // Restore player from downed or dead state upon starting a new floor/run
+  const wasDead = player.isDead || player.isDowned;
   player.isDowned = false;
   player.isDead = false;
+  player.hasDroppedLootOnDeath = false;
   player.downedTimer = 0;
   player.reviveProgress = 0;
   player.hp = player.maxHp;
   player.syncHUD();
+
+  // If player was dead on previous floor and dropped gear, re-equip starter gear so they can fight!
+  if (wasDead && !player.equipment?.weapon) {
+    if (ITEM_CATALOG['rusty_sword']) player.equipItem(ITEM_CATALOG['rusty_sword']);
+    if (ITEM_CATALOG['leather_tunic'] && !player.equipment?.chest) player.equipItem(ITEM_CATALOG['leather_tunic']);
+    if (ITEM_CATALOG['cloth_pants'] && !player.equipment?.pants) player.equipItem(ITEM_CATALOG['cloth_pants']);
+    if (ITEM_CATALOG['travel_boots'] && !player.equipment?.boots) player.equipItem(ITEM_CATALOG['travel_boots']);
+  }
 
   const gameOverModalEl = document.getElementById('game-over-modal');
   if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
@@ -1526,6 +1622,7 @@ function returnToLobby(broadcast = true) {
   runStats.isRunOver = false;
   player.isDowned = false;
   player.isDead = false;
+  player.hasDroppedLootOnDeath = false;
   player.downedTimer = 0;
   player.reviveProgress = 0;
   player.hp = player.maxHp;
@@ -3298,7 +3395,30 @@ network.onMessageReceived = (fromPeerId, msg) => {
       }
     }
   } else if (msg.type === 'DUNGEON_FLOOR_SYNC') {
+    if (currentFloor === 0) {
+      resetPlayerToStarterGear();
+      particles.spawnComicText(player.x, player.y - 30, 'LOBBY GEAR RESET TO STARTER! 🛡️', '#38bdf8');
+    }
     currentFloor = msg.floorNumber;
+    runStats.isRunOver = false;
+    const wasDead = player.isDead || player.isDowned;
+    player.isDowned = false;
+    player.isDead = false;
+    player.hasDroppedLootOnDeath = false;
+    player.downedTimer = 0;
+    player.reviveProgress = 0;
+    player.hp = player.maxHp;
+    player.syncHUD();
+    const gameOverModalEl = document.getElementById('game-over-modal');
+    if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
+
+    if (wasDead && !player.equipment?.weapon) {
+      if (ITEM_CATALOG['rusty_sword']) player.equipItem(ITEM_CATALOG['rusty_sword']);
+      if (ITEM_CATALOG['leather_tunic'] && !player.equipment?.chest) player.equipItem(ITEM_CATALOG['leather_tunic']);
+      if (ITEM_CATALOG['cloth_pants'] && !player.equipment?.pants) player.equipItem(ITEM_CATALOG['cloth_pants']);
+      if (ITEM_CATALOG['travel_boots'] && !player.equipment?.boots) player.equipItem(ITEM_CATALOG['travel_boots']);
+    }
+
     if (!currentDungeon) {
       currentDungeon = new Dungeon({ floorNumber: msg.floorNumber, theme: msg.dungeonData.themeKey });
     }
@@ -3348,6 +3468,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
   } else if (msg.type === 'RETURN_TO_LOBBY') {
     returnToLobby(false);
+  } else if (msg.type === 'REQUEST_FLOOR_DESCENT') {
+    if (network.isHost) {
+      startFloorDescent(msg.floorNumber || (currentFloor + 1), true);
+    }
   } else if (msg.type === 'PARTY_WIPE') {
     triggerPartyWipe(msg.stats);
   } else if (msg.type === 'DUNGEON_RETRY') {
@@ -4123,17 +4247,22 @@ function gameLoop(now) {
       const distToPortal = Math.hypot(player.x - portal.x, player.y - portal.y);
       const localInside = distToPortal <= portal.radius;
 
-      // Check all connected remote party members
-      let allRemotesInside = true;
-      for (const [_, remote] of network.remotePlayers.entries()) {
+      // Only LIVING players count towards portal readiness!
+      const livingRemotes = [...network.remotePlayers.values()].filter(r => !r.isDead);
+      let allLivingRemotesInside = true;
+      for (const remote of livingRemotes) {
         const rDist = Math.hypot(remote.x - portal.x, remote.y - portal.y);
         if (rDist > portal.radius) {
-          allRemotesInside = false;
+          allLivingRemotesInside = false;
           break;
         }
       }
 
-      portal.allReady = localInside && allRemotesInside;
+      const localCounts = !player.isDead;
+      const localReady = !localCounts || localInside;
+      const someoneInside = (localCounts && localInside) || livingRemotes.some(r => Math.hypot(r.x - portal.x, r.y - portal.y) <= portal.radius);
+
+      portal.allReady = someoneInside && localReady && allLivingRemotesInside;
 
       if (portal.allReady) {
         portal.isCountingDown = true;
@@ -4141,7 +4270,11 @@ function gameLoop(now) {
         if (portal.countdown <= 0) {
           portal.countdown = 0;
           portal.isCountingDown = false;
-          startFloorDescent(currentFloor + 1);
+          if (network.isHost || !network.isConnected) {
+            startFloorDescent(currentFloor + 1);
+          } else {
+            network.sendToHost({ type: 'REQUEST_FLOOR_DESCENT', floorNumber: currentFloor + 1 });
+          }
         }
       } else {
         portal.isCountingDown = false;
@@ -4555,6 +4688,16 @@ function gameLoop(now) {
     player.reviveProgress = Math.max(0, player.reviveProgress - dt * 1.5);
   }
 
+  // --- PLAYER DEATH GEAR DROP DETECTION ---
+  if (player.isDead) {
+    if (!player.hasDroppedLootOnDeath) {
+      player.hasDroppedLootOnDeath = true;
+      dropAllPlayerItemsOnDeath(player);
+    }
+  } else {
+    player.hasDroppedLootOnDeath = false;
+  }
+
   // --- RUN CONCLUSION: PARTY WIPE DETECTION (STEP 5.2) ---
   if (currentFloor >= 1 && currentDungeon && !runStats.isRunOver) {
     const isLocalDownedOrDead = player.isDowned || player.isDead;
@@ -4788,8 +4931,17 @@ function gameLoop(now) {
   renderer.clear();
 
   // Camera directly follows each individual player with screen shake
-  const targetCamX = player.x;
-  const targetCamY = player.y;
+  let targetCamX = player.x;
+  let targetCamY = player.y;
+
+  // In dungeon, if local player is dead in multiplayer, spectate living teammate!
+  if (currentFloor >= 1 && player.isDead && network.remotePlayers.size > 0) {
+    const livingTeammate = [...network.remotePlayers.values()].find(r => !r.isDead);
+    if (livingTeammate) {
+      targetCamX = livingTeammate.x;
+      targetCamY = livingTeammate.y;
+    }
+  }
 
   renderer.beginCamera(targetCamX + shake.x, targetCamY + shake.y);
 
@@ -4924,29 +5076,62 @@ function gameLoop(now) {
     const w = renderer.width;
     const h = renderer.height;
 
-    // Dark death tint
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
-    ctx.fillRect(0, 0, w, h);
+    // In multiplayer dungeon with living teammates: render spectator HUD banner!
+    const livingTeammates = [...network.remotePlayers.values()].filter(r => !r.isDead);
+    if (currentFloor >= 1 && livingTeammates.length > 0) {
+      const living = livingTeammates[0];
+      // Subtle tint so dead player can watch teammate fight
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      ctx.fillRect(0, 0, w, h);
 
-    // Death Banner
-    ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(w / 2 - 200, h / 2 - 50, 400, 100, [16]);
-    ctx.fill();
-    ctx.stroke();
+      // Top Spectator Header Banner
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(w / 2 - 270, 20, 540, 54, [12]);
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.font = '900 24px "Outfit", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText('💀 YOU DIED', w / 2, h / 2 - 14);
+      ctx.font = '800 16px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText(`💀 YOU DIED (GEAR DROPPED) • SPECTATING: ${living.name || 'Teammate'}`, w / 2, 42);
 
-    ctx.font = '600 13px "Outfit", sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText('Press [SPACE] or [R] to Respawn at Base Camp', w / 2, h / 2 + 18);
-    ctx.restore();
+      ctx.font = '600 12px "Outfit", sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`Surviving team can reach Floor ${currentFloor + 1} portal to respawn you!`, w / 2, 60);
+      ctx.restore();
+    } else {
+      // Dark death tint
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fillRect(0, 0, w, h);
+
+      // Death Banner
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(w / 2 - 200, h / 2 - 50, 400, 100, [16]);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = '900 24px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('💀 YOU DIED', w / 2, h / 2 - 14);
+
+      ctx.font = '600 13px "Outfit", sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      if (currentFloor === 0) {
+        ctx.fillText('Press [SPACE] or [R] to Respawn at Base Camp', w / 2, h / 2 + 18);
+      } else {
+        ctx.fillText('Party Wiped! Return to Base Camp or Retry', w / 2, h / 2 + 18);
+      }
+      ctx.restore();
+    }
   }
 
     // 4. Clear single-frame input flags

@@ -2281,7 +2281,7 @@ export class Renderer {
 
         ctx.font = '600 10px "Outfit", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText('All party members must gather (3s)', 0, 11);
+        ctx.fillText('All living party members must gather (3s)', 0, 11);
 
         ctx.font = '800 10px "JetBrains Mono", monospace';
         ctx.fillStyle = theme.torchColor;
