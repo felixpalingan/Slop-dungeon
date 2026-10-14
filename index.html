@@ -50,12 +50,11 @@
       </div>
 
       <div class="hud-top-right">
-        <button id="btn-hud-dev-armory" class="dev-armory-hud-btn" title="Open Dev Sandbox Gear Selector [G]">🛠️ DEV ARMORY [G]</button>
         <div class="network-badge" id="hud-network-badge">
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
-        <button id="btn-open-lobby" class="lobby-btn">LOBBY / CO-OP</button>
+        <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Bikin Room / Mabar Co-op">🎮 BIKIN LOBBY / MABAR</button>
       </div>
 
       <!-- Floor Selection & Level Testing Modal (Triggered by [F] or Altar in Lobby) -->
@@ -154,15 +153,15 @@
       <!-- Co-op Room Connection Modal -->
       <div id="lobby-modal" class="modal-backdrop interactive hidden">
         <div class="modal-card">
-          <h2 class="modal-title">CO-OP MULTIPLAYER</h2>
-          <p class="modal-subtitle">Invite up to 5 friends via WebRTC room code</p>
+          <h2 class="modal-title">🎮 MULTIPLAYER LOBBY (MABAR)</h2>
+          <p class="modal-subtitle">Main bareng kawan (hingga 6 pemain). Bikin room baru atau gabung pakai room code.</p>
 
           <div class="lobby-actions">
-            <button id="btn-create-room" class="action-btn primary-btn">CREATE ROOM (HOST)</button>
+            <button id="btn-create-room" class="action-btn primary-btn">👑 BIKIN ROOM / HOST LOBBY</button>
 
             <div class="join-row">
               <input type="text" id="input-room-code" placeholder="SLOP-XXXX" maxlength="9" />
-              <button id="btn-join-room" class="action-btn secondary-btn">JOIN</button>
+              <button id="btn-join-room" class="action-btn secondary-btn">🚀 GABUNG / JOIN</button>
             </div>
           </div>
 
@@ -450,6 +449,9 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
       <!-- Game Over / Party Wipe Modal -->
       <div id="game-over-modal" class="modal-backdrop interactive hidden">
         <div class="modal-card game-over-card">

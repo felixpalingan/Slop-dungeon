@@ -2783,18 +2783,19 @@ function triggerPartyWipe(syncedStats = null) {
     }
   }
 
-  const isAuthority = network.isHost || !network.peer;
+  const isSolo = !network.peer || network.remotePlayers.size === 0;
+  const isAuthority = network.isHost || isSolo;
   const hostNotice = document.getElementById('go-host-notice');
   if (hostNotice) {
     hostNotice.style.display = isAuthority ? 'none' : 'block';
   }
   if (btnRetryRun && btnReturnLobbyFromGo) {
     btnRetryRun.disabled = !isAuthority;
-    btnReturnLobbyFromGo.disabled = !isAuthority;
+    btnReturnLobbyFromGo.disabled = false;
     btnRetryRun.style.opacity = isAuthority ? '1' : '0.45';
-    btnReturnLobbyFromGo.style.opacity = isAuthority ? '1' : '0.45';
+    btnReturnLobbyFromGo.style.opacity = '1';
     btnRetryRun.style.cursor = isAuthority ? 'pointer' : 'not-allowed';
-    btnReturnLobbyFromGo.style.cursor = isAuthority ? 'pointer' : 'not-allowed';
+    btnReturnLobbyFromGo.style.cursor = 'pointer';
   }
 
   if (gameOverModal) gameOverModal.classList.remove('hidden');
@@ -2816,7 +2817,9 @@ function triggerPartyWipe(syncedStats = null) {
 
 if (btnRetryRun) {
   btnRetryRun.addEventListener('click', () => {
-    if (!network.isHost && network.peer) return;
+    const isSolo = !network.peer || network.remotePlayers.size === 0;
+    const isAuthority = network.isHost || isSolo;
+    if (!isAuthority) return;
     if (gameOverModal) gameOverModal.classList.add('hidden');
     if (network.isHost) {
       network.broadcast({ type: 'DUNGEON_RETRY' });
@@ -2827,8 +2830,10 @@ if (btnRetryRun) {
 
 if (btnReturnLobbyFromGo) {
   btnReturnLobbyFromGo.addEventListener('click', () => {
-    if (!network.isHost && network.peer) return;
     if (gameOverModal) gameOverModal.classList.add('hidden');
+    if (network.isHost) {
+      network.broadcast({ type: 'RETURN_TO_LOBBY' });
+    }
     returnToLobby();
   });
 }
@@ -2837,7 +2842,6 @@ if (btnReturnLobbyFromGo) {
 const devArmoryModal = document.getElementById('dev-armory-modal');
 const btnCloseDevArmory = document.getElementById('btn-close-dev-armory');
 const btnCloseDevArmoryBottom = document.getElementById('btn-close-dev-armory-bottom');
-const btnHudDevArmory = document.getElementById('btn-hud-dev-armory');
 let currentArmoryFilter = 'all';
 
 function openDevArmoryModal() {
@@ -2862,9 +2866,6 @@ function toggleDevArmoryModal() {
   }
 }
 
-if (btnHudDevArmory) {
-  btnHudDevArmory.addEventListener('click', toggleDevArmoryModal);
-}
 if (btnCloseDevArmory) {
   btnCloseDevArmory.addEventListener('click', closeDevArmoryModal);
 }
