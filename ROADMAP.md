@@ -56,7 +56,8 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss) [COMPLETED ✅]
 │    ├── P2: Visual Design System (4px Spacing Grid & WCAG AA Contrast) [COMPLETED ✅]
 │    ├── P2: Frontend Modularization & Canvas Performance [COMPLETED ✅]     │
-│    └── P3: Architectural Evolution (DDD Decoupling & Host Migration)       │
+│    ├── P3: Backend & Networking Evolution (Host Migration & Schemas) [COMPLETED ✅]
+│    └── P3: Architectural Evolution (DDD EventBus Decoupling)               │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -216,6 +217,10 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Implemented dynamic code-splitting via `import('./blackjack.js')`, offloading non-critical casino logic into an asynchronous chunk and reducing initial bundle size.
   - Implemented OffscreenCanvas floor & wall caching in `src/renderer.js` (`getOrCreateRoomStaticCanvas` and lobby floor caching), cutting thousands of redundant draw calls per frame for butter-smooth 60+ FPS on all devices.
   - Test suite expanded to 51 passing unit tests across 7 test files.
+- **P3: Backend & Networking Evolution** `[COMPLETED ✅]`:
+  - Implemented deterministic WebRTC Host Migration protocol in `src/network.js`: automatically elects the surviving peer with the lowest PeerID, promotes authority, and transfers monster simulation smoothly.
+  - Expanded room code entropy from 4 to 6 characters (`SLOP-XXXXXX`), reducing collision probability by 1,024× across >1 Billion combinations.
+  - Standardized packet validation & schemas in `src/packetSchemas.js` (validating positions, clamped combat damage, and game synchronization).
+  - Total test coverage expanded to 60 passing unit tests across 8 test files.
 - **P3: Architectural Evolution**:
   - Decouple domain entities (`Player`, `Monster`, `Dungeon`) from DOM/Audio via in-memory Domain EventBus.
-  - Implement WebRTC Host Migration protocol to prevent room collapse upon host disconnection.

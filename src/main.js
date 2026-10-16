@@ -3625,6 +3625,32 @@ network.onPlayerLeft = () => {
   updatePartyRoster();
 };
 
+network.onHostMigration = (newHostId, isSelf) => {
+  updatePartyRoster();
+  if (isSelf) {
+    if (audio.playChestOpen) audio.playChestOpen();
+    if (cinematics.addScreenShake) cinematics.addScreenShake(8);
+    particles.spawnComicText(player.x, player.y - 35, '👑 YOU ARE NOW THE ROOM HOST!', '#fbbf24');
+    if (currentFloor >= 1 && currentDungeon) {
+      network.broadcast({
+        type: 'MONSTER_BATCH_UPDATE',
+        batch: monsterManager.getBatchNetworkState()
+      });
+      network.broadcast({
+        type: 'DESCENT_SYNC',
+        floorNumber: currentFloor,
+        seed: currentDungeon.seed || 'migrated-seed',
+        theme: currentDungeon.theme ? currentDungeon.theme.id : 'crypt'
+      });
+    }
+  } else {
+    if (audio.playFootstep) audio.playFootstep();
+    const newHostPlayer = network.remotePlayers.get(newHostId);
+    const hostName = newHostPlayer ? newHostPlayer.name : 'Teammate';
+    particles.spawnComicText(player.x, player.y - 35, `👑 HOST MIGRATED TO ${hostName.toUpperCase()}`, '#38bdf8');
+  }
+};
+
 network.onMessageReceived = (fromPeerId, msg) => {
   if (msg.type === 'PLAYER_STATE') {
     const safeName = sanitizePlayerName(msg.name);
