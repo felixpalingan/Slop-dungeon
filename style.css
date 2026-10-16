@@ -1,12 +1,71 @@
 :root {
+  /* Surface & Base Colors */
   --bg-dark: #0d0f14;
-  --bg-card: rgba(22, 27, 34, 0.75);
+  --bg-card: rgba(22, 27, 34, 0.85);
+  --bg-surface-elevated: #1e293b;
   --border-glass: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* Brand & Status Accents */
   --primary-accent: #00f0ff;
+  --secondary-accent: #38bdf8;
   --hp-red: #ff3366;
   --stamina-yellow: #ffb800;
-  --text-main: #f0f6fc;
-  --text-dim: #8b949e;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Typography & WCAG AA Compliant Text Contrast (>= 4.5:1 on dark surfaces) */
+  --text-main: #f0f6fc;     /* Primary text: ~14.8:1 contrast */
+  --text-dim: #94a3b8;      /* Secondary text: ~5.4:1 contrast (WCAG AA PASS) */
+  --text-muted: #cbd5e1;    /* Emphasized secondary: ~8.6:1 contrast */
+  --text-subtle: #94a3b8;
+
+  /* 4px Spatial Grid Tokens */
+  --space-0-5: 0.125rem;    /* 2px */
+  --space-1: 0.25rem;       /* 4px */
+  --space-1-5: 0.375rem;    /* 6px */
+  --space-2: 0.5rem;        /* 8px */
+  --space-2-5: 0.625rem;    /* 10px */
+  --space-3: 0.75rem;       /* 12px */
+  --space-3-5: 0.875rem;    /* 14px */
+  --space-4: 1rem;          /* 16px */
+  --space-5: 1.25rem;       /* 20px */
+  --space-6: 1.5rem;        /* 24px */
+  --space-7: 1.75rem;       /* 28px */
+  --space-8: 2rem;          /* 32px */
+  --space-10: 2.5rem;       /* 40px */
+  --space-12: 3rem;         /* 48px */
+  --space-16: 4rem;         /* 64px */
+
+  /* Typography Scale */
+  --text-2xs: 0.65rem;      /* ~10.4px */
+  --text-xs: 0.75rem;       /* 12px */
+  --text-sm: 0.875rem;      /* 14px */
+  --text-base: 1rem;        /* 16px */
+  --text-md: 1.125rem;      /* 18px */
+  --text-lg: 1.25rem;       /* 20px */
+  --text-xl: 1.5rem;        /* 24px */
+  --text-2xl: 1.875rem;     /* 30px */
+  --text-3xl: 2.25rem;      /* 36px */
+
+  /* Standardized Border Radius Tokens */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --shadow-neon: 0 0 18px rgba(0, 240, 255, 0.35);
+
+  /* Accessible Focus Ring */
+  --focus-ring: 2px solid #38bdf8;
+  --focus-ring-offset: 2px;
 }
 
 * {
@@ -15,6 +74,11 @@
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 html, body {
@@ -279,18 +343,24 @@ html, body {
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
   font-size: 0.74rem;
-  padding: 6px 12px;
-  border-radius: 6px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   box-shadow: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: all 0.15s ease;
   pointer-events: auto;
 }
 
 .lobby-btn:hover {
   background: #334155;
   border-color: #64748b;
+  transform: translateY(-1px);
   box-shadow: none;
+}
+
+.lobby-btn:active {
+  transform: translateY(0);
 }
 
 .mabar-btn {
@@ -604,15 +674,25 @@ html, body {
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
   font-size: 0.88rem;
-  padding: 10px;
-  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
-  transition: opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .action-btn:hover {
-  opacity: 0.9;
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
 }
 
 .primary-btn {
@@ -926,7 +1006,7 @@ kbd {
 
 .floor-card-desc {
   font-size: 0.74rem;
-  color: #64748b;
+  color: var(--text-dim);
   line-height: 1.35;
   flex-grow: 1;
   margin-bottom: 8px;
@@ -934,8 +1014,9 @@ kbd {
 
 .floor-warp-btn {
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
   font-size: 0.82rem;
@@ -943,6 +1024,17 @@ kbd {
   cursor: pointer;
   border: none;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floor-warp-btn:hover {
+  transform: translateY(-1px);
+}
+
+.floor-warp-btn:active {
+  transform: translateY(0);
 }
 
 .jjk-btn {
@@ -1178,15 +1270,14 @@ kbd {
 
 /* Standardized Action Button */
 .uniform-action-btn {
-  height: 38px;
-  min-height: 38px;
-  max-height: 38px;
-  border-radius: 8px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: var(--radius-md);
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
   font-size: 0.82rem;
   letter-spacing: 0.5px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -1194,6 +1285,14 @@ kbd {
   transition: all 0.15s ease;
   box-sizing: border-box;
   border: none;
+}
+
+.uniform-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.uniform-action-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 /* Shop & Sell Uniform Grids */
@@ -1293,7 +1392,7 @@ kbd {
 }
 .shop-buy-btn:disabled {
   background: #334155;
-  color: #64748b;
+  color: #94a3b8;
   cursor: not-allowed;
 }
 
@@ -1358,7 +1457,7 @@ kbd {
 .forge-slot {
   width: 82px;
   height: 82px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgba(15, 23, 42, 0.85);
   border: 2px dashed rgba(255, 255, 255, 0.2);
   display: flex;
@@ -1369,7 +1468,7 @@ kbd {
   padding: 6px;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-dim);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
@@ -1627,7 +1726,7 @@ kbd {
 }
 .spin-btn:disabled {
   background: #334155;
-  color: #64748b;
+  color: #94a3b8;
   cursor: not-allowed;
 }
 
@@ -1704,7 +1803,7 @@ kbd {
 
 .btn-refresh-shop:disabled {
   background: #334155;
-  color: #64748b;
+  color: #94a3b8;
   border-color: #475569;
   cursor: not-allowed;
   box-shadow: none;

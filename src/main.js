@@ -1801,7 +1801,7 @@ function renderInventoryUI() {
         <button class="item-action-btn unequip-btn" data-slot="${slot}">UNEQUIP</button>
       `;
     } else {
-      el.innerHTML = `<span style="color:#64748b;font-weight:500;">(Empty)</span>`;
+      el.innerHTML = `<span style="color:#94a3b8;font-weight:500;">(Empty)</span>`;
     }
   });
 
@@ -1828,7 +1828,7 @@ function renderInventoryUI() {
   invCount.textContent = player.inventory.length;
 
   if (player.inventory.length === 0) {
-    backpackGrid.innerHTML = `<span style="grid-column: span 2; color:#64748b; padding:12px; font-size:0.8rem;">Your backpack is empty. Find loot on the ground!</span>`;
+    backpackGrid.innerHTML = `<span style="grid-column: span 2; color:#94a3b8; padding:12px; font-size:0.8rem;">Your backpack is empty. Find loot on the ground!</span>`;
   }
 
   player.inventory.forEach((item, index) => {
@@ -2120,7 +2120,7 @@ function renderSellTab() {
   sellItemsGrid.innerHTML = '';
 
   if (player.inventory.length === 0) {
-    sellItemsGrid.innerHTML = '<span style="grid-column: 1 / -1; color:#64748b; padding:24px; text-align:center; font-size:0.85rem;">Backpack is empty! Explore the dungeon and find loot to sell.</span>';
+    sellItemsGrid.innerHTML = '<span style="grid-column: 1 / -1; color:#94a3b8; padding:24px; text-align:center; font-size:0.85rem;">Backpack is empty! Explore the dungeon and find loot to sell.</span>';
     return;
   }
 
