@@ -48,6 +48,14 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [DONE ✅]       │
 │      ▼                                                                     │
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
+│      ▼                                                                     │
+│  Phase 7: Multi-Discipline Engineering & Security Remediation [ACTIVE 🛡️]   │
+│    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity Checks)    │
+│    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG          │
+│    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss)           │
+│    ├── P2: Frontend Modularization (Deconstruct 5,500-line main.js)        │
+│    ├── P2: Visual Design System (4px Spacing Grid & WCAG AA Contrast)      │
+│    └── P3: Architectural Evolution (DDD Decoupling & Host Migration)       │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -179,3 +187,27 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 - Anime Batch 3: Shinra (Fire Force), Rimuru (Tensura), Light (Death Note), Subaru/Rem (Re:Zero).
 - Performance optimization and production release packaging.
 - Victory / wipe run statistics screen with damage, revive, and floor depth stats.
+
+---
+
+### Phase 7: Multi-Discipline Engineering & Security Remediation `[ACTIVE 🛡️]`
+*Synthesized from the comprehensive 7-agent engineering audit (`/agency-ui-designer`, `/agency-ux-architect`, `/agency-backend-architect`, `/agency-frontend-developer`, `/agency-application-security-engineer`, `/agency-software-architect`, `/agency-test-automation-engineer`).*
+
+- **P0: Critical Security Hardening**:
+  - Remediate Stored DOM XSS in Lobby player list (`remote.name` innerHTML injection in `src/main.js`).
+  - Add strict Content Security Policy (`CSP`) `<meta>` tag in `index.html`.
+  - Implement host-side sanity validation for WebRTC damage, speedhack movement, and item drop packets.
+- **P1: Testing & Determinism**:
+  - Install `vitest` for domain/combat math unit tests and `@playwright/test` for critical E2E browser flows.
+  - Implement seeded PRNG (`seedrandom`) to enable deterministic, replayable dungeon generation and testing.
+  - Add `data-testid` attributes across all interactive HUD, inventory, and modal elements.
+- **P1: UX & Modal Management**:
+  - Implement unified LIFO Modal Stack Manager with universal backdrop dismiss.
+  - Resolve keyboard hotkey collisions and implement modal focus trapping.
+- **P2: Frontend Modularization & Visual Design**:
+  - Decompose `src/main.js` (5,500+ lines) into focused domain controllers (`ModalController`, `NetworkController`, `CombatController`, `StationController`).
+  - Pre-render static dungeon geometry to `OffscreenCanvas` for 60+ FPS on low-end hardware.
+  - Establish complete CSS design tokens (4px spacing scale, typography scale, border-radius tokens) and upgrade muted text to meet WCAG AA 4.5:1 contrast standards.
+- **P3: Architectural Evolution**:
+  - Decouple domain entities (`Player`, `Monster`, `Dungeon`) from DOM/Audio via in-memory Domain EventBus.
+  - Implement WebRTC Host Migration protocol to prevent room collapse upon host disconnection.
