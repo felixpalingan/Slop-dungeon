@@ -51,7 +51,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
 │      ▼                                                                     │
 │  Phase 7: Multi-Discipline Engineering & Security Remediation [ACTIVE 🛡️]   │
-│    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity Checks)    │
+│    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity) [COMPLETED ✅]
 │    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG          │
 │    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss)           │
 │    ├── P2: Frontend Modularization (Deconstruct 5,500-line main.js)        │
@@ -194,7 +194,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 ### Phase 7: Multi-Discipline Engineering & Security Remediation `[ACTIVE 🛡️]`
 *Synthesized from the comprehensive 7-agent engineering audit (`/agency-ui-designer`, `/agency-ux-architect`, `/agency-backend-architect`, `/agency-frontend-developer`, `/agency-application-security-engineer`, `/agency-software-architect`, `/agency-test-automation-engineer`).*
 
-- **P0: Critical Security Hardening**:
+- **P0: Critical Security Hardening** `[COMPLETED ✅]`:
   - Remediate Stored DOM XSS in Lobby player list (`remote.name` innerHTML injection in `src/main.js`).
   - Add strict Content Security Policy (`CSP`) `<meta>` tag in `index.html`.
   - Implement host-side sanity validation for WebRTC damage, speedhack movement, and item drop packets.

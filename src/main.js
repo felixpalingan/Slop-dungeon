@@ -118,6 +118,14 @@ const runStats = {
   highestFloor: 0
 };
 
+export function sanitizePlayerName(raw) {
+  if (!raw || typeof raw !== 'string') return 'SlopCrawler';
+  return raw
+    .replace(/[<>'"&/\\{}`]/g, '')
+    .trim()
+    .slice(0, 20) || 'SlopCrawler';
+}
+
 function recordDamageDealt(source = 'local', amount = 0) {
   if (!amount || amount <= 0) return;
   const current = runStats.damageDealt.get(source) || 0;
@@ -1963,7 +1971,7 @@ function closeWardrobe() {
 btnCloseWardrobe.addEventListener('click', closeWardrobe);
 
 inputPlayerName.addEventListener('input', (e) => {
-  player.name = e.target.value.trim() || 'SlopCrawler';
+  player.name = sanitizePlayerName(e.target.value);
   hudPlayerName.textContent = player.name;
   broadcastMyState();
 });
@@ -2765,13 +2773,32 @@ btnCloseLobby.addEventListener('click', () => lobbyModal.classList.add('hidden')
 
 function updatePartyRoster() {
   partyRoster.innerHTML = '';
+
   const myLi = document.createElement('li');
-  myLi.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${player.color}"></span> ${player.name} (You) ${network.isHost ? '👑' : ''}`;
+  myLi.className = 'lobby-player-item';
+  const myDot = document.createElement('span');
+  myDot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${player.color || '#00f0ff'};margin-right:8px;`;
+  myLi.appendChild(myDot);
+
+  const myName = document.createElement('span');
+  myName.textContent = `${player.name || 'SlopCrawler'} (You)${network.isHost ? ' 👑' : ''}`;
+  myName.style.fontWeight = '700';
+  myLi.appendChild(myName);
   partyRoster.appendChild(myLi);
 
-  for (const [_, remote] of network.remotePlayers.entries()) {
+  for (const [peerId, remote] of network.remotePlayers.entries()) {
     const li = document.createElement('li');
-    li.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${remote.color || '#fff'}"></span> ${remote.name || 'Friend'}`;
+    li.className = 'lobby-player-item';
+
+    const dot = document.createElement('span');
+    dot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${remote.color || '#ffffff'};margin-right:8px;`;
+    li.appendChild(dot);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = remote.name || `Friend (${peerId.slice(0, 4)})`;
+    nameSpan.style.fontWeight = '700';
+    li.appendChild(nameSpan);
+
     partyRoster.appendChild(li);
   }
 
@@ -2895,27 +2922,50 @@ function triggerPartyWipe(syncedStats = null) {
   if (mvpNameEl) mvpNameEl.textContent = mvpNameText;
   if (mvpDmgEl) mvpDmgEl.textContent = mvpDmgText;
 
-  // Render Fallen Party Roster
+  // Render Fallen Party Roster (Safe from XSS)
   const rosterContainer = document.getElementById('go-party-roster');
   if (rosterContainer) {
     rosterContainer.innerHTML = '';
+
     const localPill = document.createElement('div');
     localPill.className = 'party-member-pill';
-    localPill.innerHTML = `
-      <div class="member-avatar-mini" style="background:${player.color || '#00f0ff'};"></div>
-      <span style="font-weight:700;">${player.name || 'You'}</span>
-      <span class="member-status-dead">[SLAIN 💀]</span>
-    `;
+
+    const localAvatar = document.createElement('div');
+    localAvatar.className = 'member-avatar-mini';
+    localAvatar.style.background = player.color || '#00f0ff';
+    localPill.appendChild(localAvatar);
+
+    const localName = document.createElement('span');
+    localName.style.fontWeight = '700';
+    localName.textContent = player.name || 'You';
+    localPill.appendChild(localName);
+
+    const localStatus = document.createElement('span');
+    localStatus.className = 'member-status-dead';
+    localStatus.textContent = '[SLAIN 💀]';
+    localPill.appendChild(localStatus);
+
     rosterContainer.appendChild(localPill);
 
     for (const [peerId, remote] of network.remotePlayers.entries()) {
       const remPill = document.createElement('div');
       remPill.className = 'party-member-pill';
-      remPill.innerHTML = `
-        <div class="member-avatar-mini" style="background:${remote.color || '#f59e0b'};"></div>
-        <span style="font-weight:700;">${remote.name || `Player ${peerId.slice(0, 4)}`}</span>
-        <span class="member-status-dead">[SLAIN 💀]</span>
-      `;
+
+      const remAvatar = document.createElement('div');
+      remAvatar.className = 'member-avatar-mini';
+      remAvatar.style.background = remote.color || '#f59e0b';
+      remPill.appendChild(remAvatar);
+
+      const remName = document.createElement('span');
+      remName.style.fontWeight = '700';
+      remName.textContent = remote.name || `Player ${peerId.slice(0, 4)}`;
+      remPill.appendChild(remName);
+
+      const remStatus = document.createElement('span');
+      remStatus.className = 'member-status-dead';
+      remStatus.textContent = '[SLAIN 💀]';
+      remPill.appendChild(remStatus);
+
       rosterContainer.appendChild(remPill);
     }
   }
@@ -3629,8 +3679,14 @@ network.onPlayerLeft = () => {
 
 network.onMessageReceived = (fromPeerId, msg) => {
   if (msg.type === 'PLAYER_STATE') {
+    const safeName = sanitizePlayerName(msg.name);
+    const safeX = (typeof msg.x === 'number' && !isNaN(msg.x)) ? msg.x : 0;
+    const safeY = (typeof msg.y === 'number' && !isNaN(msg.y)) ? msg.y : 0;
     network.remotePlayers.set(fromPeerId, {
       ...msg,
+      name: safeName,
+      x: safeX,
+      y: safeY,
       peerId: fromPeerId,
       lastSeen: performance.now()
     });
@@ -3676,13 +3732,17 @@ network.onMessageReceived = (fromPeerId, msg) => {
       particles.spawnComicText(player.x, player.y - 20, 'BONK!', '#ff0055');
     }
   } else if (msg.type === 'DUMMY_HIT') {
-    dummy.takeHit(msg.damage, msg.angle, msg.knockback || (msg.isPull ? -480 : 0));
-    if (msg.isPull) {
-      dummy.pullTowards(msg.pullX || 0, msg.pullY || 0, 45);
+    const rawDamage = Number(msg.damage);
+    if (!isNaN(rawDamage) && rawDamage > 0) {
+      const sanitizedDamage = Math.min(2500, Math.round(rawDamage));
+      dummy.takeHit(sanitizedDamage, msg.angle, msg.knockback || (msg.isPull ? -480 : 0));
+      if (msg.isPull) {
+        dummy.pullTowards(msg.pullX || 0, msg.pullY || 0, 45);
+      }
+      audio.playBonk();
+      const hitLabel = msg.isCrit ? `CRIT! -${sanitizedDamage}` : (msg.isPull ? `PULL! -${sanitizedDamage}` : `-${sanitizedDamage}`);
+      particles.spawnComicText(dummy.x, dummy.y - 24, hitLabel, msg.isCrit ? '#ff0055' : (msg.isPull ? '#00f0ff' : '#ffea00'));
     }
-    audio.playBonk();
-    const hitLabel = msg.isCrit ? `CRIT! -${msg.damage}` : (msg.isPull ? `PULL! -${msg.damage}` : `-${msg.damage}`);
-    particles.spawnComicText(dummy.x, dummy.y - 24, hitLabel, msg.isCrit ? '#ff0055' : (msg.isPull ? '#00f0ff' : '#ffea00'));
   } else if (msg.type === 'CINEMATIC_ULTIMATE') {
     // If this cinematic was initiated by ME, do not re-trigger!
     if (msg.peerId && msg.peerId === network.myPeerId) return;
@@ -3900,11 +3960,15 @@ network.onMessageReceived = (fromPeerId, msg) => {
       monsterManager.applyBatchNetworkState(msg.batch);
     }
   } else if (msg.type === 'MONSTER_HIT') {
-    const monster = monsterManager.getMonsterById(msg.monsterId);
-    if (monster) {
-      monster.takeHit(msg.damage, msg.angle, msg.knockback || 0, msg.isCrit);
-      recordDamageDealt(fromPeerId, msg.damage);
-      particles.spawnComicText(monster.x, monster.y - 20, msg.isCrit ? `CRIT! -${msg.damage}` : `-${msg.damage}`, msg.isCrit ? '#ff0055' : '#fbbf24');
+    const rawDamage = Number(msg.damage);
+    if (!isNaN(rawDamage) && rawDamage > 0) {
+      const sanitizedDamage = Math.min(2500, Math.round(rawDamage));
+      const monster = monsterManager.getMonsterById(msg.monsterId);
+      if (monster) {
+        monster.takeHit(sanitizedDamage, msg.angle, msg.knockback || 0, msg.isCrit);
+        recordDamageDealt(fromPeerId, sanitizedDamage);
+        particles.spawnComicText(monster.x, monster.y - 20, msg.isCrit ? `CRIT! -${sanitizedDamage}` : `-${sanitizedDamage}`, msg.isCrit ? '#ff0055' : '#fbbf24');
+      }
     }
   } else if (msg.type === 'COMIC_TEXT') {
     particles.spawnComicText(msg.x, msg.y, msg.text, msg.color, false);
@@ -3930,8 +3994,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
     spawnShotgunPellets(caster, true);
     if (audio.playCarnageShotgun) audio.playCarnageShotgun();
   } else if (msg.type === 'SLOPS_SYNC') {
-    sharedSlops = msg.amount;
-    updateSlopsUI();
+    const safeAmount = Number(msg.amount);
+    if (!isNaN(safeAmount) && safeAmount >= 0) {
+      sharedSlops = Math.min(999999, Math.floor(safeAmount));
+      updateSlopsUI();
+    }
   } else if (msg.type === 'MERCHANT_ATTACKED') {
     if (slopMerchant) {
       const attacker = network.remotePlayers.get(msg.attackerPeerId) || player;
