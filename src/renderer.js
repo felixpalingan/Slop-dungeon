@@ -55,10 +55,85 @@ export class Renderer {
     );
   }
 
+  createOffscreenCanvas(w, h) {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      try {
+        return new OffscreenCanvas(w, h);
+      } catch (e) {}
+    }
+    if (typeof document !== 'undefined' && document.createElement) {
+      try {
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        return c;
+      } catch (e) {}
+    }
+    return null;
+  }
+
   drawDungeonFloor(bounds = { minX: -800, minY: -800, maxX: 800, maxY: 800 }) {
     const ctx = this.ctx;
-    const size = this.tileSize;
+    const bw = bounds.maxX - bounds.minX;
+    const bh = bounds.maxY - bounds.minY;
 
+    if (!this._lobbyFloorCanvas) {
+      const offscreen = this.createOffscreenCanvas(bw, bh);
+      if (offscreen) {
+        const cCtx = offscreen.getContext('2d');
+        if (cCtx) {
+          const size = this.tileSize;
+          const cols = Math.ceil(bw / size);
+          const rows = Math.ceil(bh / size);
+
+          for (let col = 0; col < cols; col++) {
+            for (let row = 0; row < rows; row++) {
+              const x = col * size;
+              const y = row * size;
+              const worldCol = Math.floor(bounds.minX / size) + col;
+              const worldRow = Math.floor(bounds.minY / size) + row;
+              const hash = Math.abs(Math.sin(worldCol * 12.9898 + worldRow * 78.233) * 43758.5453) % 1;
+              const baseShade = 16 + Math.floor(hash * 8);
+              cCtx.fillStyle = `rgb(${baseShade}, ${baseShade + 2}, ${baseShade + 6})`;
+              cCtx.fillRect(x, y, size, size);
+
+              cCtx.strokeStyle = '#0e1118';
+              cCtx.lineWidth = 2;
+              cCtx.strokeRect(x, y, size, size);
+
+              if (hash > 0.8) {
+                cCtx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                cCtx.fillRect(x + 10, y + 10, size - 20, size - 20);
+              } else if (hash < 0.15) {
+                cCtx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+                cCtx.beginPath();
+                cCtx.moveTo(x + 16, y + 20);
+                cCtx.lineTo(x + 28, y + 36);
+                cCtx.lineTo(x + 44, y + 32);
+                cCtx.stroke();
+              }
+            }
+          }
+
+          cCtx.strokeStyle = '#2d3748';
+          cCtx.lineWidth = 12;
+          cCtx.strokeRect(0, 0, bw, bh);
+
+          cCtx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+          cCtx.lineWidth = 2;
+          cCtx.strokeRect(6, 6, bw - 12, bh - 12);
+
+          this._lobbyFloorCanvas = offscreen;
+        }
+      }
+    }
+
+    if (this._lobbyFloorCanvas) {
+      ctx.drawImage(this._lobbyFloorCanvas, bounds.minX, bounds.minY);
+      return;
+    }
+
+    const size = this.tileSize;
     const startCol = Math.floor(bounds.minX / size);
     const endCol = Math.ceil(bounds.maxX / size);
     const startRow = Math.floor(bounds.minY / size);
@@ -93,11 +168,11 @@ export class Renderer {
 
     ctx.strokeStyle = '#2d3748';
     ctx.lineWidth = 12;
-    ctx.strokeRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+    ctx.strokeRect(bounds.minX, bounds.minY, bw, bh);
 
     ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
     ctx.lineWidth = 2;
-    ctx.strokeRect(bounds.minX + 6, bounds.minY + 6, bounds.maxX - bounds.minX - 12, bounds.maxY - bounds.minY - 12);
+    ctx.strokeRect(bounds.minX + 6, bounds.minY + 6, bw - 12, bh - 12);
   }
 
   drawAfterImages(afterImages) {
@@ -1790,6 +1865,247 @@ export class Renderer {
     ctx.fill();
   }
 
+  getOrCreateRoomStaticCanvas(room, theme, tileSize) {
+    if (room._staticCanvas) return room._staticCanvas;
+
+    const rw = Math.ceil(room.width);
+    const rh = Math.ceil(room.height);
+    if (rw <= 0 || rh <= 0) return null;
+
+    const offscreen = this.createOffscreenCanvas(rw, rh);
+    if (!offscreen) return null;
+
+    const cCtx = offscreen.getContext('2d');
+    if (!cCtx) return null;
+
+    this.renderRoomStatic(cCtx, room, theme, tileSize, rw, rh);
+    room._staticCanvas = offscreen;
+    return offscreen;
+  }
+
+  renderRoomStatic(cCtx, room, theme, tileSize, rw, rh) {
+    // 1. Draw Checkered Flagstone Floor (in local coordinates)
+    for (let c = 0; c < room.colCount; c++) {
+      for (let r = 0; r < room.rowCount; r++) {
+        const fx = c * tileSize;
+        const fy = r * tileSize;
+        const isAlt = (c + r) % 2 === 0;
+        cCtx.fillStyle = isAlt ? theme.floorColor : theme.floorAltColor;
+        cCtx.fillRect(fx, fy, tileSize, tileSize);
+
+        cCtx.strokeStyle = theme.floorGridColor;
+        cCtx.lineWidth = 1;
+        cCtx.strokeRect(fx, fy, tileSize, tileSize);
+
+        // Cyberpunk: PCB circuit nodes and data lines on floor tiles
+        if (theme.id === 'cyberpunk') {
+          const hash = Math.abs(Math.sin(c * 12.9898 + r * 78.233) * 43758.5453) % 1;
+          if (hash > 0.72) {
+            cCtx.strokeStyle = 'rgba(6, 182, 212, 0.16)';
+            cCtx.lineWidth = 1.5;
+            cCtx.beginPath();
+            cCtx.moveTo(fx + 12, fy + tileSize / 2);
+            cCtx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
+            cCtx.lineTo(fx + tileSize / 2, fy + tileSize - 12);
+            cCtx.stroke();
+
+            cCtx.fillStyle = 'rgba(6, 182, 212, 0.3)';
+            cCtx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
+          }
+        }
+
+        // Attack on Titan: Weathered cobblestone cracks & moss veins on Wall Maria stones
+        if (theme.id === 'aot') {
+          const hash = Math.abs(Math.sin(c * 17.13 + r * 91.27) * 43758.5453) % 1;
+          if (hash > 0.68) {
+            cCtx.strokeStyle = 'rgba(22, 101, 52, 0.25)';
+            cCtx.lineWidth = 1.2;
+            cCtx.beginPath();
+            cCtx.moveTo(fx + 6, fy + tileSize - 8);
+            cCtx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
+            cCtx.lineTo(fx + tileSize - 8, fy + 8);
+            cCtx.stroke();
+
+            cCtx.fillStyle = 'rgba(22, 101, 52, 0.3)';
+            cCtx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
+          }
+        }
+      }
+    }
+
+    // 2. Draw Asymmetric Top-Down Walls with Door Openings
+    const northWallH = 72; // Tall/wide front-facing North wall
+    const sideWallW = 28;  // Thin border curb for West, East, South
+
+    const northDoor = room.doors.find(d => d.dir === 'north');
+    const southDoor = room.doors.find(d => d.dir === 'south');
+    const westDoor = room.doors.find(d => d.dir === 'west');
+    const eastDoor = room.doors.find(d => d.dir === 'east');
+
+    const halfRw = rw / 2;
+    const halfRh = rh / 2;
+
+    // --- NORTH WALL ---
+    const northSections = [];
+    if (northDoor) {
+      northSections.push([0, halfRw - 64]);
+      northSections.push([halfRw + 64, rw]);
+    } else {
+      northSections.push([0, rw]);
+    }
+
+    for (const [sx, ex] of northSections) {
+      if (ex <= sx) continue;
+      const sw = ex - sx;
+
+      // Front-facing vertical stone face (lower 54px: 18 to 72)
+      cCtx.fillStyle = theme.wallColor;
+      cCtx.fillRect(sx, 18, sw, 54);
+
+      // Horizontal brick mortar line
+      cCtx.strokeStyle = theme.wallStrokeColor;
+      cCtx.lineWidth = 1.5;
+      cCtx.beginPath();
+      cCtx.moveTo(sx, 45);
+      cCtx.lineTo(ex, 45);
+      cCtx.stroke();
+
+      // Vertical brick mortar ticks
+      const brickW = 48;
+      const startBrick = Math.floor(sx / brickW) * brickW;
+      cCtx.beginPath();
+      for (let bx = startBrick; bx <= ex; bx += brickW) {
+        if (bx >= sx && bx <= ex) {
+          cCtx.moveTo(bx, 18);
+          cCtx.lineTo(bx, 45);
+        }
+        const altBx = bx + brickW / 2;
+        if (altBx >= sx && altBx <= ex) {
+          cCtx.moveTo(altBx, 45);
+          cCtx.lineTo(altBx, 72);
+        }
+      }
+      cCtx.stroke();
+
+      // Top ledge (top 18px: 0 to 18)
+      cCtx.fillStyle = theme.wallTopColor;
+      cCtx.fillRect(sx, 0, sw, 18);
+
+      // Top ledge highlight bevel
+      cCtx.fillStyle = theme.wallBevelColor;
+      cCtx.fillRect(sx, 16, sw, 2);
+
+      // Ambient occlusion drop shadow cast down onto the floor
+      const shadowGrad = cCtx.createLinearGradient(0, 72, 0, 86);
+      shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      cCtx.fillStyle = shadowGrad;
+      cCtx.fillRect(sx, 72, sw, 14);
+    }
+
+    // --- SOUTH WALL ---
+    const southSections = [];
+    if (southDoor) {
+      southSections.push([0, halfRw - 64]);
+      southSections.push([halfRw + 64, rw]);
+    } else {
+      southSections.push([0, rw]);
+    }
+
+    for (const [sx, ex] of southSections) {
+      if (ex <= sx) continue;
+      const sw = ex - sx;
+
+      cCtx.fillStyle = theme.wallColor;
+      cCtx.fillRect(sx, rh - sideWallW, sw, sideWallW);
+
+      cCtx.fillStyle = theme.wallTopColor;
+      cCtx.fillRect(sx, rh - sideWallW, sw, 8);
+
+      cCtx.fillStyle = theme.wallBevelColor;
+      cCtx.fillRect(sx, rh - sideWallW + 7, sw, 1.5);
+    }
+
+    // --- WEST WALL ---
+    const westSections = [];
+    if (westDoor) {
+      westSections.push([northWallH, halfRh - 64]);
+      westSections.push([halfRh + 64, rh - sideWallW]);
+    } else {
+      westSections.push([northWallH, rh - sideWallW]);
+    }
+
+    for (const [sy, ey] of westSections) {
+      if (ey <= sy) continue;
+      const sh = ey - sy;
+
+      cCtx.fillStyle = theme.wallColor;
+      cCtx.fillRect(0, sy, sideWallW, sh);
+
+      cCtx.fillStyle = theme.wallTopColor;
+      cCtx.fillRect(0, sy, 8, sh);
+
+      cCtx.fillStyle = theme.wallBevelColor;
+      cCtx.fillRect(7, sy, 1.5, sh);
+    }
+
+    // --- EAST WALL ---
+    const eastSections = [];
+    if (eastDoor) {
+      eastSections.push([northWallH, halfRh - 64]);
+      eastSections.push([halfRh + 64, rh - sideWallW]);
+    } else {
+      eastSections.push([northWallH, rh - sideWallW]);
+    }
+
+    for (const [sy, ey] of eastSections) {
+      if (ey <= sy) continue;
+      const sh = ey - sy;
+
+      cCtx.fillStyle = theme.wallColor;
+      cCtx.fillRect(rw - sideWallW, sy, sideWallW, sh);
+
+      cCtx.fillStyle = theme.wallTopColor;
+      cCtx.fillRect(rw - 8, sy, 8, sh);
+
+      cCtx.fillStyle = theme.wallBevelColor;
+      cCtx.fillRect(rw - 8, sy, 1.5, sh);
+    }
+
+    // Outer room outline
+    cCtx.strokeStyle = theme.wallStrokeColor;
+    cCtx.lineWidth = 2;
+    cCtx.strokeRect(0, 0, rw, rh);
+  }
+
+  renderRoomStaticDirect(ctx, room, theme, tileSize) {
+    const minX = room.bounds.minX;
+    const maxX = room.bounds.maxX;
+    const minY = room.bounds.minY;
+    const maxY = room.bounds.maxY;
+    const rw = room.width;
+    const rh = room.height;
+
+    // 1. Draw Checkered Flagstone Floor
+    for (let c = 0; c < room.colCount; c++) {
+      for (let r = 0; r < room.rowCount; r++) {
+        const fx = minX + c * tileSize;
+        const fy = minY + r * tileSize;
+        const isAlt = (c + r) % 2 === 0;
+        ctx.fillStyle = isAlt ? theme.floorColor : theme.floorAltColor;
+        ctx.fillRect(fx, fy, tileSize, tileSize);
+
+        ctx.strokeStyle = theme.floorGridColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(fx, fy, tileSize, tileSize);
+      }
+    }
+
+    ctx.strokeStyle = theme.wallStrokeColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(minX, minY, rw, rh);
+  }
+
   /**
    * Viewport-culled Procedural Dungeon Rendering
    * Renders themed flagstone floors, 3D beveled walls, dynamic torches,
@@ -1822,195 +2138,13 @@ export class Renderer {
       const rw = room.width;
       const rh = room.height;
 
-      // 1. Draw Checkered Flagstone Floor
-      for (let c = 0; c < room.colCount; c++) {
-        for (let r = 0; r < room.rowCount; r++) {
-          const fx = minX + c * tileSize;
-          const fy = minY + r * tileSize;
-          const isAlt = (c + r) % 2 === 0;
-          ctx.fillStyle = isAlt ? theme.floorColor : theme.floorAltColor;
-          ctx.fillRect(fx, fy, tileSize, tileSize);
-
-          ctx.strokeStyle = theme.floorGridColor;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(fx, fy, tileSize, tileSize);
-
-          // Cyberpunk: PCB circuit nodes and data lines on floor tiles
-          if (theme.id === 'cyberpunk') {
-            const hash = Math.abs(Math.sin(c * 12.9898 + r * 78.233) * 43758.5453) % 1;
-            if (hash > 0.72) {
-              ctx.strokeStyle = 'rgba(6, 182, 212, 0.16)';
-              ctx.lineWidth = 1.5;
-              ctx.beginPath();
-              ctx.moveTo(fx + 12, fy + tileSize / 2);
-              ctx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
-              ctx.lineTo(fx + tileSize / 2, fy + tileSize - 12);
-              ctx.stroke();
-
-              ctx.fillStyle = 'rgba(6, 182, 212, 0.3)';
-              ctx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
-            }
-          }
-
-          // Attack on Titan: Weathered cobblestone cracks & moss veins on Wall Maria stones
-          if (theme.id === 'aot') {
-            const hash = Math.abs(Math.sin(c * 17.13 + r * 91.27) * 43758.5453) % 1;
-            if (hash > 0.68) {
-              ctx.strokeStyle = 'rgba(22, 101, 52, 0.25)';
-              ctx.lineWidth = 1.2;
-              ctx.beginPath();
-              ctx.moveTo(fx + 6, fy + tileSize - 8);
-              ctx.lineTo(fx + tileSize / 2, fy + tileSize / 2);
-              ctx.lineTo(fx + tileSize - 8, fy + 8);
-              ctx.stroke();
-
-              ctx.fillStyle = 'rgba(22, 101, 52, 0.3)';
-              ctx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
-            }
-          }
-        }
-      }
-
-      // 2. Draw Asymmetric Top-Down Walls with Door Openings
-      const northWallH = 72; // Tall/wide front-facing North wall
-      const sideWallW = 28;  // Thin border curb for West, East, South
-
-      const northDoor = room.doors.find(d => d.dir === 'north');
-      const southDoor = room.doors.find(d => d.dir === 'south');
-      const westDoor = room.doors.find(d => d.dir === 'west');
-      const eastDoor = room.doors.find(d => d.dir === 'east');
-
-      // --- NORTH WALL (Top: wide 72px with vertical stone face, mortar lines, top ledge, and shadow) ---
-      const northSections = [];
-      if (northDoor) {
-        northSections.push([minX, room.centerX - 64]);
-        northSections.push([room.centerX + 64, maxX]);
+      // 1 & 2. Static Floor & Asymmetric Walls (Pre-rendered to OffscreenCanvas)
+      const staticCanvas = this.getOrCreateRoomStaticCanvas(room, theme, tileSize);
+      if (staticCanvas) {
+        ctx.drawImage(staticCanvas, minX, minY);
       } else {
-        northSections.push([minX, maxX]);
+        this.renderRoomStaticDirect(ctx, room, theme, tileSize);
       }
-
-      for (const [sx, ex] of northSections) {
-        if (ex <= sx) continue;
-        const sw = ex - sx;
-
-        // Front-facing vertical stone face (lower 54px: minY + 18 to minY + 72)
-        ctx.fillStyle = theme.wallColor;
-        ctx.fillRect(sx, minY + 18, sw, 54);
-
-        // Horizontal brick mortar line
-        ctx.strokeStyle = theme.wallStrokeColor;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(sx, minY + 45);
-        ctx.lineTo(ex, minY + 45);
-        ctx.stroke();
-
-        // Vertical brick mortar ticks
-        const brickW = 48;
-        const startBrick = Math.floor(sx / brickW) * brickW;
-        ctx.beginPath();
-        for (let bx = startBrick; bx <= ex; bx += brickW) {
-          if (bx >= sx && bx <= ex) {
-            ctx.moveTo(bx, minY + 18);
-            ctx.lineTo(bx, minY + 45);
-          }
-          const altBx = bx + brickW / 2;
-          if (altBx >= sx && altBx <= ex) {
-            ctx.moveTo(altBx, minY + 45);
-            ctx.lineTo(altBx, minY + 72);
-          }
-        }
-        ctx.stroke();
-
-        // Top ledge (top 18px: minY to minY + 18)
-        ctx.fillStyle = theme.wallTopColor;
-        ctx.fillRect(sx, minY, sw, 18);
-
-        // Top ledge highlight bevel
-        ctx.fillStyle = theme.wallBevelColor;
-        ctx.fillRect(sx, minY + 16, sw, 2);
-
-        // Ambient occlusion drop shadow cast down onto the floor
-        const shadowGrad = ctx.createLinearGradient(0, minY + 72, 0, minY + 86);
-        shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
-        shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = shadowGrad;
-        ctx.fillRect(sx, minY + 72, sw, 14);
-      }
-
-      // --- SOUTH WALL (Bottom: thin 28px curb at maxY - 28) ---
-      const southSections = [];
-      if (southDoor) {
-        southSections.push([minX, room.centerX - 64]);
-        southSections.push([room.centerX + 64, maxX]);
-      } else {
-        southSections.push([minX, maxX]);
-      }
-
-      for (const [sx, ex] of southSections) {
-        if (ex <= sx) continue;
-        const sw = ex - sx;
-
-        ctx.fillStyle = theme.wallColor;
-        ctx.fillRect(sx, maxY - sideWallW, sw, sideWallW);
-
-        ctx.fillStyle = theme.wallTopColor;
-        ctx.fillRect(sx, maxY - sideWallW, sw, 8);
-
-        ctx.fillStyle = theme.wallBevelColor;
-        ctx.fillRect(sx, maxY - sideWallW + 7, sw, 1.5);
-      }
-
-      // --- WEST WALL (Left: thin 28px curb from minY + 72 down to maxY - 28) ---
-      const westSections = [];
-      if (westDoor) {
-        westSections.push([minY + northWallH, room.centerY - 64]);
-        westSections.push([room.centerY + 64, maxY - sideWallW]);
-      } else {
-        westSections.push([minY + northWallH, maxY - sideWallW]);
-      }
-
-      for (const [sy, ey] of westSections) {
-        if (ey <= sy) continue;
-        const sh = ey - sy;
-
-        ctx.fillStyle = theme.wallColor;
-        ctx.fillRect(minX, sy, sideWallW, sh);
-
-        ctx.fillStyle = theme.wallTopColor;
-        ctx.fillRect(minX, sy, 8, sh);
-
-        ctx.fillStyle = theme.wallBevelColor;
-        ctx.fillRect(minX + 7, sy, 1.5, sh);
-      }
-
-      // --- EAST WALL (Right: thin 28px curb from minY + 72 down to maxY - 28) ---
-      const eastSections = [];
-      if (eastDoor) {
-        eastSections.push([minY + northWallH, room.centerY - 64]);
-        eastSections.push([room.centerY + 64, maxY - sideWallW]);
-      } else {
-        eastSections.push([minY + northWallH, maxY - sideWallW]);
-      }
-
-      for (const [sy, ey] of eastSections) {
-        if (ey <= sy) continue;
-        const sh = ey - sy;
-
-        ctx.fillStyle = theme.wallColor;
-        ctx.fillRect(maxX - sideWallW, sy, sideWallW, sh);
-
-        ctx.fillStyle = theme.wallTopColor;
-        ctx.fillRect(maxX - 8, sy, 8, sh);
-
-        ctx.fillStyle = theme.wallBevelColor;
-        ctx.fillRect(maxX - 8, sy, 1.5, sh);
-      }
-
-      // Outer room outline (clean pixel frame)
-      ctx.strokeStyle = theme.wallStrokeColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(minX, minY, rw, rh);
 
       // 3. Draw Doors
       for (const door of room.doors) {

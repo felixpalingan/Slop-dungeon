@@ -17,11 +17,12 @@ import { Monster, MonsterManager } from './monster.js';
 import { SlopMerchant } from './slopMerchant.js';
 import { WheelAltar } from './wheelAltar.js';
 import { BlackjackTable } from './blackjackTable.js';
-import { BlackjackGame } from './blackjack.js';
 import { DevArmoryChest } from './devArmoryChest.js';
 import { SettingsManager } from './settings.js';
 import { sanitizePlayerName, validateCombatDamage, validatePosition, validateSlopsAmount } from './security.js';
 import { defaultModalManager as modalManager } from './modalManager.js';
+import { ModalController } from './controllers/modalController.js';
+import { StationController } from './controllers/stationController.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -90,7 +91,14 @@ let currentDungeon = null;
 let slopMerchant = null;
 let wheelAltar = null;
 let blackjackTable = null;
-const blackjackGame = new BlackjackGame();
+let blackjackGame = null;
+async function getBlackjackGame() {
+  if (!blackjackGame) {
+    const { BlackjackGame } = await import('./blackjack.js');
+    blackjackGame = new BlackjackGame();
+  }
+  return blackjackGame;
+}
 const monsterManager = new MonsterManager();
 
 // --- SHARED SLOPS PARTY WALLET & COIN DROPS ---
@@ -2440,7 +2448,8 @@ const btnBjMaxBet = document.getElementById('btn-bj-max-bet');
 
 let selectedBjBet = 25;
 
-function openBlackjackModal() {
+async function openBlackjackModal() {
+  await getBlackjackGame();
   modalManager.open('blackjack-modal');
 }
 
@@ -2470,6 +2479,7 @@ function createCardDom(card, isHoleCard = false) {
 }
 
 function renderBlackjackUI() {
+  if (!blackjackGame) return;
   if (bjSlopsAmount) bjSlopsAmount.textContent = `${sharedSlops.toLocaleString()} SLOPS`;
   if (bjCurrentBetVal) bjCurrentBetVal.textContent = selectedBjBet;
   const dealBtnAmt = document.getElementById('bj-deal-btn-amount');
@@ -3268,7 +3278,8 @@ modalManager.register('wheel-altar-modal', {
   }
 });
 modalManager.register('blackjack-modal', {
-  onOpen: () => {
+  onOpen: async () => {
+    await getBlackjackGame();
     if (blackjackTable) {
       blackjackTable.setOccupant(network.myPeerId || 'local', player.name);
       const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: false };
