@@ -45,7 +45,8 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 5.4: Room Hazards & Traps (Spike / Flame Pillar) [UPCOMING]    │
 │    ├── Step 5.5: Slop Merchant, Economy, In-World Wheel & Blackjack [DONE ✅]│
 │    ├── Step 5.6: Random Grid Dungeon Map Generation with Guaranteed Rooms [DONE ✅] │
-│    └── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [DONE ✅]       │
+│    ├── Step 5.7: Lobby Dev Mode Cleanup (Dev Armory Chest) [DONE ✅]       │
+│    └── Step 5.8: Procedural BGM Engine (Lobby/Dungeon/Boss Web Audio) [DONE ✅] │
 │      ▼                                                                     │
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
 │      ▼                                                                     │
