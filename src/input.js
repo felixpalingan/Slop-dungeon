@@ -44,8 +44,12 @@ export class InputManager {
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
+    this.justPressedTab = false;
+
+    this.joystickVector = { dx: 0, dy: 0 };
 
     this.setupListeners();
+    this.setupTouchControls();
   }
 
   setupListeners() {
@@ -186,19 +190,118 @@ export class InputManager {
   }
 
   /**
-   * Returns normalized movement vector from WASD
+   * Sets up touch listeners for virtual joystick and mobile action buttons
+   */
+  setupTouchControls() {
+    if (typeof document === 'undefined') return;
+
+    const zone = document.getElementById('virtual-joystick-zone');
+    const knob = document.getElementById('virtual-joystick-knob');
+    if (zone && knob) {
+      let touchId = null;
+      let startX = 0;
+      let startY = 0;
+      const maxRadius = 45;
+
+      const updateKnob = (clientX, clientY) => {
+        let diffX = clientX - startX;
+        let diffY = clientY - startY;
+        const dist = Math.hypot(diffX, diffY);
+        if (dist > maxRadius) {
+          diffX = (diffX / dist) * maxRadius;
+          diffY = (diffY / dist) * maxRadius;
+        }
+        knob.style.transform = `translate(calc(-50% + ${diffX}px), calc(-50% + ${diffY}px))`;
+        this.joystickVector = {
+          dx: diffX / maxRadius,
+          dy: diffY / maxRadius
+        };
+      };
+
+      const onTouchStart = (e) => {
+        if (touchId !== null) return;
+        const touch = e.changedTouches[0];
+        touchId = touch.identifier;
+        const rect = zone.getBoundingClientRect();
+        startX = rect.left + rect.width / 2;
+        startY = rect.top + rect.height / 2;
+        updateKnob(touch.clientX, touch.clientY);
+      };
+
+      const onTouchMove = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === touchId) {
+            updateKnob(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            break;
+          }
+        }
+      };
+
+      const onTouchEnd = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === touchId) {
+            touchId = null;
+            knob.style.transform = 'translate(-50%, -50%)';
+            this.joystickVector = { dx: 0, dy: 0 };
+            break;
+          }
+        }
+      };
+
+      zone.addEventListener('touchstart', onTouchStart, { passive: false });
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onTouchEnd, { passive: false });
+      window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+    }
+
+    const bindTouchBtn = (id, onDown, onUp) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        onDown();
+      }, { passive: false });
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (onUp) onUp();
+      }, { passive: false });
+      btn.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        if (onUp) onUp();
+      }, { passive: false });
+    };
+
+    bindTouchBtn('touch-btn-attack',
+      () => { this.mouse.leftDown = true; this.justPressedLeft = true; },
+      () => { this.mouse.leftDown = false; }
+    );
+    bindTouchBtn('touch-btn-block',
+      () => { this.mouse.rightDown = true; this.justPressedRight = true; },
+      () => { this.mouse.rightDown = false; }
+    );
+    bindTouchBtn('touch-btn-roll',
+      () => { this.keys.shift = true; this.justPressedShift = true; },
+      () => { this.keys.shift = false; }
+    );
+    bindTouchBtn('touch-btn-bag',
+      () => { this.justPressedI = true; this.justPressedTab = true; }
+    );
+  }
+
+  /**
+   * Returns normalized movement vector from WASD and virtual joystick
    */
   getMovementVector() {
-    let dx = 0;
-    let dy = 0;
+    let dx = this.joystickVector.dx;
+    let dy = this.joystickVector.dy;
 
     if (this.keys.w) dy -= 1;
     if (this.keys.s) dy += 1;
     if (this.keys.a) dx -= 1;
     if (this.keys.d) dx += 1;
 
-    if (dx !== 0 && dy !== 0) {
-      const len = Math.hypot(dx, dy);
+    const len = Math.hypot(dx, dy);
+    if (len > 1) {
       dx /= len;
       dy /= len;
     }
@@ -223,5 +326,6 @@ export class InputManager {
     this.justPressedSpace = false;
     this.justPressedLeft = false;
     this.justPressedRight = false;
+    this.justPressedTab = false;
   }
 }

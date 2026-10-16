@@ -53,7 +53,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │  Phase 7: Multi-Discipline Engineering & Security Remediation [ACTIVE 🛡️]   │
 │    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity) [COMPLETED ✅]
 │    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG [COMPLETED ✅]
-│    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss)           │
+│    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss) [COMPLETED ✅]
 │    ├── P2: Frontend Modularization (Deconstruct 5,500-line main.js)        │
 │    ├── P2: Visual Design System (4px Spacing Grid & WCAG AA Contrast)      │
 │    └── P3: Architectural Evolution (DDD Decoupling & Host Migration)       │
@@ -203,9 +203,10 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Implement seeded PRNG (`seedrandom` / `RandomProvider`) to enable deterministic, replayable dungeon generation and testing.
   - Add `data-testid` attributes across all interactive HUD, inventory, and modal elements.
   - Suite with 38 unit tests covering PRNG determinism, item catalog, trade-up, gacha odds, combat mitigation, and security sanitization.
-- **P1: UX & Modal Management**:
-  - Implement unified LIFO Modal Stack Manager with universal backdrop dismiss.
-  - Resolve keyboard hotkey collisions and implement modal focus trapping.
+- **P1: UX & Modal Management** `[COMPLETED ✅]`:
+  - Implement unified LIFO `ModalManager` with universal backdrop dismiss across all 10 modal surfaces.
+  - Eliminate modal layering bugs, hotkey collisions, and trapped pointer events with ESC key handling.
+  - Implement mobile & tablet touch strategy with virtual movement joystick and action buttons cluster.
 - **P2: Frontend Modularization & Visual Design**:
   - Decompose `src/main.js` (5,500+ lines) into focused domain controllers (`ModalController`, `NetworkController`, `CombatController`, `StationController`).
   - Pre-render static dungeon geometry to `OffscreenCanvas` for 60+ FPS on low-end hardware.

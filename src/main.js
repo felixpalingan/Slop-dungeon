@@ -21,6 +21,7 @@ import { BlackjackGame } from './blackjack.js';
 import { DevArmoryChest } from './devArmoryChest.js';
 import { SettingsManager } from './settings.js';
 import { sanitizePlayerName, validateCombatDamage, validatePosition, validateSlopsAmount } from './security.js';
+import { defaultModalManager as modalManager } from './modalManager.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -1712,26 +1713,15 @@ const btnFloorBadge = document.getElementById('btn-floor-badge');
 const btnCloseFloorModal = document.getElementById('btn-close-floor-modal');
 
 function openFloorModal() {
-  if (floorModal) {
-    floorModal.classList.remove('hidden');
-    audio.playSwing();
-  }
+  modalManager.open('floor-modal');
 }
 
 function closeFloorModal() {
-  if (floorModal) {
-    floorModal.classList.add('hidden');
-    audio.playFootstep();
-  }
+  modalManager.close('floor-modal');
 }
 
 function toggleFloorModal() {
-  if (!floorModal) return;
-  if (floorModal.classList.contains('hidden')) {
-    openFloorModal();
-  } else {
-    closeFloorModal();
-  }
+  modalManager.toggle('floor-modal');
 }
 
 window.openFloorModal = openFloorModal;
@@ -1768,22 +1758,15 @@ const backpackGrid = document.getElementById('backpack-grid');
 const invCount = document.getElementById('inv-count');
 
 function toggleInventory() {
-  if (invModal.classList.contains('hidden')) {
-    openInventory();
-  } else {
-    closeInventory();
-  }
+  modalManager.toggle('inventory-modal');
 }
 
 function openInventory() {
-  invModal.classList.remove('hidden');
-  renderInventoryUI();
-  audio.playSwing();
+  modalManager.open('inventory-modal');
 }
 
 function closeInventory() {
-  invModal.classList.add('hidden');
-  audio.playFootstep();
+  modalManager.close('inventory-modal');
 }
 
 btnCloseInventory.addEventListener('click', closeInventory);
@@ -1950,15 +1933,11 @@ const hudAvatar = document.getElementById('hud-avatar');
 const hudPlayerName = document.getElementById('hud-player-name');
 
 function openWardrobe() {
-  wardrobeModal.classList.remove('hidden');
-  inputPlayerName.focus();
-  inputPlayerName.select();
-  audio.playSwing();
+  modalManager.open('wardrobe-modal');
 }
 
 function closeWardrobe() {
-  wardrobeModal.classList.add('hidden');
-  audio.playFootstep();
+  modalManager.close('wardrobe-modal');
 }
 
 btnCloseWardrobe.addEventListener('click', closeWardrobe);
@@ -2000,20 +1979,11 @@ let activeMerchantTab = 'shop';
 let forgeSlots = [null, null, null];
 
 function openMerchantModal() {
-  if (!merchantModal) return;
-  merchantModal.classList.remove('hidden');
-  updateSlopsUI();
-  switchMerchantTab(activeMerchantTab);
-  audio.playSwing();
-  if (slopMerchant) {
-    slopMerchant.sayRandomGreeting();
-  }
+  modalManager.open('merchant-modal');
 }
 
 function closeMerchantModal() {
-  if (!merchantModal) return;
-  merchantModal.classList.add('hidden');
-  audio.playFootstep();
+  modalManager.close('merchant-modal');
 }
 
 if (btnCloseMerchant) {
@@ -2323,20 +2293,15 @@ const altarInventoryGrid = document.getElementById('altar-inventory-grid');
 let altarWagerItem = null;
 
 function openWheelAltarModal() {
-  if (!wheelAltarModal) return;
   if (wheelAltar && wheelAltar.isSpinning) {
     particles.spawnComicText(player.x, player.y - 35, `⚠️ IN USE BY ${wheelAltar.activeSpinnerName || 'FRIEND'}!`, '#f59e0b');
     return;
   }
-  wheelAltarModal.classList.remove('hidden');
-  altarWagerItem = null;
-  renderWheelAltarModal();
-  audio.playSwing();
+  modalManager.open('wheel-altar-modal');
 }
 
 function closeWheelAltarModal() {
-  if (!wheelAltarModal) return;
-  wheelAltarModal.classList.add('hidden');
+  modalManager.close('wheel-altar-modal');
 }
 
 if (btnCloseWheelAltar) {
@@ -2476,31 +2441,11 @@ const btnBjMaxBet = document.getElementById('btn-bj-max-bet');
 let selectedBjBet = 25;
 
 function openBlackjackModal() {
-  if (!blackjackModal) return;
-  blackjackModal.classList.remove('hidden');
-  if (blackjackTable) {
-    blackjackTable.setOccupant(network.myPeerId || 'local', player.name);
-    const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: false };
-    if (network.isHost) network.broadcast(occMsg);
-    else network.sendToHost(occMsg);
-  }
-  selectedBjBet = Math.min(25, sharedSlops > 0 ? sharedSlops : 25);
-  renderBlackjackUI();
-  if (audio.playCardFlip) audio.playCardFlip();
-  if (slopMerchant) {
-    slopMerchant.sayRandomBjWelcome(player.name);
-  }
+  modalManager.open('blackjack-modal');
 }
 
 function closeBlackjackModal() {
-  if (!blackjackModal) return;
-  blackjackModal.classList.add('hidden');
-  if (blackjackTable) {
-    blackjackTable.clearOccupant();
-    const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: true };
-    if (network.isHost) network.broadcast(occMsg);
-    else network.sendToHost(occMsg);
-  }
+  modalManager.close('blackjack-modal');
 }
 
 if (btnCloseBlackjack) {
@@ -2761,8 +2706,8 @@ const partyCount = document.getElementById('party-count');
 const partyRoster = document.getElementById('party-roster');
 const hudNetworkStatus = document.getElementById('hud-network-status');
 
-btnOpenLobby.addEventListener('click', () => lobbyModal.classList.remove('hidden'));
-btnCloseLobby.addEventListener('click', () => lobbyModal.classList.add('hidden'));
+btnOpenLobby.addEventListener('click', () => modalManager.open('lobby-modal'));
+btnCloseLobby.addEventListener('click', () => modalManager.close('lobby-modal'));
 
 function updatePartyRoster() {
   partyRoster.innerHTML = '';
@@ -2978,7 +2923,7 @@ function triggerPartyWipe(syncedStats = null) {
     btnReturnLobbyFromGo.style.cursor = 'pointer';
   }
 
-  if (gameOverModal) gameOverModal.classList.remove('hidden');
+  if (gameOverModal) modalManager.open('game-over-modal');
 
   if (isAuthority && network.isHost) {
     network.broadcast({
@@ -3000,7 +2945,7 @@ if (btnRetryRun) {
     const isSolo = !network.peer || network.remotePlayers.size === 0;
     const isAuthority = network.isHost || isSolo;
     if (!isAuthority) return;
-    if (gameOverModal) gameOverModal.classList.add('hidden');
+    modalManager.close('game-over-modal');
     runStats.startTime = performance.now();
     runStats.totalKills = 0;
     runStats.slopsEarned = 0;
@@ -3013,7 +2958,7 @@ if (btnRetryRun) {
 
 if (btnReturnLobbyFromGo) {
   btnReturnLobbyFromGo.addEventListener('click', () => {
-    if (gameOverModal) gameOverModal.classList.add('hidden');
+    modalManager.close('game-over-modal');
     if (network.isHost) {
       network.broadcast({ type: 'RETURN_TO_LOBBY' });
     }
@@ -3028,31 +2973,21 @@ const btnCloseDevArmoryBottom = document.getElementById('btn-close-dev-armory-bo
 let currentArmoryFilter = 'all';
 
 function openDevArmoryModal() {
-  if (!devArmoryModal) return;
   if (currentFloor >= 1) {
     particles.spawnComicText(player.x, player.y - 30, 'DEV ARMORY DISABLED IN DUNGEON!', '#ef4444');
     audio.playBonk();
     return;
   }
-  audio.playChestOpen();
-  renderArmoryItems(currentArmoryFilter);
-  devArmoryModal.classList.remove('hidden');
+  modalManager.open('dev-armory-modal');
 }
 
 function closeDevArmoryModal() {
-  if (!devArmoryModal) return;
-  devArmoryModal.classList.add('hidden');
-  audio.playFootstep();
+  modalManager.close('dev-armory-modal');
 }
 
 function toggleDevArmoryModal() {
-  if (!devArmoryModal) return;
   if (currentFloor >= 1) return;
-  if (devArmoryModal.classList.contains('hidden')) {
-    openDevArmoryModal();
-  } else {
-    closeDevArmoryModal();
-  }
+  modalManager.toggle('dev-armory-modal');
 }
 
 if (btnCloseDevArmory) {
@@ -3069,37 +3004,15 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 
 function openSettingsModal() {
-  if (!settingsModal) return;
-  try {
-    audio.playFootstep();
-  } catch (e) {
-    // context not ready yet, safe to ignore
-  }
-  try {
-    updateSettingsUIFromState();
-  } catch (e) {
-    console.warn('updateSettingsUIFromState error:', e);
-  }
-  settingsModal.classList.remove('hidden');
+  modalManager.open('settings-modal');
 }
 
 function closeSettingsModal() {
-  if (!settingsModal) return;
-  settingsModal.classList.add('hidden');
-  try {
-    audio.playFootstep();
-  } catch (e) {
-    // safe to ignore
-  }
+  modalManager.close('settings-modal');
 }
 
 function toggleSettingsModal() {
-  if (!settingsModal) return;
-  if (settingsModal.classList.contains('hidden')) {
-    openSettingsModal();
-  } else {
-    closeSettingsModal();
-  }
+  modalManager.toggle('settings-modal');
 }
 
 function updateSettingsUIFromState() {
@@ -3325,51 +3238,82 @@ function initSettingsUI() {
 
 initSettingsUI();
 
-// --- UNIVERSAL MODAL ESCAPE / CLOSE HANDLER ---
+// --- MODAL MANAGER REGISTRATION & LIFECYCLE HOOKS ---
+modalManager.register('floor-modal', {
+  onOpen: () => audio.playSwing(),
+  onClose: () => audio.playFootstep()
+});
+modalManager.register('inventory-modal', {
+  onOpen: () => { renderInventoryUI(); audio.playSwing(); },
+  onClose: () => audio.playFootstep()
+});
+modalManager.register('wardrobe-modal', {
+  onOpen: () => { inputPlayerName.focus(); inputPlayerName.select(); audio.playSwing(); },
+  onClose: () => audio.playFootstep()
+});
+modalManager.register('merchant-modal', {
+  onOpen: () => {
+    updateSlopsUI();
+    switchMerchantTab(activeMerchantTab);
+    audio.playSwing();
+    if (slopMerchant) slopMerchant.sayRandomGreeting();
+  },
+  onClose: () => audio.playFootstep()
+});
+modalManager.register('wheel-altar-modal', {
+  onOpen: () => {
+    altarWagerItem = null;
+    renderWheelAltarModal();
+    audio.playSwing();
+  }
+});
+modalManager.register('blackjack-modal', {
+  onOpen: () => {
+    if (blackjackTable) {
+      blackjackTable.setOccupant(network.myPeerId || 'local', player.name);
+      const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: false };
+      if (network.isHost) network.broadcast(occMsg);
+      else network.sendToHost(occMsg);
+    }
+    selectedBjBet = Math.min(25, sharedSlops > 0 ? sharedSlops : 25);
+    renderBlackjackUI();
+    if (audio.playCardFlip) audio.playCardFlip();
+    if (slopMerchant) slopMerchant.sayRandomBjWelcome(player.name);
+  },
+  onClose: () => {
+    if (blackjackTable) {
+      blackjackTable.clearOccupant();
+      const occMsg = { type: 'BJ_TABLE_OCCUPANT', playerId: network.myPeerId || 'local', playerName: player.name, isLeaving: true };
+      if (network.isHost) network.broadcast(occMsg);
+      else network.sendToHost(occMsg);
+    }
+  }
+});
+modalManager.register('dev-armory-modal', {
+  onOpen: () => {
+    audio.playChestOpen();
+    renderArmoryItems(currentArmoryFilter);
+  },
+  onClose: () => audio.playFootstep()
+});
+modalManager.register('settings-modal', {
+  onOpen: () => {
+    try { updateSettingsUIFromState(); } catch (e) {}
+    try { audio.playFootstep(); } catch (e) {}
+  },
+  onClose: () => {
+    try { audio.playFootstep(); } catch (e) {}
+  }
+});
+modalManager.initBackdropDismiss();
+
 function closeAnyOpenModal() {
-  let closedAny = false;
-  if (invModal && !invModal.classList.contains('hidden')) {
-    closeInventory();
-    closedAny = true;
-  }
-  if (wardrobeModal && !wardrobeModal.classList.contains('hidden')) {
-    closeWardrobe();
-    closedAny = true;
-  }
-  if (lobbyModal && !lobbyModal.classList.contains('hidden')) {
-    lobbyModal.classList.add('hidden');
-    closedAny = true;
-  }
-  if (floorModal && !floorModal.classList.contains('hidden')) {
-    closeFloorModal();
-    closedAny = true;
-  }
-  if (merchantModal && !merchantModal.classList.contains('hidden')) {
-    closeMerchantModal();
-    closedAny = true;
-  }
-  if (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) {
-    closeWheelAltarModal();
-    closedAny = true;
-  }
-  if (blackjackModal && !blackjackModal.classList.contains('hidden')) {
-    closeBlackjackModal();
-    closedAny = true;
-  }
-  if (devArmoryModal && !devArmoryModal.classList.contains('hidden')) {
-    closeDevArmoryModal();
-    closedAny = true;
-  }
-  if (settingsModal && !settingsModal.classList.contains('hidden')) {
-    closeSettingsModal();
-    closedAny = true;
-  }
-  return closedAny;
+  return modalManager.close();
 }
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    closeAnyOpenModal();
+    modalManager.handleEscapeKey(e);
   }
 });
 
@@ -4500,20 +4444,10 @@ function gameLoop(now) {
     }
 
   const wasRolling = player.isRolling;
-  const modalsOpen =
-    !wardrobeModal.classList.contains('hidden') ||
-    !lobbyModal.classList.contains('hidden') ||
-    !invModal.classList.contains('hidden') ||
-    (floorModal && !floorModal.classList.contains('hidden')) ||
-    (merchantModal && !merchantModal.classList.contains('hidden')) ||
-    (wheelAltarModal && !wheelAltarModal.classList.contains('hidden')) ||
-    (blackjackModal && !blackjackModal.classList.contains('hidden')) ||
-    (gameOverModal && !gameOverModal.classList.contains('hidden')) ||
-    (devArmoryModal && !devArmoryModal.classList.contains('hidden')) ||
-    (settingsModal && !settingsModal.classList.contains('hidden'));
+  const modalsOpen = modalManager.isOpen();
 
   // Inventory toggle hotkeys: I or Tab
-  if (input.justPressedI || (input.keys.tab && !input.tabHandled)) {
+  if (input.justPressedI || input.justPressedTab || (input.keys.tab && !input.tabHandled)) {
     input.tabHandled = true;
     toggleInventory();
   }

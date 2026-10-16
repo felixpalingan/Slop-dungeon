@@ -75,4 +75,28 @@ test.describe('Slop Dungeon - Base Camp & HUD User Journeys', () => {
     await closeBtn.click();
     await expect(floorModal).toHaveClass(/hidden/);
   });
+
+  test('dismisses open modal by clicking outside on the dark backdrop', async ({ page }) => {
+    const settingsBtn = page.getByTestId('hud-settings-btn');
+    const settingsModal = page.locator('#settings-modal');
+
+    await settingsBtn.click();
+    await expect(settingsModal).not.toHaveClass(/hidden/);
+
+    // Click on top-left corner of the backdrop (outside the centered modal card)
+    await settingsModal.click({ position: { x: 15, y: 15 } });
+    await expect(settingsModal).toHaveClass(/hidden/);
+  });
+
+  test('dismisses topmost open modal upon pressing Escape key', async ({ page }) => {
+    const settingsBtn = page.getByTestId('hud-settings-btn');
+    const settingsModal = page.locator('#settings-modal');
+
+    await settingsBtn.click();
+    await expect(settingsModal).not.toHaveClass(/hidden/);
+
+    // Press Escape
+    await page.keyboard.press('Escape');
+    await expect(settingsModal).toHaveClass(/hidden/);
+  });
 });
