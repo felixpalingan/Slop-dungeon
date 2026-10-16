@@ -2,6 +2,7 @@
  * Player Entity for Dungeon Slop
  * Handles movement, stamina, Left Shift Dodge Roll, aiming, and attack animations.
  */
+import { defaultEventBus } from './eventBus.js';
 
 /**
  * Projects ray from start point along direction vector to dungeon perimeter walls
@@ -49,9 +50,10 @@ export function projectRayToDungeonWall(startX, startY, dirX, dirY, bounds = { m
 }
 
 export class Player {
-  constructor(x = 0, y = 0) {
+  constructor(x = 0, y = 0, options = {}) {
     this.x = x;
     this.y = y;
+    this.eventBus = options?.emit ? options : (options?.eventBus || defaultEventBus);
     this.vx = 0;
     this.vy = 0;
     this.radius = 22;
@@ -344,6 +346,9 @@ export class Player {
     }
 
     this.recalculateStats();
+    if (this.eventBus) {
+      this.eventBus.emit('player:itemEquipped', { slot: item.slot, item, unequipped: unequippedItems });
+    }
     return unequippedItems;
   }
 
@@ -352,6 +357,9 @@ export class Player {
     const removed = this.equipment[slot];
     this.equipment[slot] = null;
     this.recalculateStats();
+    if (this.eventBus) {
+      this.eventBus.emit('player:itemUnequipped', { slot, item: removed });
+    }
     return removed;
   }
 
@@ -377,6 +385,15 @@ export class Player {
     this.baseSpeed = 260 + bonusSpeed;
     this.staminaRegen = 32 + bonusStaminaRegen;
     this.rollCost = Math.max(15, 35 - rollCostReduction);
+
+    if (this.eventBus) {
+      this.eventBus.emit('player:statsChanged', {
+        maxHp: this.maxHp,
+        baseSpeed: this.baseSpeed,
+        staminaRegen: this.staminaRegen,
+        rollCost: this.rollCost
+      });
+    }
   }
 
   takeDamage(amount, angle = 0, knockback = 0, canBeDowned = true) {
@@ -392,9 +409,21 @@ export class Player {
         this.isDead = true;
         this.isDowned = false;
         this.downedTimer = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('player:died', { player: this });
+        }
       }
       if (knockback > 0) {
         this.applyKnockback(Math.cos(angle) * (knockback * 0.4), Math.sin(angle) * (knockback * 0.4));
+      }
+      if (this.eventBus) {
+        this.eventBus.emit('player:damage', {
+          damage: amount,
+          isBlocked: false,
+          isDowned: true,
+          downedTimer: this.downedTimer,
+          becameDead
+        });
       }
       return {
         damage: amount,
@@ -421,6 +450,23 @@ export class Player {
 
     this.hp = Math.max(0, this.hp - finalDamage);
 
+    if (this.eventBus) {
+      this.eventBus.emit('player:damage', {
+        damage: finalDamage,
+        hp: this.hp,
+        maxHp: this.maxHp,
+        isBlocked,
+        becameDowned: this.hp <= 0 && canBeDowned,
+        becameDead: (this.hp <= 0 && !canBeDowned)
+      });
+      this.eventBus.emit('player:healthChanged', {
+        hp: this.hp,
+        maxHp: this.maxHp,
+        isDowned: this.isDowned,
+        isDead: this.isDead
+      });
+    }
+
     // Fatal damage: transition into Downed Crawl State (if teammates alive) or Instant Death (if alone / last standing)!
     if (this.hp <= 0) {
       this.hp = 0;
@@ -444,6 +490,9 @@ export class Player {
       if (canBeDowned) {
         this.isDowned = true;
         this.downedTimer = this.maxDownedTimer; // 30s
+        if (this.eventBus) {
+          this.eventBus.emit('player:downed', { player: this, downedTimer: this.downedTimer });
+        }
         return {
           damage: finalDamage,
           isBlocked,
@@ -458,6 +507,9 @@ export class Player {
         this.downedTimer = 0;
         this.vx = 0;
         this.vy = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('player:died', { player: this });
+        }
         return {
           damage: finalDamage,
           isBlocked,
@@ -970,38 +1022,18 @@ export class Player {
     this.reviveProgress = 0;
     this.hp = Math.round(this.maxHp * reviveHpRatio);
     this.invulnerableTimer = 2.0; // 2.0s invulnerability i-frames
+    if (this.eventBus) {
+      this.eventBus.emit('player:revived', {
+        player: this,
+        hp: this.hp,
+        maxHp: this.maxHp
+      });
+    }
     this.syncHUD();
   }
 
   syncHUD() {
-    const hpFill = document.getElementById('hud-hp-fill');
-    const hpText = document.getElementById('hud-hp-text');
-    const staminaFill = document.getElementById('hud-stamina-fill');
-
-    if (hpFill && hpText) {
-      if (this.isDead) {
-        hpFill.style.width = '0%';
-        hpFill.style.backgroundColor = '#64748b';
-        hpText.textContent = 'DEAD 💀';
-      } else if (this.isDowned) {
-        const downedPct = Math.max(0, Math.min(100, (this.downedTimer / this.maxDownedTimer) * 100));
-        hpFill.style.width = `${downedPct}%`;
-        hpFill.style.backgroundColor = '#ef4444';
-        hpText.textContent = `DOWNED [${Math.ceil(this.downedTimer)}s] 🩸`;
-      } else {
-        const hpPct = Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100));
-        hpFill.style.width = `${hpPct}%`;
-        hpFill.style.backgroundColor = '#00ff88';
-        hpText.textContent = `${Math.ceil(this.hp)} / ${this.maxHp}`;
-      }
-    }
-
-    if (staminaFill) {
-      const staminaPct = Math.max(0, Math.min(100, (this.stamina / this.maxStamina) * 100));
-      staminaFill.style.width = `${staminaPct}%`;
-    }
-
-    // ODM Gas Bar (Check if Levi gear or mode is active)
+    // Check if Levi gear or mode is active
     const isLeviActive = this.isOdmMode ||
       this.equipment?.weapon?.visual === 'dual_snap_blades' ||
       this.equipment?.chest?.visual === 'odm_harness' ||
@@ -1009,29 +1041,86 @@ export class Player {
       this.equipment?.pants?.visual === 'scout_trousers' ||
       this.equipment?.boots?.visual === 'scout_boots';
 
-    // --- SIMPLE CLEAN ODM GAS BAR OVERLAY ---
-    const odmHud = document.getElementById('odm-tactical-hud');
-    if (odmHud) {
-      if (isLeviActive) {
-        odmHud.classList.remove('hidden');
+    const payload = {
+      hp: this.hp,
+      maxHp: this.maxHp,
+      stamina: this.stamina,
+      maxStamina: this.maxStamina,
+      isDowned: this.isDowned,
+      isDead: this.isDead,
+      downedTimer: this.downedTimer,
+      maxDownedTimer: this.maxDownedTimer,
+      isLeviActive,
+      odmGas: this.odmGas,
+      maxOdmGas: this.maxOdmGas
+    };
 
-        const gasPct = Math.max(0, Math.min(100, (this.odmGas / this.maxOdmGas) * 100));
-        const charges = Math.min(10, Math.floor((this.odmGas + 0.1) / 10));
-        const isLow = charges <= 2;
+    if (this.eventBus) {
+      this.eventBus.emit('player:hudSync', payload);
+      this.eventBus.emit('player:healthChanged', {
+        hp: this.hp,
+        maxHp: this.maxHp,
+        isDowned: this.isDowned,
+        isDead: this.isDead
+      });
+      this.eventBus.emit('player:staminaChanged', {
+        stamina: this.stamina,
+        maxStamina: this.maxStamina
+      });
+    }
 
-        const bigFill = document.getElementById('odm-big-gas-fill');
-        const bigText = document.getElementById('odm-big-gas-text');
+    // Direct DOM fallback for backward compatibility if document is available
+    if (typeof document !== 'undefined') {
+      const hpFill = document.getElementById('hud-hp-fill');
+      const hpText = document.getElementById('hud-hp-text');
+      const staminaFill = document.getElementById('hud-stamina-fill');
 
-        if (bigFill) {
-          bigFill.style.width = `${gasPct}%`;
+      if (hpFill && hpText) {
+        if (this.isDead) {
+          hpFill.style.width = '0%';
+          hpFill.style.backgroundColor = '#64748b';
+          hpText.textContent = 'DEAD 💀';
+        } else if (this.isDowned) {
+          const downedPct = Math.max(0, Math.min(100, (this.downedTimer / this.maxDownedTimer) * 100));
+          hpFill.style.width = `${downedPct}%`;
+          hpFill.style.backgroundColor = '#ef4444';
+          hpText.textContent = `DOWNED [${Math.ceil(this.downedTimer)}s] 🩸`;
+        } else {
+          const hpPct = Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100));
+          hpFill.style.width = `${hpPct}%`;
+          hpFill.style.backgroundColor = '#00ff88';
+          hpText.textContent = `${Math.ceil(this.hp)} / ${this.maxHp}`;
         }
-        odmHud.classList.toggle('low-gas', isLow);
+      }
 
-        if (bigText) {
-          bigText.textContent = `GAS CHARGES: ${charges} / 10`;
+      if (staminaFill) {
+        const staminaPct = Math.max(0, Math.min(100, (this.stamina / this.maxStamina) * 100));
+        staminaFill.style.width = `${staminaPct}%`;
+      }
+
+      const odmHud = document.getElementById('odm-tactical-hud');
+      if (odmHud) {
+        if (isLeviActive) {
+          odmHud.classList.remove('hidden');
+
+          const gasPct = Math.max(0, Math.min(100, (this.odmGas / this.maxOdmGas) * 100));
+          const charges = Math.min(10, Math.floor((this.odmGas + 0.1) / 10));
+          const isLow = charges <= 2;
+
+          const bigFill = document.getElementById('odm-big-gas-fill');
+          const bigText = document.getElementById('odm-big-gas-text');
+
+          if (bigFill) {
+            bigFill.style.width = `${gasPct}%`;
+          }
+          odmHud.classList.toggle('low-gas', isLow);
+
+          if (bigText) {
+            bigText.textContent = `GAS CHARGES: ${charges} / 10`;
+          }
+        } else {
+          odmHud.classList.add('hidden');
         }
-      } else {
-        odmHud.classList.add('hidden');
       }
     }
   }

@@ -4,10 +4,13 @@
  * shield block mitigation, and active chest abilities (Q key).
  */
 
+import { defaultEventBus } from './eventBus.js';
+
 export class CombatSystem {
-  constructor(audio, particles) {
+  constructor(audio = null, particles = null, eventBus = null) {
     this.audio = audio;
     this.particles = particles;
+    this.eventBus = eventBus || defaultEventBus;
   }
 
   /**
@@ -186,6 +189,10 @@ export class CombatSystem {
       }
     }
 
+    if (hits.length > 0 && this.eventBus) {
+      this.eventBus.emit('combat:attackLanded', { attacker, targets, hits, weapon });
+    }
+
     return hits;
   }
 
@@ -287,6 +294,10 @@ export class CombatSystem {
       }
     }
 
+    if (hits.length > 0 && this.eventBus) {
+      this.eventBus.emit('combat:offhandLanded', { attacker, targets, hits, attackType });
+    }
+
     return hits;
   }
 
@@ -315,13 +326,13 @@ export class CombatSystem {
       player.isOdmMode = !player.isOdmMode;
 
       if (player.isOdmMode) {
-        this.audio.playOdmGasHiss();
-        this.particles.spawnComicText(player.x, player.y - 36, 'ODM MODE: ACTIVE! ⚔️', '#10b981');
-        this.particles.spawnDashBurst(player.x, player.y, player.angle + Math.PI, '#ffffff');
+        this.audio?.playOdmGasHiss?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'ODM MODE: ACTIVE! ⚔️', '#10b981');
+        this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ffffff');
       } else {
         player.activeCables = [];
         player.isAirborne = false;
-        this.particles.spawnComicText(player.x, player.y - 36, 'ODM MODE: OFF', '#94a3b8');
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'ODM MODE: OFF', '#94a3b8');
       }
       player.syncHUD();
       return true;
@@ -332,7 +343,7 @@ export class CombatSystem {
     // Cooldown check for all other ultimate / active abilities
     if (player.lastAbilityTime && now - player.lastAbilityTime < cooldownDuration) {
       const remaining = (cooldownDuration - (now - player.lastAbilityTime)).toFixed(1);
-      this.particles.spawnComicText(player.x, player.y - 30, `COOLDOWN ${remaining}s`, '#94a3b8');
+      this.particles?.spawnComicText?.(player.x, player.y - 30, `COOLDOWN ${remaining}s`, '#94a3b8');
       return false;
     }
 
@@ -340,26 +351,29 @@ export class CombatSystem {
 
     // --- 1. FULL SET CINEMATIC ULTIMATE Q ---
     if (setBonus && setBonus.ultimateQ) {
+      if (this.eventBus) {
+        this.eventBus.emit('combat:ultimateUsed', { player, ultimate: setBonus.ultimateQ, setBonus });
+      }
       if (setBonus.ultimateQ === 'hollow_purple') {
         // Gojo: Hollow Purple!
-        this.audio.playHollowPurple();
-        this.particles.spawnComicText(player.x, player.y - 36, 'HOLLOW PURPLE!', '#c084fc');
+        this.audio?.playHollowPurple?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'HOLLOW PURPLE!', '#c084fc');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('hollow_purple', player);
         }
         return true;
       } else if (setBonus.ultimateQ === 'world_cutting_slash') {
         // Sukuna: World Cutting Slash!
-        this.audio.playWorldCuttingSlash();
-        this.particles.spawnComicText(player.x, player.y - 36, 'WORLD CUTTING SLASH!', '#ff2a5f');
+        this.audio?.playWorldCuttingSlash?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'WORLD CUTTING SLASH!', '#ff2a5f');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('world_cutting_slash', player);
         }
         return true;
       } else if (setBonus.ultimateQ === 'inverted_chain_rampage') {
         // Toji: Thousand-Mile Chain Rampage!
-        this.audio.playChainRampage();
-        this.particles.spawnComicText(player.x, player.y - 36, 'CHAIN RAMPAGE!', '#38bdf8');
+        this.audio?.playChainRampage?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'CHAIN RAMPAGE!', '#38bdf8');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('inverted_chain_rampage', player);
         }
@@ -370,9 +384,9 @@ export class CombatSystem {
         player.berserkTimer = 6.0;
         player.isInvulnerable = false; // Damageable with high mitigation so Life Steal can restore HP!
         player.currentSpeed = player.baseSpeed * 1.55;
-        this.audio.playBerserkRoar();
-        this.audio.playClang();
-        this.particles.spawnComicText(player.x, player.y - 36, 'BERSERKER RAGE! 🩸 LIFE STEAL + UNSTOPPABLE', '#ef4444');
+        this.audio?.playBerserkRoar?.();
+        this.audio?.playClang?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'BERSERKER RAGE! 🩸 LIFE STEAL + UNSTOPPABLE', '#ef4444');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('berserker_rage', player);
         }
@@ -382,11 +396,11 @@ export class CombatSystem {
         player.isSandevistan = true;
         player.sandevistanTimer = 4.0;
         player.currentSpeed = player.baseSpeed * 1.35; // David moves rapidly while world is slowed!
-        if (this.audio.playSandevistanBoot) this.audio.playSandevistanBoot();
-        else if (this.audio.playBarrierHum) this.audio.playBarrierHum();
+        if (this.audio?.playSandevistanBoot) this.audio.playSandevistanBoot();
+        else if (this.audio?.playBarrierHum) this.audio.playBarrierHum();
 
-        this.particles.spawnComicText(player.x, player.y - 36, 'SANDEVISTAN OVERCLOCK! ⚡ TIME DILATION', '#00ff88');
-        this.particles.spawnDashBurst(player.x, player.y, 0, '#00ff88');
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'SANDEVISTAN OVERCLOCK! ⚡ TIME DILATION', '#00ff88');
+        this.particles?.spawnDashBurst?.(player.x, player.y, 0, '#00ff88');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('sandevistan', player);
         }
@@ -398,14 +412,18 @@ export class CombatSystem {
     const chest = player.equipment?.chest;
     if (!chest) return false;
 
+    if (this.eventBus) {
+      this.eventBus.emit('combat:abilityUsed', { player, ability: chest.baseQ || chest.visual, chest });
+    }
+
     if (chest.baseQ === 'overcharge_boost' || chest.visual === 'david_jacket') {
       // David Martinez Base Q: Overcharge Boost (Speed surge +35% for 3.0s)
       player.isOvercharged = true;
       player.overchargeTimer = 3.0;
       player.currentSpeed = player.baseSpeed * 1.35;
-      if (this.audio.playGravitationalSurge) this.audio.playGravitationalSurge();
-      this.particles.spawnComicText(player.x, player.y - 32, 'OVERCHARGE BOOST! ⚡ +35% SPEED', '#00ff88');
-      this.particles.spawnDashBurst(player.x, player.y, player.angle + Math.PI, '#00ff88');
+      if (this.audio?.playGravitationalSurge) this.audio.playGravitationalSurge();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'OVERCHARGE BOOST! ⚡ +35% SPEED', '#00ff88');
+      this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#00ff88');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('overcharge_boost', player);
       }
@@ -415,66 +433,66 @@ export class CombatSystem {
       player.isLimitlessBarrier = true;
       player.limitlessTimer = 3.5;
       player.currentSpeed = player.baseSpeed * 1.45;
-      this.particles.spawnComicText(player.x, player.y - 32, 'INFINITY BARRIER! 🌀', '#00f0ff');
-      this.particles.spawnDashBurst(player.x, player.y, 0, '#00f0ff');
-      this.audio.playBarrierHum();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'INFINITY BARRIER! 🌀', '#00f0ff');
+      this.particles?.spawnDashBurst?.(player.x, player.y, 0, '#00f0ff');
+      this.audio?.playBarrierHum?.();
       if (triggerCinematicCallback) {
         triggerCinematicCallback('limitless_barrier', player);
       }
     } else if (chest.baseQ === 'dismantle' || chest.visual === 'sukuna_robe') {
       // Dismantle: 3 rapid cursed razor slashes
-      this.audio.playDismantleCuts();
-      this.particles.spawnComicText(player.x, player.y - 32, 'DISMANTLE!', '#ff2a5f');
+      this.audio?.playDismantleCuts?.();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'DISMANTLE!', '#ff2a5f');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('dismantle', player);
       }
     } else if (chest.baseQ === 'spartan_kick' || chest.visual === 'toji_shirt') {
       // Spartan Kick: Colossal forward lunge & knockback shockwave + STUN
-      this.audio.playSpartanKick();
+      this.audio?.playSpartanKick?.();
       if (player.startLunge) {
         player.startLunge(player.angle, 880, 0.28);
       }
-      this.particles.spawnComicText(player.x, player.y - 32, 'SPARTAN KICK!', '#38bdf8');
-      this.particles.spawnDashBurst(player.x, player.y, player.angle, '#38bdf8');
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'SPARTAN KICK!', '#38bdf8');
+      this.particles?.spawnDashBurst?.(player.x, player.y, player.angle, '#38bdf8');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('spartan_kick', player);
       }
     } else if (chest.baseQ === 'cannon_arm' || chest.visual === 'guts_berserker_plate') {
       // Guts Cannon Arm: Left arm prosthetic flips open firing explosive blast
-      this.audio.playExplosion();
-      this.particles.spawnComicText(player.x, player.y - 32, 'CANNON BLAST!', '#fbbf24');
+      this.audio?.playExplosion?.();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'CANNON BLAST!', '#fbbf24');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('cannon_arm', player);
       }
     } else if (chest.baseQ === 'odm_gas_boost' || chest.visual === 'odm_harness') {
       // Levi Base Q: ODM Gas Boost
-      this.audio.playOdmGasHiss();
+      this.audio?.playOdmGasHiss?.();
       if (player.startLunge) {
         player.startLunge(player.angle, 780, 0.25);
       }
-      this.particles.spawnComicText(player.x, player.y - 32, 'GAS BOOST! 💨', '#10b981');
-      this.particles.spawnDashBurst(player.x, player.y, player.angle + Math.PI, '#ffffff');
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'GAS BOOST! 💨', '#10b981');
+      this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ffffff');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('odm_gas_boost', player);
       }
     } else if (chest.visual === 'celestial_chest') {
       // Celestial Radiance: Heal 35 HP + Shockwave
       player.hp = Math.min(player.maxHp, player.hp + 35);
-      this.particles.spawnComicText(player.x, player.y - 32, 'CELESTIAL HEAL! +35', '#fbbf24');
-      this.particles.spawnDashBurst(player.x, player.y, 0, '#fbbf24');
-      this.audio.playDescentFanfare();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'CELESTIAL HEAL! +35', '#fbbf24');
+      this.particles?.spawnDashBurst?.(player.x, player.y, 0, '#fbbf24');
+      this.audio?.playDescentFanfare?.();
     } else if (chest.visual === 'steel_chest') {
       // Iron Bastion: 4-second hardened defense
       player.isHardened = true;
       setTimeout(() => (player.isHardened = false), 4000);
-      this.particles.spawnComicText(player.x, player.y - 32, 'IRON BASTION!', '#38bdf8');
-      this.audio.playShieldLock();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'IRON BASTION!', '#38bdf8');
+      this.audio?.playShieldLock?.();
     } else {
       // War Cry
-      this.particles.spawnComicText(player.x, player.y - 32, 'WAR CRY! +SPEED', '#ff3366');
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'WAR CRY! +SPEED', '#ff3366');
       player.vx *= 1.5;
       player.vy *= 1.5;
-      this.audio.playWarCry();
+      this.audio?.playWarCry?.();
     }
 
     return true;

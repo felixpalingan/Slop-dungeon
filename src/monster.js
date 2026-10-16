@@ -4,8 +4,11 @@
  * damage reactions, steering behaviors, and network synchronization.
  */
 
+import { defaultEventBus } from './eventBus.js';
+
 export class Monster {
-  constructor(options = {}) {
+  constructor(options = {}, eventBus = null) {
+    this.eventBus = eventBus || (options?.emit ? options : (options?.eventBus || defaultEventBus));
     this.id = options.id || `m_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     this.type = options.type || 'generic_swarmer';
     this.name = options.name || 'Dungeon Creature';
@@ -125,6 +128,9 @@ export class Monster {
       if (this.onPhase2Trigger) {
         this.onPhase2Trigger(this);
       }
+      if (this.eventBus) {
+        this.eventBus.emit('monster:phase2', { monster: this });
+      }
     }
 
     // Apply knockback
@@ -154,11 +160,28 @@ export class Monster {
         };
       } else {
         this.isDead = true;
+        if (this.eventBus) {
+          this.eventBus.emit('monster:died', { monster: this, attacker });
+        }
       }
     }
 
     // Awaken immediately if hit
     this.isActive = true;
+
+    if (this.eventBus) {
+      this.eventBus.emit('monster:hit', {
+        monster: this,
+        damage,
+        absorbed,
+        hitAngle,
+        knockback,
+        isCrit,
+        attacker,
+        isDead: this.isDead,
+        remainingHp: this.hp
+      });
+    }
 
     return {
       damage,

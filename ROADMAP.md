@@ -50,14 +50,14 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │      ▼                                                                     │
 │  Phase 6: Anime Batch 3, Polish & Public-Ready Build [PLANNED]             │
 │      ▼                                                                     │
-│  Phase 7: Multi-Discipline Engineering & Security Remediation [ACTIVE 🛡️]   │
+│  Phase 7: Multi-Discipline Engineering & Security Remediation [COMPLETED ✅]   │
 │    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity) [COMPLETED ✅]
 │    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG [COMPLETED ✅]
 │    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss) [COMPLETED ✅]
 │    ├── P2: Visual Design System (4px Spacing Grid & WCAG AA Contrast) [COMPLETED ✅]
 │    ├── P2: Frontend Modularization & Canvas Performance [COMPLETED ✅]     │
 │    ├── P3: Backend & Networking Evolution (Host Migration & Schemas) [COMPLETED ✅]
-│    └── P3: Architectural Evolution (DDD EventBus Decoupling)               │
+│    └── P3: Architectural Evolution (DDD EventBus Decoupling) [COMPLETED ✅] │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -192,7 +192,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 
 ---
 
-### Phase 7: Multi-Discipline Engineering & Security Remediation `[ACTIVE 🛡️]`
+### Phase 7: Multi-Discipline Engineering & Security Remediation `[COMPLETED ✅]`
 *Synthesized from the comprehensive 7-agent engineering audit (`/agency-ui-designer`, `/agency-ux-architect`, `/agency-backend-architect`, `/agency-frontend-developer`, `/agency-application-security-engineer`, `/agency-software-architect`, `/agency-test-automation-engineer`).*
 
 - **P0: Critical Security Hardening** `[COMPLETED ✅]`:
@@ -222,5 +222,10 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Expanded room code entropy from 4 to 6 characters (`SLOP-XXXXXX`), reducing collision probability by 1,024× across >1 Billion combinations.
   - Standardized packet validation & schemas in `src/packetSchemas.js` (validating positions, clamped combat damage, and game synchronization).
   - Total test coverage expanded to 60 passing unit tests across 8 test files.
-- **P3: Architectural Evolution**:
-  - Decouple domain entities (`Player`, `Monster`, `Dungeon`) from DOM/Audio via in-memory Domain EventBus.
+- **P3: Architectural Evolution (DDD EventBus Decoupling)** `[COMPLETED ✅]`:
+  - Implemented decoupled in-memory `EventBus` (`src/eventBus.js`) providing resilient pub/sub mechanics (`on`, `off`, `once`, `emit`, `clear`, error boundary isolation).
+  - Adopted ADR-001: Decoupled core domain entities (`Player`, `CombatSystem`, `Monster`) from direct browser Presentation/Infrastructure APIs (DOM and Web Audio).
+  - Entities emit domain events (`player:hudSync`, `player:healthChanged`, `player:staminaChanged`, `player:itemEquipped`, `player:itemUnequipped`, `player:downed`, `player:revived`, `player:died`, `combat:attackLanded`, `combat:abilityUsed`, `monster:hit`, `monster:died`, `monster:phase2`).
+  - Implemented `src/presenters/hudPresenter.js` adapter subscribing to `player:hudSync` to update browser HUD bars and badges with zero domain coupling.
+  - Enabled 100% headless automated testing of domain entities in pure Node.js environments.
+  - Comprehensive unit test suite `tests/unit/eventBus.test.js` brings total test coverage to **78 passing tests across 9 test files**.

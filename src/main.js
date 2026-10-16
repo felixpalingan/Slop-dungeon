@@ -23,11 +23,16 @@ import { sanitizePlayerName, validateCombatDamage, validatePosition, validateSlo
 import { defaultModalManager as modalManager } from './modalManager.js';
 import { ModalController } from './controllers/modalController.js';
 import { StationController } from './controllers/stationController.js';
+import { defaultEventBus } from './eventBus.js';
+import { initHudPresenter } from './presenters/hudPresenter.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
 const input = new InputManager();
 const player = new Player(0, 0);
+
+// Initialize decoupled Presentation Adapter for Domain HUD events (ADR-001)
+initHudPresenter(defaultEventBus);
 
 // Start with standard starter adventurer gear (clean roguelike progression)
 player.equipItem(ITEM_CATALOG['rusty_sword']);
