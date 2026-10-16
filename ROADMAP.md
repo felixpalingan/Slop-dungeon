@@ -52,7 +52,7 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │      ▼                                                                     │
 │  Phase 7: Multi-Discipline Engineering & Security Remediation [ACTIVE 🛡️]   │
 │    ├── P0: Critical Security Hardening (XSS, CSP, WebRTC Sanity) [COMPLETED ✅]
-│    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG          │
+│    ├── P1: Test Automation (Vitest, Playwright E2E) & Seeded PRNG [COMPLETED ✅]
 │    ├── P1: UX Architecture (LIFO Modal Stack & Backdrop Dismiss)           │
 │    ├── P2: Frontend Modularization (Deconstruct 5,500-line main.js)        │
 │    ├── P2: Visual Design System (4px Spacing Grid & WCAG AA Contrast)      │
@@ -198,10 +198,11 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Remediate Stored DOM XSS in Lobby player list (`remote.name` innerHTML injection in `src/main.js`).
   - Add strict Content Security Policy (`CSP`) `<meta>` tag in `index.html`.
   - Implement host-side sanity validation for WebRTC damage, speedhack movement, and item drop packets.
-- **P1: Testing & Determinism**:
+- **P1: Testing & Determinism** `[COMPLETED ✅]`:
   - Install `vitest` for domain/combat math unit tests and `@playwright/test` for critical E2E browser flows.
-  - Implement seeded PRNG (`seedrandom`) to enable deterministic, replayable dungeon generation and testing.
+  - Implement seeded PRNG (`seedrandom` / `RandomProvider`) to enable deterministic, replayable dungeon generation and testing.
   - Add `data-testid` attributes across all interactive HUD, inventory, and modal elements.
+  - Suite with 38 unit tests covering PRNG determinism, item catalog, trade-up, gacha odds, combat mitigation, and security sanitization.
 - **P1: UX & Modal Management**:
   - Implement unified LIFO Modal Stack Manager with universal backdrop dismiss.
   - Resolve keyboard hotkey collisions and implement modal focus trapping.

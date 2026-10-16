@@ -10,12 +10,17 @@
   "scripts": {
     "dev": "vite --port 3000 --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "vitest run"
   },
   "dependencies": {
     "peerjs": "^1.5.4"
   },
   "devDependencies": {
-    "vite": "^5.4.2"
+    "@playwright/test": "^1.64.1",
+    "vite": "^5.4.2",
+    "vitest": "^2.1.9"
   }
 }

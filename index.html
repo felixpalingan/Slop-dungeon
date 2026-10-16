@@ -25,7 +25,7 @@
           <div class="player-avatar-preview" id="hud-avatar"></div>
           <div class="player-status">
             <span class="player-name" id="hud-player-name">SlopCrawler</span>
-            <div class="bar-container hp-bar-bg">
+            <div class="bar-container hp-bar-bg" data-testid="hud-hp-bar">
               <div class="bar-fill hp-fill" id="hud-hp-fill" style="width: 100%;"></div>
               <span class="bar-text" id="hud-hp-text">100 / 100</span>
             </div>
@@ -61,8 +61,8 @@
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
-        <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Bikin Room / Mabar Co-op">🎮 BIKIN LOBBY / MABAR</button>
-        <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]">⚙️ SETTINGS</button>
+        <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Bikin Room / Mabar Co-op" data-testid="btn-open-lobby">🎮 BIKIN LOBBY / MABAR</button>
+        <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]" data-testid="hud-settings-btn">⚙️ SETTINGS</button>
       </div>
 
       <!-- Floor Selection & Level Testing Modal (Triggered by [F] or Altar in Lobby) -->
@@ -84,7 +84,7 @@
               <div class="floor-card-theme">Theme: Jujutsu Kaisen</div>
               <div class="floor-card-boss">💀 Boss: Finger Bearer (Special Grade)</div>
               <div class="floor-card-desc">Dark stone crypts, cursed energy, swarmers, and blood sorcery.</div>
-              <button class="floor-warp-btn jjk-btn" data-floor="1">WARP TO FLOOR 1</button>
+              <button class="floor-warp-btn jjk-btn" data-floor="1" data-testid="btn-floor-warp-1">WARP TO FLOOR 1</button>
             </div>
 
             <!-- Floor 2 Card -->
@@ -165,7 +165,7 @@
           <p class="modal-subtitle">Main bareng kawan (hingga 6 pemain). Bikin room baru atau gabung pakai room code.</p>
 
           <div class="lobby-actions">
-            <button id="btn-create-room" class="action-btn primary-btn">👑 BIKIN ROOM / HOST LOBBY</button>
+            <button id="btn-create-room" class="action-btn primary-btn" data-testid="btn-room-create">👑 BIKIN ROOM / HOST LOBBY</button>
 
             <div class="join-row">
               <input type="text" id="input-room-code" placeholder="SLOP-XXXX" maxlength="9" />
@@ -216,7 +216,7 @@
               <span class="slot-label">BOOTS</span>
               <div class="slot-content" id="slot-boots">Empty</div>
             </div>
-            <div class="equip-slot-box weapon-slot" data-slot="weapon">
+            <div class="equip-slot-box weapon-slot" data-slot="weapon" data-testid="inventory-slot-weapon">
               <span class="slot-label">WEAPON (1H/2H)</span>
               <div class="slot-content" id="slot-weapon">Empty</div>
             </div>

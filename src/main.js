@@ -20,6 +20,7 @@ import { BlackjackTable } from './blackjackTable.js';
 import { BlackjackGame } from './blackjack.js';
 import { DevArmoryChest } from './devArmoryChest.js';
 import { SettingsManager } from './settings.js';
+import { sanitizePlayerName, validateCombatDamage, validatePosition, validateSlopsAmount } from './security.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -117,14 +118,6 @@ const runStats = {
   isRunOver: false,
   highestFloor: 0
 };
-
-export function sanitizePlayerName(raw) {
-  if (!raw || typeof raw !== 'string') return 'SlopCrawler';
-  return raw
-    .replace(/[<>'"&/\\{}`]/g, '')
-    .trim()
-    .slice(0, 20) || 'SlopCrawler';
-}
 
 function recordDamageDealt(source = 'local', amount = 0) {
   if (!amount || amount <= 0) return;
@@ -3680,8 +3673,8 @@ network.onPlayerLeft = () => {
 network.onMessageReceived = (fromPeerId, msg) => {
   if (msg.type === 'PLAYER_STATE') {
     const safeName = sanitizePlayerName(msg.name);
-    const safeX = (typeof msg.x === 'number' && !isNaN(msg.x)) ? msg.x : 0;
-    const safeY = (typeof msg.y === 'number' && !isNaN(msg.y)) ? msg.y : 0;
+    const safeX = validatePosition(msg.x, 0);
+    const safeY = validatePosition(msg.y, 0);
     network.remotePlayers.set(fromPeerId, {
       ...msg,
       name: safeName,
@@ -3732,9 +3725,8 @@ network.onMessageReceived = (fromPeerId, msg) => {
       particles.spawnComicText(player.x, player.y - 20, 'BONK!', '#ff0055');
     }
   } else if (msg.type === 'DUMMY_HIT') {
-    const rawDamage = Number(msg.damage);
-    if (!isNaN(rawDamage) && rawDamage > 0) {
-      const sanitizedDamage = Math.min(2500, Math.round(rawDamage));
+    const sanitizedDamage = validateCombatDamage(msg.damage, 2500);
+    if (sanitizedDamage !== null) {
       dummy.takeHit(sanitizedDamage, msg.angle, msg.knockback || (msg.isPull ? -480 : 0));
       if (msg.isPull) {
         dummy.pullTowards(msg.pullX || 0, msg.pullY || 0, 45);
@@ -3960,9 +3952,8 @@ network.onMessageReceived = (fromPeerId, msg) => {
       monsterManager.applyBatchNetworkState(msg.batch);
     }
   } else if (msg.type === 'MONSTER_HIT') {
-    const rawDamage = Number(msg.damage);
-    if (!isNaN(rawDamage) && rawDamage > 0) {
-      const sanitizedDamage = Math.min(2500, Math.round(rawDamage));
+    const sanitizedDamage = validateCombatDamage(msg.damage, 2500);
+    if (sanitizedDamage !== null) {
       const monster = monsterManager.getMonsterById(msg.monsterId);
       if (monster) {
         monster.takeHit(sanitizedDamage, msg.angle, msg.knockback || 0, msg.isCrit);
@@ -3994,9 +3985,9 @@ network.onMessageReceived = (fromPeerId, msg) => {
     spawnShotgunPellets(caster, true);
     if (audio.playCarnageShotgun) audio.playCarnageShotgun();
   } else if (msg.type === 'SLOPS_SYNC') {
-    const safeAmount = Number(msg.amount);
-    if (!isNaN(safeAmount) && safeAmount >= 0) {
-      sharedSlops = Math.min(999999, Math.floor(safeAmount));
+    const safeAmount = validateSlopsAmount(msg.amount, 999999);
+    if (safeAmount !== null) {
+      sharedSlops = safeAmount;
       updateSlopsUI();
     }
   } else if (msg.type === 'MERCHANT_ATTACKED') {

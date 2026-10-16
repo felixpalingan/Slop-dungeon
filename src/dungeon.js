@@ -4,6 +4,8 @@
  * combat room lockdown collision, and Isaac-style chamber mechanics.
  */
 
+import { RandomProvider, defaultRng } from './prng.js';
+
 export const TILES = {
   VOID: 0,
   FLOOR: 1,
@@ -248,13 +250,16 @@ export class Dungeon {
    * Dynamically constructs 7 to 9 branching rooms with GUARANTEED Battle, Treasure, Merchant, and Boss rooms!
    */
   generate(seed = null) {
+    this.seed = seed || `seed-${Date.now()}`;
+    const rng = seed ? new RandomProvider(seed) : defaultRng;
+
     this.rooms = [];
     this.roomsMap.clear();
     this.torches = [];
     this.containers = [];
 
     // Target chamber count: 7 to 9 rooms for a balanced, exciting roguelike floor
-    const targetRoomCount = 7 + Math.floor(Math.random() * 3); // 7, 8, or 9 chambers
+    const targetRoomCount = 7 + Math.floor(rng.random() * 3); // 7, 8, or 9 chambers
 
     // Cardinal directions on grid
     const CARDINAL_DIRS = [
@@ -264,14 +269,8 @@ export class Dungeon {
       { dx: 1, dy: 0, dir: 'east', opp: 'west' }
     ];
 
-    // Helper to shuffle array
-    const shuffle = (arr) => {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    };
+    // Helper to shuffle array deterministically
+    const shuffle = (arr) => rng.shuffle(arr);
 
     // 1. Create Central Spawn Room at (0, 0)
     const spawnRoom = this.createRoom(1, 0, 0, 'spawn');
@@ -288,7 +287,7 @@ export class Dungeon {
     while (this.rooms.length < targetRoomCount && attempts < maxAttempts) {
       attempts++;
       // Pick a random existing room to branch from
-      const parentRoom = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+      const parentRoom = rng.choice(this.rooms);
       const shuffledDirs = shuffle([...CARDINAL_DIRS]);
 
       for (const d of shuffledDirs) {
@@ -303,7 +302,7 @@ export class Dungeon {
           // Already occupied room: occasional loopback (15% chance) if not already connected
           const neighbor = this.roomsMap.get(key);
           const alreadyConnected = parentRoom.doors.some(dr => dr.targetRoomId === neighbor.id);
-          if (!alreadyConnected && Math.random() < 0.15) {
+          if (!alreadyConnected && rng.random() < 0.15) {
             this.connectRooms(parentRoom, neighbor, d.dir, d.opp);
           }
         } else {
@@ -316,7 +315,7 @@ export class Dungeon {
           }
 
           // If more than 1 neighbor, 50% chance to skip to promote branching paths instead of 2x2 blocks
-          if (neighborCount > 1 && Math.random() < 0.5) continue;
+          if (neighborCount > 1 && rng.random() < 0.5) continue;
 
           // Create new room at (nGx, nGy)
           const newRoom = this.createRoom(roomIdCounter++, nGx, nGy, 'combat');
@@ -388,7 +387,7 @@ export class Dungeon {
     const midDistanceRooms = available.filter(r => (distances.get(r.id) || 0) >= 1);
     if (midDistanceRooms.length > 0) {
       // Pick random mid-distance room
-      merchantCandidate = midDistanceRooms[Math.floor(Math.random() * midDistanceRooms.length)];
+      merchantCandidate = rng.choice(midDistanceRooms);
     } else {
       merchantCandidate = available[0];
     }
@@ -456,7 +455,7 @@ export class Dungeon {
     };
 
     // 11. Place fixtures (Torches & Destructible Pots)
-    this.populateFixtures();
+    this.populateFixtures(rng);
 
     return this;
   }
@@ -464,10 +463,9 @@ export class Dungeon {
   /**
    * Places torches in chamber corners and destructible pots along walls
    */
-  populateFixtures() {
+  populateFixtures(rng = defaultRng) {
     this.torches = [];
     this.containers = [];
-    let containerId = 1;
 
     for (const room of this.rooms) {
       // Place torches in the 4 corners of each room (respecting North wall top-down thickness)
@@ -491,7 +489,7 @@ export class Dungeon {
           y: room.centerY + c.oy,
           color: torchColor,
           glow: torchGlow,
-          flicker: Math.random() * Math.PI * 2
+          flicker: (rng ? rng.random() : Math.random()) * Math.PI * 2
         };
         this.torches.push(t);
         room.torches.push(t);

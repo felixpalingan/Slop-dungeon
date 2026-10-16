@@ -4,6 +4,8 @@
  * All items feature procedural stats and distinct 2D shape rendering parameters.
  */
 
+import { defaultRng } from './prng.js';
+
 export const ItemRarity = {
   COMMON: { name: 'Common', color: '#94a3b8', border: '#475569' },
   RARE: { name: 'Rare', color: '#38bdf8', border: '#0284c7' },
@@ -856,7 +858,7 @@ export function getItemSellPrice(item) {
  * Trade-Up Forge: Requires exactly 3 items of the exact same rarity.
  * Consumes the 3 items and yields 1 random item of the next higher rarity tier.
  */
-export function executeTradeUp(items = []) {
+export function executeTradeUp(items = [], rng = defaultRng) {
   if (items.length !== 3) {
     return { success: false, error: 'Trade-up requires exactly 3 items!' };
   }
@@ -874,9 +876,10 @@ export function executeTradeUp(items = []) {
   const allGear = Object.values(ITEM_CATALOG).filter(it => it.slot !== 'consumable');
   const pool = allGear.filter(it => getRarityKey(it) === targetRarity);
 
+  const rand = (rng && typeof rng.random === 'function') ? rng.random() : Math.random();
   const resultItem = pool.length > 0
-    ? pool[Math.floor(Math.random() * pool.length)]
-    : allGear[Math.floor(Math.random() * allGear.length)];
+    ? pool[Math.floor(rand * pool.length)]
+    : allGear[Math.floor(rand * allGear.length)];
 
   return {
     success: true,
@@ -893,12 +896,13 @@ export function executeTradeUp(items = []) {
  * - 45% Upgrade: Item promoted to next rarity tier
  * - 5% Jackpot: Secret Anime Mythic drop!
  */
-export function executeGachaSpin(wageredItem) {
+export function executeGachaSpin(wageredItem, rng = defaultRng) {
   if (!wageredItem) {
     return { success: false, error: 'No item selected for wager!' };
   }
 
-  const roll = Math.random() * 100; // 0 to 100
+  const rand = (rng && typeof rng.random === 'function') ? rng.random() : Math.random();
+  const roll = rand * 100; // 0 to 100
   const getRarityKey = (it) => (typeof it.rarity === 'string' ? it.rarity : (it.rarity?.name || 'COMMON')).toUpperCase();
   const currentRarity = getRarityKey(wageredItem);
 
@@ -916,9 +920,10 @@ export function executeGachaSpin(wageredItem) {
     const targetRarity = NEXT_RARITY_TIER[currentRarity] || 'LEGENDARY';
     const allGear = Object.values(ITEM_CATALOG).filter(it => it.slot !== 'consumable');
     const pool = allGear.filter(it => getRarityKey(it) === targetRarity);
+    const pickRand = (rng && typeof rng.random === 'function') ? rng.random() : Math.random();
     const resultItem = pool.length > 0
-      ? pool[Math.floor(Math.random() * pool.length)]
-      : allGear[Math.floor(Math.random() * allGear.length)];
+      ? pool[Math.floor(pickRand * pool.length)]
+      : allGear[Math.floor(pickRand * allGear.length)];
 
     return {
       success: true,
@@ -930,8 +935,9 @@ export function executeGachaSpin(wageredItem) {
   } else {
     // 5% CHANCE: JACKPOT ANIME MYTHIC!
     const mythicPool = Object.values(ITEM_CATALOG).filter(it => getRarityKey(it) === 'MYTHIC');
+    const pickRand = (rng && typeof rng.random === 'function') ? rng.random() : Math.random();
     const resultItem = mythicPool.length > 0
-      ? mythicPool[Math.floor(Math.random() * mythicPool.length)]
+      ? mythicPool[Math.floor(pickRand * mythicPool.length)]
       : ITEM_CATALOG['lapse_blue'];
 
     return {
