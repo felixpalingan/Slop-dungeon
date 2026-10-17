@@ -12,45 +12,73 @@ export class ReadyCircle {
     this.countdown = 3.0; // 3 second countdown
     this.isCountingDown = false;
     this.allReady = false;
+    this.hasTriggered = false;
     this.onDescentTriggered = null;
+    this.readyPlayerCount = 0;
+    this.totalPlayerCount = 1;
   }
 
   isEntityInside(entity) {
+    if (!entity) return false;
     const dist = Math.hypot(entity.x - this.x, entity.y - this.y);
     return dist <= this.radius;
   }
 
-  update(dt, localPlayer, remotePlayersMap) {
+  reset() {
+    this.countdown = 3.0;
+    this.isCountingDown = false;
+    this.allReady = false;
+    this.hasTriggered = false;
+  }
+
+  update(dt, localPlayer, remotePlayersMap = new Map()) {
     this.pulseTime += dt * 3;
 
-    // Check if local player is inside
-    const localInside = this.isEntityInside(localPlayer);
+    // Check if local player is alive and inside
+    const localAlive = !!(localPlayer && !localPlayer.isDead && !localPlayer.isDowned);
+    const localInside = localAlive && this.isEntityInside(localPlayer);
 
-    // Check if all remote players are inside
+    let readyCount = localInside ? 1 : 0;
+    let totalCount = localAlive ? 1 : 0;
     let allRemotesInside = true;
-    for (const [_, remote] of remotePlayersMap.entries()) {
-      if (!this.isEntityInside(remote)) {
-        allRemotesInside = false;
-        break;
+
+    if (remotePlayersMap && typeof remotePlayersMap.values === 'function') {
+      for (const remote of remotePlayersMap.values()) {
+        if (!remote) continue;
+        // Only count living remote peers
+        if (!remote.isDead && !remote.isDowned) {
+          totalCount++;
+          if (this.isEntityInside(remote)) {
+            readyCount++;
+          } else {
+            allRemotesInside = false;
+          }
+        }
       }
     }
 
-    // Party is ready if local player + all connected remotes are inside
-    this.allReady = localInside && allRemotesInside;
+    this.readyPlayerCount = readyCount;
+    this.totalPlayerCount = Math.max(1, totalCount);
+
+    // Party is ready if local player + all living remote teammates are inside
+    this.allReady = localInside && allRemotesInside && totalCount > 0;
 
     if (this.allReady) {
       this.isCountingDown = true;
       this.countdown -= dt;
       if (this.countdown <= 0) {
         this.countdown = 0;
-        if (this.onDescentTriggered) {
-          this.onDescentTriggered();
-          this.onDescentTriggered = null; // trigger once
+        if (!this.hasTriggered) {
+          this.hasTriggered = true;
+          if (typeof this.onDescentTriggered === 'function') {
+            this.onDescentTriggered();
+          }
         }
       }
     } else {
       this.isCountingDown = false;
       this.countdown = 3.0; // reset countdown if someone steps out
+      this.hasTriggered = false;
     }
   }
 
@@ -107,15 +135,23 @@ export class ReadyCircle {
 
     if (this.isCountingDown) {
       ctx.fillStyle = '#00ff88';
-      const countDisplay = Math.ceil(this.countdown);
+      const countDisplay = Math.max(1, Math.ceil(this.countdown));
       ctx.font = '900 24px "JetBrains Mono", monospace';
       ctx.fillText(`DESCENDING IN ${countDisplay}...`, 0, 0);
     } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('STAND HERE TO READY UP', 0, -6);
-      ctx.font = '600 11px "Outfit", sans-serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('All party members must gather', 0, 12);
+      if (this.totalPlayerCount > 1) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`READY: ${this.readyPlayerCount}/${this.totalPlayerCount} PLAYERS`, 0, -6);
+        ctx.font = '600 11px "Outfit", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('All party members must gather', 0, 12);
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('STAND HERE TO READY UP', 0, -6);
+        ctx.font = '600 11px "Outfit", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('Step inside to begin run', 0, 12);
+      }
     }
 
     ctx.restore();

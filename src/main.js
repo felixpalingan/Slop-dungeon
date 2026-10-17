@@ -1567,6 +1567,7 @@ function dropAllPlayerItemsOnDeath(deadPlayer) {
 }
 
 function startFloorDescent(floorNumber, broadcast = true) {
+  readyCircle.reset();
   // Ensure any dev or floor menus are closed
   closeDevArmoryModal();
   closeFloorModal();
@@ -1686,10 +1687,26 @@ function startFloorDescent(floorNumber, broadcast = true) {
 window.startFloorDescent = startFloorDescent;
 
 readyCircle.onDescentTriggered = () => {
-  startFloorDescent(1);
+  if (network.isHost || !network.peer || network.remotePlayers.size === 0) {
+    startFloorDescent(1, true);
+  } else {
+    network.sendToHost({ type: 'REQUEST_FLOOR_DESCENT', floorNumber: 1 });
+  }
 };
 
 function returnToLobby(broadcast = true) {
+  readyCircle.reset();
+  if (!readyCircle.onDescentTriggered) {
+    readyCircle.onDescentTriggered = () => {
+      if (network.isHost || !network.peer || network.remotePlayers.size === 0) {
+        startFloorDescent(1, true);
+      } else {
+        network.sendToHost({ type: 'REQUEST_FLOOR_DESCENT', floorNumber: 1 });
+      }
+    };
+  }
+  modalManager.close('game-over-modal');
+
   currentFloor = 0;
   currentDungeon = null;
   slopMerchant = null;
@@ -1711,6 +1728,17 @@ function returnToLobby(broadcast = true) {
   player.reviveProgress = 0;
   player.hp = player.maxHp;
   player.syncHUD();
+
+  // Reset remote players to healthy lobby state
+  for (const [_, remote] of network.remotePlayers.entries()) {
+    if (remote) {
+      remote.isDead = false;
+      remote.isDowned = false;
+      remote.hp = remote.maxHp || 100;
+      remote.x = 0;
+      remote.y = 0;
+    }
+  }
 
   const gameOverModalEl = document.getElementById('game-over-modal');
   if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
@@ -3057,8 +3085,13 @@ if (btnReturnLobbyFromGo) {
     modalManager.close('game-over-modal');
     if (network.isHost) {
       network.broadcast({ type: 'RETURN_TO_LOBBY' });
+      returnToLobby();
+    } else if (network.peer && network.isConnected) {
+      network.sendToHost({ type: 'REQUEST_RETURN_TO_LOBBY' });
+      returnToLobby();
+    } else {
+      returnToLobby();
     }
-    returnToLobby();
   });
 }
 
@@ -3958,6 +3991,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
   } else if (msg.type === 'RETURN_TO_LOBBY') {
     returnToLobby(false);
+  } else if (msg.type === 'REQUEST_RETURN_TO_LOBBY') {
+    if (network.isHost) {
+      returnToLobby(true);
+    }
   } else if (msg.type === 'REQUEST_FLOOR_DESCENT') {
     if (network.isHost) {
       startFloorDescent(msg.floorNumber || (currentFloor + 1), true);
@@ -5265,6 +5302,7 @@ function gameLoop(now) {
   if (player.isDead && currentFloor === 0) {
     if (input.justPressedSpace || input.justPressedR) {
       player.revive(1.0);
+      readyCircle.reset();
       particles.spawnComicText(player.x, player.y - 30, 'RESPAWNED! 🏕️', '#38bdf8');
       player.x = 0;
       player.y = 0;
