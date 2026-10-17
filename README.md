@@ -5,6 +5,7 @@
     <strong>A chaotic 1–6 player cooperative roguelike dungeon crawler built with pure HTML5 Canvas & WebRTC Peer-to-Peer multiplayer.</strong>
   </p>
   <p align="center">
+    <a href="https://slop-dungeon.vercel.app"><img src="https://img.shields.io/badge/Play_Live-slop--dungeon.vercel.app-00f0ff.svg?style=flat-square&logo=vercel" alt="Play Live" /></a>
     <a href="https://github.com/felixpalingan/Slop-dungeon/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/Multiplayer-WebRTC%20P2P-cyan.svg?style=flat-square" alt="WebRTC P2P" />
     <img src="https://img.shields.io/badge/Graphics-HTML5%20Canvas%202D-violet.svg?style=flat-square" alt="HTML5 Canvas" />
@@ -19,6 +20,8 @@
 ## 📖 Overview
 
 **Slop Dungeon** is a lightweight, zero-install, serverless roguelike dungeon crawler engineered for high-energy friend-group sessions. Jump straight into procedural chamber floors directly in any modern desktop web browser. 
+
+🎮 **Live Production Deployment**: [https://slop-dungeon.vercel.app](https://slop-dungeon.vercel.app)
 
 Players coordinate via ephemeral **6-character room codes** (`SLOP-XXXX`), equip over 54 distinct procedural items inspired by iconic anime archetypes, unleash screen-shattering cinematic ultimates, manage a shared party wallet of **Slops**, gamble items at the **Slop Merchant's Gacha Altar** (or Blackjack Table), and face multi-phase room-filling bosses.
 
@@ -168,6 +171,7 @@ Because Slop Dungeon utilizes client-side WebRTC P2P for networking, it can be d
 - **[LICENSE](LICENSE)**: Open-source MIT License terms and conditions.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Coding conventions, pull request workflows, and issue reporting standards.
 - **[SECURITY.md](SECURITY.md)**: Vulnerability disclosure policies and maintainer contact points.
+- **[ROADMAP.md](ROADMAP.md)**: Phased engineering roadmap and multi-discipline architecture plan.
 - **[ANIME_EQUIPMENT.md](ANIME_EQUIPMENT.md)**: Comprehensive master catalog of all 54 items, stats, and set bonus mechanics.
 
 ---
