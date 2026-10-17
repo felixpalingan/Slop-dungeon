@@ -250,6 +250,7 @@ monsterManager.onMonsterKilled = (monster) => {
   const isCyber = monster.theme === 'cyberpunk' || (currentDungeon && currentDungeon.themeKey === 'cyberpunk');
   const isAot = monster.theme === 'aot' || (currentDungeon && currentDungeon.themeKey === 'aot');
   const isBerserk = monster.theme === 'berserk' || (currentDungeon && currentDungeon.themeKey === 'berserk');
+  const isOpm = monster.theme === 'opm' || (currentDungeon && currentDungeon.themeKey === 'opm');
   const isBoss = monster.archetype === 'boss';
 
   // Only spawn mob kill text if not the final boss (boss has dedicated onBossKilled banner)
@@ -269,11 +270,42 @@ monsterManager.onMonsterKilled = (monster) => {
       killText = 'APOSTLE PURGED! 🩸';
       killColor = '#ef4444';
       burstColor = '#dc2626';
+    } else if (isOpm) {
+      killText = 'MONSTER EXTERMINATED! 💥';
+      killColor = '#facc15';
+      burstColor = '#eab308';
     }
     particles.spawnComicText(monster.x, monster.y - 20, killText, killColor);
     particles.spawnDashBurst(monster.x, monster.y, 0, burstColor);
   }
   cinematics.addScreenShake(3);
+
+  // Black Sperm Cell Division: on death, splits into 2 mini-swarmers if not already a split child
+  if (monster.type === 'black_sperm' && !monster.isSplitChild && (network.isHost || !network.isConnected)) {
+    for (let s = 0; s < 2; s++) {
+      const splitMob = new Monster({
+        id: `split_${monster.id}_${s}_${Date.now()}`,
+        type: 'black_sperm',
+        name: 'Black Sperm Cell Fragment',
+        theme: 'opm',
+        archetype: 'swarmer',
+        x: monster.x + (s === 0 ? -16 : 16),
+        y: monster.y + (Math.random() - 0.5) * 12,
+        hp: 24,
+        radius: 12,
+        speed: 210,
+        roomId: monster.roomId,
+        isActive: true
+      });
+      splitMob.isSplitChild = true;
+      splitMob.onAttack = (target) => {
+        audio.playBonk();
+        applyDamageToTarget(target, 8, splitMob.angle, 120, '-8 (FRAGMENT SLAP)', '#ffffff');
+      };
+      monsterManager.addMonster(splitMob);
+    }
+    particles.spawnComicText(monster.x, monster.y - 20, 'CELL DIVISION! 👥', '#ffffff');
+  }
 
   // Drop Slops coins from defeated monster! (Will home towards the killer player if left uncollected)
   const killer = monster.lastAttacker || player;
@@ -326,6 +358,9 @@ monsterManager.onBossKilled = (boss) => {
   } else if (currentDungeon && currentDungeon.themeKey === 'berserk') {
     bossTitle = 'NOSFERATU ZODD SLAIN! 🏆🩸';
     bossColor = '#ef4444';
+  } else if (currentDungeon && currentDungeon.themeKey === 'opm') {
+    bossTitle = 'CARNAGE KABUTO OBLITERATED! 🏆💥';
+    bossColor = '#facc15';
   }
   particles.spawnComicText(boss.x, boss.y - 40, bossTitle, bossColor);
 
@@ -662,6 +697,48 @@ function populateFloorMonsters(dungeon) {
           speed = 180;
           name = 'Possessed Corpse Legionary';
         }
+      } else if (theme === 'opm') {
+        if (m === 0) {
+          // 1 Heavy Brute per chamber
+          monsterType = 'fuhrer_ugly';
+          archetype = 'brute';
+          hp = 310;
+          radius = 32;
+          speed = 75;
+          name = 'Fuhrer Ugly (Disaster Level: Dragon)';
+        } else if (m === 1 || m === 2) {
+          // 2 Ranged Casters per chamber
+          monsterType = 'homeless_cultist';
+          archetype = 'ranged';
+          hp = 85;
+          radius = 20;
+          speed = 110;
+          name = 'Homeless Emperor Cultist';
+        } else if (m === 3) {
+          // 1 Front-Shield Charger
+          monsterType = 'rhino_wrestler';
+          archetype = 'brute';
+          hp = 220;
+          radius = 26;
+          speed = 140;
+          name = 'Rhino Wrestler (100-Point Horn)';
+        } else if (m === 4) {
+          // 1 Disruptor Flashlight Gremlin
+          monsterType = 'manako_stalker';
+          archetype = 'swarmer';
+          hp = 75;
+          radius = 18;
+          speed = 135;
+          name = 'Manako Subterranean Stalker';
+        } else {
+          // Black Sperm Swarmers
+          monsterType = 'black_sperm';
+          archetype = 'swarmer';
+          hp = 52;
+          radius = 16;
+          speed = 190;
+          name = 'Black Sperm Cell';
+        }
       } else {
         // Default JJK Theme
         if (m === 0) {
@@ -725,6 +802,10 @@ function populateFloorMonsters(dungeon) {
           } else if (theme === 'berserk') {
             audio.playClang();
             applyDamageToTarget(target, 14, monster.angle, 170, '-14 (RUSTED FALCHION)', '#ef4444');
+          } else if (theme === 'opm') {
+            audio.playBonk();
+            const slapLabel = monster.type === 'manako_stalker' ? '-8 (EYE POKE)' : '-12 (SPERM SLAP)';
+            applyDamageToTarget(target, monster.type === 'manako_stalker' ? 8 : 12, monster.angle, 150, slapLabel, '#facc15');
           } else {
             audio.playFlyHeadBuzz();
             applyDamageToTarget(target, 12, monster.angle, 160, '-12 (CURSE BITE)', '#c084fc');
@@ -780,6 +861,22 @@ function populateFloorMonsters(dungeon) {
               maxDist: 520
             });
             particles.spawnComicText(monster.x, monster.y - 24, 'BLOOD CURSE!', '#dc2626');
+          } else if (theme === 'opm') {
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: monster.x,
+              y: monster.y,
+              vx: Math.cos(monster.angle) * 320,
+              vy: Math.sin(monster.angle) * 320,
+              damage: 24,
+              caster: monster,
+              color: '#facc15',
+              radius: 12,
+              life: 2.2,
+              maxDist: 540
+            });
+            particles.spawnComicText(monster.x, monster.y - 24, 'LIGHT SPHERE! ✨', '#fde047');
           } else {
             audio.playFlyHeadBuzz();
             cinematics.spawnProjectile({
@@ -833,6 +930,18 @@ function populateFloorMonsters(dungeon) {
               const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
               if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
                 applyDamageToTarget(target, 44, monster.angle, 580, '-44 HEAVY CLEAVE!', '#ef4444');
+              }
+            }
+          } else if (theme === 'opm') {
+            audio.playHammerSmash();
+            cinematics.addScreenShake(11);
+            particles.spawnDashBurst(monster.x, monster.y, 0, '#ef4444');
+            const bruteLabel = monster.type === 'fuhrer_ugly' ? 'FACE CAVING PUNCH! 👊' : 'RHINO CHARGE HORN! 🦏';
+            particles.spawnComicText(monster.x, monster.y - 30, bruteLabel, '#facc15');
+            if (target) {
+              const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+              if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 42, monster.angle, 580, '-42 HEAVY IMPACT!', '#facc15');
               }
             }
           } else {
@@ -1547,6 +1656,192 @@ function populateFloorMonsters(dungeon) {
               const dist = Math.hypot(target.x - escortMonster.x, target.y - escortMonster.y);
               if (dist <= escortMonster.radius * 2.2 + (target.radius || 24)) {
                 applyDamageToTarget(target, 40, escortMonster.angle, 520, '-40 EXECUTION CLEAVE!', '#ef4444');
+              }
+            }
+          };
+        }
+
+        monsterManager.addMonster(escortMonster);
+      }
+    } else if (theme === 'opm') {
+      // Floor 5 Boss: Carnage Kabuto (The Artificial Monster)
+      const boss = new Monster({
+        id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+        type: 'carnage_kabuto',
+        name: 'Carnage Kabuto (The Artificial Insect God)',
+        theme,
+        archetype: 'boss',
+        x: dungeon.bossRoom.centerX,
+        y: dungeon.bossRoom.centerY - 50,
+        hp: 1300,
+        radius: 48,
+        speed: 88,
+        deathType: 'kabuto_splatter',
+        roomId: dungeon.bossRoom.id,
+        isActive: false // Dormant until player enters Boss Sanctum!
+      });
+
+      boss.onPhase2Trigger = (b) => {
+        audio.playEnrageRoar();
+        cinematics.addScreenShake(22);
+        particles.spawnComicText(b.x, b.y - 55, '💥 CARNAGE MODE UNLEASHED! UNTIL NEXT SATURDAY! 🪲', '#facc15');
+        particles.spawnDashBurst(b.x, b.y, 0, '#eab308');
+        b.radius = 54;
+        b.baseSpeed = 160;
+      };
+
+      boss.onBossStartDying = (b) => {
+        audio.playHammerSmash();
+        cinematics.addScreenShake(18);
+        particles.spawnComicText(b.x, b.y - 45, 'GENIUS CARAPACE SHATTERING... 🪲', '#facc15');
+      };
+
+      // Boss Windup Telegraph Callbacks
+      boss.onBossWindup = (attackIndex, phase, duration) => {
+        if (attackIndex === 1) {
+          const text = phase === 2 ? '💥 CARNAGE BLITZ 8-DIRECTIONAL RAMPAGE! ⚡' : '⚠️ HYPERSONIC BEETLE DASH! 🪲';
+          const col = phase === 2 ? '#ef4444' : '#facc15';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 2) {
+          const text = phase === 2 ? '🔥 CARNAGE AIR PRESSURE BARRAGE! 🌪️' : '⚠️ AIR CANNON SNEEZE WINDUP! 💨';
+          const col = phase === 2 ? '#f59e0b' : '#06b6d4';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 3) {
+          const text = phase === 2 ? '🌌 CEILING SMASH SEISMIC BURST NOVA! 💥' : '⚠️ SEISMIC HORN UPPERCUT! 🪲';
+          const col = phase === 2 ? '#dc2626' : '#ef4444';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        }
+      };
+
+      // Attack 1: Melee / Dash (Phase 1: Hypersonic Beetle Dash -> Phase 2: Supersonic Carnage Blitz)
+      boss.onBossAttack1 = (target, phase) => {
+        if (phase === 2) {
+          audio.playHammerSmash();
+          boss.vx = Math.cos(boss.angle) * 520;
+          boss.vy = Math.sin(boss.angle) * 520;
+          cinematics.addScreenShake(18);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#ef4444');
+          particles.spawnComicText(boss.x, boss.y - 40, 'CARNAGE BLITZ! 💥', '#ef4444');
+          applyDamageToTarget(target, 52, boss.angle, 680, '-52 CARNAGE BLITZ!', '#ef4444');
+        } else {
+          audio.playHammerSmash();
+          boss.vx = Math.cos(boss.angle) * 360;
+          boss.vy = Math.sin(boss.angle) * 360;
+          cinematics.addScreenShake(12);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#facc15');
+          particles.spawnComicText(boss.x, boss.y - 36, 'BEETLE DASH! 🪲', '#facc15');
+          applyDamageToTarget(target, 36, boss.angle, 480, '-36 BEETLE TACKLE!', '#facc15');
+        }
+      };
+
+      // Attack 2: Ranged / Conical Air Cannon (Phase 1: 3 Air Shocks -> Phase 2: 6 Burning Pressure Orbs)
+      boss.onBossAttack2 = (target, phase) => {
+        audio.playLaserShot();
+        cinematics.addScreenShake(phase === 2 ? 14 : 10);
+        const count = phase === 2 ? 6 : 3;
+        const spread = phase === 2 ? 0.95 : 0.55;
+        const speed = phase === 2 ? 440 : 340;
+        const damage = phase === 2 ? 32 : 24;
+
+        for (let i = 0; i < count; i++) {
+          const offsetAngle = (i - (count - 1) / 2) * (spread / (count - 1 || 1));
+          const fireAngle = boss.angle + offsetAngle;
+          cinematics.spawnProjectile({
+            type: 'bot_energy_orb',
+            x: boss.x + Math.cos(fireAngle) * 35,
+            y: boss.y + Math.sin(fireAngle) * 35,
+            vx: Math.cos(fireAngle) * speed,
+            vy: Math.sin(fireAngle) * speed,
+            damage,
+            caster: boss,
+            color: phase === 2 ? '#ef4444' : '#facc15',
+            radius: 13,
+            life: 2.2,
+            maxDist: 600
+          });
+        }
+        particles.spawnComicText(boss.x, boss.y - 36, phase === 2 ? 'CARNAGE PRESSURE BARRAGE! 🔥' : 'AIR CANNON BLAST! 💨', phase === 2 ? '#ef4444' : '#06b6d4');
+      };
+
+      // Attack 3: AoE / Seismic (Phase 1: 4-way Horn Slam -> Phase 2: Ceiling Smash Radial Nova)
+      boss.onBossAttack3 = (target, phase) => {
+        audio.playHammerSmash();
+        const screenShake = phase === 2 ? 22 : 14;
+        cinematics.addScreenShake(screenShake);
+
+        const orbCount = phase === 2 ? 10 : 4;
+        const orbSpeed = phase === 2 ? 300 : 220;
+        const orbDamage = phase === 2 ? 35 : 25;
+
+        for (let o = 0; o < orbCount; o++) {
+          const orbAngle = (o / orbCount) * Math.PI * 2;
+          cinematics.spawnProjectile({
+            type: 'bot_energy_orb',
+            x: boss.x + Math.cos(orbAngle) * 30,
+            y: boss.y + Math.sin(orbAngle) * 30,
+            vx: Math.cos(orbAngle) * orbSpeed,
+            vy: Math.sin(orbAngle) * orbSpeed,
+            damage: orbDamage,
+            caster: boss,
+            color: phase === 2 ? '#dc2626' : '#f59e0b',
+            radius: 12,
+            life: 2.4,
+            maxDist: 500
+          });
+        }
+
+        particles.spawnDashBurst(boss.x, boss.y, 0, phase === 2 ? '#dc2626' : '#facc15');
+        particles.spawnComicText(boss.x, boss.y - 42, phase === 2 ? 'CEILING SMASH SEISMIC NOVA! 💥' : 'SEISMIC HORN SLAM! 🪲', phase === 2 ? '#dc2626' : '#ef4444');
+
+        if (target) {
+          const dist = Math.hypot(target.x - boss.x, target.y - boss.y);
+          if (dist <= 160) {
+            applyDamageToTarget(target, phase === 2 ? 50 : 36, boss.angle, 600, phase === 2 ? '-50 SEISMIC CEILING CRASH!' : '-36 HORN UPPERCUT!', '#ef4444');
+          }
+        }
+      };
+
+      monsterManager.addMonster(boss);
+
+      // Spawn Elite Escort Guards in Boss Sanctum (1 Fuhrer Ugly, 1 Rhino Wrestler, 2 Black Sperm)
+      const opmEscorts = [
+        { type: 'fuhrer_ugly', archetype: 'brute', hp: 310, radius: 30, speed: 75, ox: -160, oy: 60, name: 'Elite Fuhrer Ugly' },
+        { type: 'rhino_wrestler', archetype: 'brute', hp: 220, radius: 26, speed: 135, ox: 160, oy: -80, name: 'Elite Rhino Wrestler' },
+        { type: 'black_sperm', archetype: 'swarmer', hp: 55, radius: 16, speed: 195, ox: -160, oy: -80, name: 'Elite Black Sperm Cell' },
+        { type: 'black_sperm', archetype: 'swarmer', hp: 55, radius: 16, speed: 195, ox: 160, oy: 60, name: 'Elite Black Sperm Cell' }
+      ];
+
+      for (const esc of opmEscorts) {
+        const escortMonster = new Monster({
+          id: `escort_${dungeon.floorNumber}_${esc.type}_${Date.now()}_${Math.random()}`,
+          type: esc.type,
+          name: esc.name,
+          theme,
+          archetype: esc.archetype,
+          x: dungeon.bossRoom.centerX + esc.ox,
+          y: dungeon.bossRoom.centerY + esc.oy,
+          hp: esc.hp,
+          radius: esc.radius,
+          speed: esc.speed,
+          roomId: dungeon.bossRoom.id,
+          isActive: false
+        });
+
+        if (esc.archetype === 'swarmer') {
+          escortMonster.onAttack = (target) => {
+            audio.playBonk();
+            applyDamageToTarget(target, 14, escortMonster.angle, 160, '-14 (ELITE SPERM SLAP)', '#ffffff');
+          };
+        } else if (esc.archetype === 'brute') {
+          escortMonster.onBruteSlam = (target) => {
+            audio.playHammerSmash();
+            cinematics.addScreenShake(10);
+            particles.spawnDashBurst(escortMonster.x, escortMonster.y, 0, '#ef4444');
+            particles.spawnComicText(escortMonster.x, escortMonster.y - 30, 'HEAVY BRUTE SLAM! 💥', '#facc15');
+            if (target) {
+              const dist = Math.hypot(target.x - escortMonster.x, target.y - escortMonster.y);
+              if (dist <= escortMonster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 42, escortMonster.angle, 540, '-42 BRUTE IMPACT!', '#facc15');
               }
             }
           };

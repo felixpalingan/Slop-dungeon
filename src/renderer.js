@@ -4857,9 +4857,346 @@ export class Renderer {
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-
           ctx.restore();
         }
+      } else if (m.type === 'black_sperm') {
+        // OPM Swarmer: Black Sperm Cell (chibi pitch-black humanoid with yellow antenna)
+        ctx.save();
+        const squish = 1 + Math.sin(m.animTime * 12) * 0.08;
+        ctx.scale(squish, 2 - squish);
+
+        // Pitch black rubbery body
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Wobbly single golden antenna with round bulb
+        const antWave = Math.sin(m.animTime * 14) * 4;
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -m.radius * 0.8);
+        ctx.quadraticCurveTo(antWave, -m.radius * 1.5, antWave * 1.5, -m.radius * 1.8);
+        ctx.stroke();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.arc(antWave * 1.5, -m.radius * 1.8, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Chibi white oval eyes and blank smile
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(-4, -2, 2.5, 3.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(4, -2, 2.5, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-4, -2, 1.2, 0, Math.PI * 2);
+        ctx.arc(4, -2, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle blank grin
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 3, 3, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (m.type === 'manako_stalker') {
+        // OPM Disruptor: Manako Subterranean Stalker (One-eyed gremlin with flashlight beam)
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // Forward Flashlight Vision Cone
+        const beamGrad = ctx.createRadialGradient(0, 0, 10, 140, 0, 160);
+        beamGrad.addColorStop(0, 'rgba(250, 204, 21, 0.45)');
+        beamGrad.addColorStop(0.6, 'rgba(250, 204, 21, 0.15)');
+        beamGrad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        ctx.fillStyle = beamGrad;
+        ctx.beginPath();
+        ctx.moveTo(8, 0);
+        ctx.lineTo(160, -55);
+        ctx.lineTo(160, 55);
+        ctx.closePath();
+        ctx.fill();
+
+        // Chubby gremlin body
+        ctx.fillStyle = '#52525b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#a1a1aa';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Floppy cute ears
+        ctx.fillStyle = '#71717a';
+        ctx.beginPath();
+        ctx.ellipse(-m.radius * 0.3, -m.radius * 0.9, 4, 8, -0.4, 0, Math.PI * 2);
+        ctx.ellipse(-m.radius * 0.3, m.radius * 0.9, 4, 8, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Giant gleaming cyclops eye
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.35, 0, m.radius * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.4, 0, m.radius * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.42, 0, m.radius * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        // Eye specular shine
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.35, -2, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (m.type === 'homeless_cultist') {
+        // OPM Ranged: Homeless Emperor Cultist (Tattered robed caster with floating light orbs)
+        ctx.save();
+        // Tattered beggar robe
+        ctx.fillStyle = '#365314';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#4d7c0f';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Ragged gray beard & cowl
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(-m.radius * 0.6, 2);
+        ctx.lineTo(0, m.radius * 1.1);
+        ctx.lineTo(m.radius * 0.6, 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4 Orbiting Divine Light Spheres
+        for (let orb = 0; orb < 4; orb++) {
+          const orbAng = m.animTime * 3.5 + (orb / 4) * Math.PI * 2;
+          const orbDist = m.radius + 14;
+          const ox = Math.cos(orbAng) * orbDist;
+          const oy = Math.sin(orbAng) * orbDist;
+          const orbColors = ['#fde047', '#38bdf8', '#ec4899', '#4ade80'];
+          ctx.fillStyle = orbColors[orb];
+          ctx.shadowColor = orbColors[orb];
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      } else if (m.type === 'fuhrer_ugly') {
+        // OPM Brute: Fuhrer Ugly (Grotesque muscular mutant with jagged face)
+        if (m.windupTimer > 0) {
+          ctx.strokeStyle = '#ef4444';
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Sickly olive-green lumpy muscular body
+        ctx.fillStyle = '#3f6212';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#14532d';
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        // Bulging shoulder tumors / muscles
+        ctx.fillStyle = '#4d7c0f';
+        ctx.beginPath();
+        ctx.arc(-m.radius * 0.8, -m.radius * 0.5, 10, 0, Math.PI * 2);
+        ctx.arc(m.radius * 0.8, -m.radius * 0.5, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Asymmetric bloodshot bulging eyes
+        ctx.fillStyle = '#fee2e2';
+        ctx.beginPath();
+        ctx.arc(-7, -4, 5, 0, Math.PI * 2);
+        ctx.arc(8, -6, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b91c1c';
+        ctx.beginPath();
+        ctx.arc(-7, -4, 2.2, 0, Math.PI * 2);
+        ctx.arc(8, -6, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Horrific jagged toothy mouth
+        ctx.fillStyle = '#1c1917';
+        ctx.fillRect(-12, 6, 24, 7);
+        ctx.fillStyle = '#fef08a';
+        for (let t = -10; t <= 8; t += 4) {
+          ctx.fillRect(t, 6, 2, 6);
+        }
+      } else if (m.type === 'rhino_wrestler') {
+        // OPM Charger: Rhino Wrestler (Armored rhinoceros with deflection horn)
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // Heavy gray hide
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Red wrestling singlet straps
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-m.radius * 0.6, -m.radius * 0.7);
+        ctx.lineTo(m.radius * 0.4, 0);
+        ctx.moveTo(-m.radius * 0.6, m.radius * 0.7);
+        ctx.lineTo(m.radius * 0.4, 0);
+        ctx.stroke();
+
+        // Colossal front silver horn
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.6, -8);
+        ctx.lineTo(m.radius * 1.55, 0);
+        ctx.lineTo(m.radius * 0.6, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Shimmering deflection glint
+        if (m.isFrontShielded) {
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.8, 0, 16, -Math.PI * 0.5, Math.PI * 0.5);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (m.type === 'carnage_kabuto') {
+        // OPM Boss: Carnage Kabuto (The Artificial Monster - Phase 1 Genius / Phase 2 Carnage Mode)
+        const isPhase2 = m.phase === 2;
+        const pulse = Math.sin(m.animTime * (isPhase2 ? 10 : 5)) * (isPhase2 ? 8 : 4);
+
+        if (m.isDying) {
+          // Death Animation: Insectoid Carapace Shatter & Bio-Ichor Dissolution
+          const deathProg = Math.max(0, 1 - (m.deathTimer / m.deathDuration));
+          ctx.translate((Math.random() - 0.5) * 8 * deathProg, (Math.random() - 0.5) * 8 * deathProg);
+
+          // Green & Purple Ichor splatter burst
+          for (let sp = 0; sp < 10; sp++) {
+            const spAng = (sp / 10) * Math.PI * 2 + m.animTime * 6;
+            const spDist = (m.radius + deathProg * 50) * (0.6 + (sp % 3) * 0.2);
+            ctx.fillStyle = sp % 2 === 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)';
+            ctx.beginPath();
+            ctx.arc(Math.cos(spAng) * spDist, Math.sin(spAng) * spDist, 8 * (1 - deathProg * 0.5), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Bio-energy Aura: Purple in Phase 1, Blood Red & Radioactive Green in Phase 2
+        const auraColor = isPhase2 ? 'rgba(220, 38, 38, 0.45)' : 'rgba(147, 51, 234, 0.25)';
+        ctx.fillStyle = auraColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 26 : 14) + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Telegraph Attack Ring
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.strokeStyle = isPhase2 ? '#dc2626' : '#facc15';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.4 : 2.5), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // 4 Spiked Insectoid Beetle Legs
+        ctx.strokeStyle = isPhase2 ? '#7f1d1d' : '#3b0764';
+        ctx.lineWidth = 4;
+        const legOffsets = [-0.6, -0.2, 0.2, 0.6];
+        for (const lo of legOffsets) {
+          const lY = lo * m.radius;
+          const legWiggle = Math.sin(m.animTime * (isPhase2 ? 18 : 8) + lo) * 5;
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.3, lY);
+          ctx.lineTo(-m.radius * 1.35, lY - 10 + legWiggle);
+          ctx.moveTo(m.radius * 0.3, lY);
+          ctx.lineTo(m.radius * 1.35, lY + 10 - legWiggle);
+          ctx.stroke();
+        }
+
+        // Heavy Carapace Torso: Dark Purple in Phase 1, Crimson & Neon-Green Tiger Stripes in Phase 2!
+        ctx.fillStyle = isPhase2 ? '#991b1b' : '#2e1065';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = isPhase2 ? '#22c55e' : '#a855f7';
+        ctx.lineWidth = isPhase2 ? 4.5 : 3.5;
+        ctx.stroke();
+
+        // Phase 2 Carnage Mode Bio-Hazard Green Stripes
+        if (isPhase2) {
+          ctx.fillStyle = '#22c55e';
+          for (let s = -m.radius * 0.6; s <= m.radius * 0.6; s += 16) {
+            ctx.beginPath();
+            ctx.moveTo(s, -m.radius * 0.7);
+            ctx.lineTo(s + 8, 0);
+            ctx.lineTo(s, m.radius * 0.7);
+            ctx.lineTo(s - 5, 0);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+
+        // Colossal Rhinoceros Beetle Trident Horn
+        ctx.fillStyle = isPhase2 ? '#7f1d1d' : '#1e1b4b';
+        ctx.strokeStyle = isPhase2 ? '#ef4444' : '#facc15';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.4, -14);
+        ctx.lineTo(m.radius * 1.85, 0); // Main central spear horn
+        ctx.lineTo(m.radius * 0.4, 14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Twin lateral trident sub-horns
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.9, -6);
+        ctx.lineTo(m.radius * 1.5, -20);
+        ctx.moveTo(m.radius * 0.9, 6);
+        ctx.lineTo(m.radius * 1.5, 20);
+        ctx.stroke();
+
+        // Blazing Compound Faceted Eyes
+        const eyeColor = isPhase2 ? '#ff003c' : '#facc15';
+        ctx.fillStyle = eyeColor;
+        ctx.shadowColor = eyeColor;
+        ctx.shadowBlur = isPhase2 ? 20 : 10;
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.5, -10, 6, 0, Math.PI * 2);
+        ctx.arc(m.radius * 0.5, 10, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
       } else {
         // Generic / Fallback Monster
         ctx.fillStyle = '#475569';

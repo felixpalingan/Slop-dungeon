@@ -801,7 +801,8 @@ export function getRandomDungeonLoot(themeKey = 'jjk', options = {}) {
     'jjk': ['gojo', 'sukuna', 'toji'],
     'cyberpunk': ['david'],
     'berserk': ['guts'],
-    'aot': ['levi']
+    'aot': ['levi'],
+    'opm': ['saitama']
   };
 
   const targetSets = themeSets[themeKey] || ['gojo', 'sukuna', 'toji'];

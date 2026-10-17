@@ -50,7 +50,7 @@ export class Monster {
     this.isDying = false;
     this.deathTimer = 0;
     this.deathDuration = options.deathDuration || 2.0;
-    this.deathType = options.deathType || (this.type === 'adam_smasher_prototype' ? 'core_detonation' : (this.type === 'finger_bearer' ? 'curse_vaporize' : (this.type === 'armored_titan' ? 'titan_evaporate' : (this.type === 'nosferatu_zodd' ? 'apostle_dissolve' : 'default'))));
+    this.deathType = options.deathType || (this.type === 'adam_smasher_prototype' ? 'core_detonation' : (this.type === 'finger_bearer' ? 'curse_vaporize' : (this.type === 'armored_titan' ? 'titan_evaporate' : (this.type === 'nosferatu_zodd' ? 'apostle_dissolve' : (this.type === 'carnage_kabuto' ? 'kabuto_splatter' : 'default')))));
     this.specialCooldownTimer = 2.0;
     this.isPreparingSpecial = false;
     this.afterImages = [];
@@ -116,6 +116,15 @@ export class Monster {
       damage -= absorbed;
     }
 
+    // Rhino Wrestler 70% frontal armor deflection
+    if (this.type === 'rhino_wrestler') {
+      const diff = Math.abs(Math.atan2(Math.sin(hitAngle - this.angle - Math.PI), Math.cos(hitAngle - this.angle - Math.PI)));
+      if (diff < Math.PI * 0.45) {
+        damage = Math.max(1, Math.round(damage * 0.3));
+        this.isFrontShielded = true;
+      }
+    }
+
     this.hp = Math.max(0, this.hp - damage);
     this.hitFlashTimer = 0.18;
 
@@ -123,7 +132,7 @@ export class Monster {
     if (this.archetype === 'boss' && this.hp <= this.maxHp * 0.5 && !this.phaseTransitionTriggered) {
       this.phase = 2;
       this.phaseTransitionTriggered = true;
-      const speedMult = (this.type === 'adam_smasher_prototype' || this.type === 'armored_titan') ? 1.35 : 1.25;
+      const speedMult = (this.type === 'adam_smasher_prototype' || this.type === 'armored_titan' || this.type === 'carnage_kabuto') ? 1.45 : 1.25;
       this.baseSpeed *= speedMult;
       if (this.onPhase2Trigger) {
         this.onPhase2Trigger(this);
@@ -494,6 +503,14 @@ export class Monster {
           angle: this.angle,
           alpha: 0.65,
           color: '#f59e0b'
+        });
+      } else if (this.type === 'carnage_kabuto' && Math.random() < 0.45) {
+        this.afterImages.push({
+          x: this.x,
+          y: this.y,
+          angle: this.angle,
+          alpha: 0.75,
+          color: Math.random() < 0.5 ? '#ef4444' : '#22c55e'
         });
       }
     }
