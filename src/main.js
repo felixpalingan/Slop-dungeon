@@ -8,7 +8,7 @@ import { Dummy } from './dummy.js';
 import { ReadyCircle } from './readyCircle.js';
 import { CustomizationStation } from './customizationStation.js';
 import { FloorSelectStation } from './floorSelectStation.js';
-import { ITEM_CATALOG, ItemRarity, checkSetBonus, getRandomDungeonLoot, executeTradeUp, executeGachaSpin, getItemSellPrice, SLOP_SELL_VALUES } from './items.js';
+import { ITEM_CATALOG, ItemRarity, checkSetBonus, getRandomDungeonLoot, executeTradeUp, executeGachaSpin, getItemSellPrice, SLOP_SELL_VALUES, NEXT_RARITY_TIER } from './items.js';
 import { CombatSystem } from './combat.js';
 import { GroundLoot } from './groundLoot.js';
 import { CinematicManager } from './cinematics.js';
@@ -2285,11 +2285,25 @@ function renderSellTab() {
   });
 }
 
+// Slot Icon Helper for Clear UI Categorization
+function getItemSlotIcon(slot) {
+  switch (slot) {
+    case 'helmet': return '👑';
+    case 'chest': return '🥋';
+    case 'pants': return '👖';
+    case 'boots': return '🥾';
+    case 'weapon': return '⚔️';
+    case 'offhand': return '🛡️';
+    case 'consumable': return '🧪';
+    default: return '📦';
+  }
+}
+
 // 3. TRADE-UP FORGE
 function renderForgeTab() {
   if (!forgeInventoryGrid) return;
 
-  // Render 3 slots
+  // Render 3 slots with spacious, legible cards
   for (let s = 0; s < 3; s++) {
     const slotEl = document.getElementById(`forge-slot-${s}`);
     if (!slotEl) continue;
@@ -2297,10 +2311,25 @@ function renderForgeTab() {
     if (item) {
       const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
       slotEl.className = 'forge-slot filled';
-      slotEl.innerHTML = `<span style="color:${rarity.color}">${item.name}</span><span style="font-size:0.6rem; color:#94a3b8;">(${item.rarity})</span>`;
+      slotEl.innerHTML = `
+        <div class="forge-slot-item-content">
+          <div class="forge-slot-item-icon">${getItemSlotIcon(item.slot)}</div>
+          <strong class="forge-slot-item-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
+          <div class="forge-slot-item-tags">
+            <span class="forge-slot-item-rarity" style="color:${rarity.color}; border-color:${rarity.color}60; background:${rarity.color}15;">${item.rarity}</span>
+          </div>
+          <span class="forge-slot-remove-hint">✕ remove</span>
+        </div>
+      `;
     } else {
       slotEl.className = 'forge-slot';
-      slotEl.innerHTML = 'Empty';
+      slotEl.innerHTML = `
+        <div class="forge-slot-empty-content">
+          <span class="forge-slot-empty-icon">➕</span>
+          <span class="forge-slot-empty-label">SLOT ${s + 1}</span>
+          <span class="forge-slot-empty-hint">Select Below</span>
+        </div>
+      `;
     }
   }
 
@@ -2314,6 +2343,42 @@ function renderForgeTab() {
     btnExecuteForge.disabled = !isValid;
   }
 
+  // Update Result Preview Slot
+  if (forgeSlotResult) {
+    if (isValid) {
+      const targetRarityKey = NEXT_RARITY_TIER[forgeSlots[0].rarity] || 'EPIC';
+      const targetRarity = ItemRarity[targetRarityKey] || ItemRarity.EPIC;
+      forgeSlotResult.className = 'forge-slot forge-result-slot ready';
+      forgeSlotResult.innerHTML = `
+        <div class="forge-slot-item-content">
+          <div class="forge-slot-item-icon">✨</div>
+          <strong class="forge-slot-item-name" style="color:${targetRarity.color}">1x ${targetRarityKey}</strong>
+          <div class="forge-slot-item-tags">
+            <span class="forge-slot-item-rarity" style="color:${targetRarity.color}; border-color:${targetRarity.color}60; background:${targetRarity.color}20;">NEXT TIER</span>
+          </div>
+        </div>
+      `;
+    } else if (allFilled && !sameRarity) {
+      forgeSlotResult.className = 'forge-slot forge-result-slot';
+      forgeSlotResult.innerHTML = `
+        <div class="forge-slot-empty-content">
+          <span class="forge-slot-empty-icon" style="color:#ef4444">⚠️</span>
+          <span class="forge-slot-empty-label" style="color:#ef4444; font-size:0.65rem;">MISMATCH</span>
+          <span class="forge-slot-empty-hint" style="color:#f87171">Same rarity only</span>
+        </div>
+      `;
+    } else {
+      forgeSlotResult.className = 'forge-slot forge-result-slot';
+      forgeSlotResult.innerHTML = `
+        <div class="forge-slot-empty-content">
+          <span class="forge-slot-empty-icon">🎲</span>
+          <span class="forge-slot-empty-label">NEXT TIER</span>
+          <span class="forge-slot-empty-hint">1x Random Item</span>
+        </div>
+      `;
+    }
+  }
+
   // Render mini backpack picker (excluding items already placed in forge slots)
   forgeInventoryGrid.innerHTML = '';
   const placedIndices = new Set();
@@ -2324,18 +2389,43 @@ function renderForgeTab() {
     }
   });
 
+  const availableItems = player.inventory.filter((item, idx) => !placedIndices.has(idx) && item.slot !== 'consumable');
+  
+  const countEl = document.getElementById('forge-picker-count');
+  if (countEl) {
+    countEl.textContent = `${availableItems.length} Available`;
+  }
+
+  if (availableItems.length === 0) {
+    forgeInventoryGrid.innerHTML = `
+      <div class="forge-empty-notice">
+        <span class="forge-empty-icon">🎒</span>
+        <div class="forge-empty-title">No Available Gear in Backpack</div>
+        <div class="forge-empty-sub">Collect gear in the dungeon or buy from Supplies Shop to trade up!</div>
+      </div>
+    `;
+    return;
+  }
+
   player.inventory.forEach((item, idx) => {
-    if (placedIndices.has(idx)) return;
+    if (placedIndices.has(idx) || item.slot === 'consumable') return;
     const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
     const card = document.createElement('div');
     card.className = 'backpack-item-card mini-card forge-pick-card';
     card.style.cursor = 'pointer';
+    card.style.borderLeft = `3px solid ${rarity.color}`;
     card.innerHTML = `
-      <div class="mini-card-info">
-        <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
-        <div class="mini-card-sub">${item.rarity} • ${item.slot}</div>
+      <div class="mini-card-left">
+        <div class="mini-card-icon-badge">${getItemSlotIcon(item.slot)}</div>
+        <div class="mini-card-info">
+          <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
+          <div class="mini-card-tags">
+            <span class="mini-rarity-pill" style="color:${rarity.color}; border-color:${rarity.color}50; background:${rarity.color}15;">${item.rarity}</span>
+            <span class="mini-slot-label">${item.slot.toUpperCase()}</span>
+          </div>
+        </div>
       </div>
-      <button class="mini-action-btn" style="border-color:#f59e0b; color:#fbbf24;">INSERT</button>
+      <button class="mini-action-btn forge-insert-action">INSERT ➕</button>
     `;
     card.addEventListener('click', () => {
       // Put in first empty forge slot
@@ -2448,29 +2538,48 @@ function renderWheelAltarModal() {
 
   if (altarInventoryGrid) {
     altarInventoryGrid.innerHTML = '';
-    player.inventory.forEach((item) => {
-      const isSelected = altarWagerItem === item;
-      const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
-      const card = document.createElement('div');
-      card.className = `backpack-item-card mini-card wheel-pick-card ${isSelected ? 'selected' : ''}`;
-      card.style.cursor = 'pointer';
-      card.innerHTML = `
-        <div class="mini-card-info">
-          <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
-          <div class="mini-card-sub">${item.rarity} • ${item.slot}</div>
+    const gearItems = player.inventory.filter(it => it.slot !== 'consumable');
+
+    if (gearItems.length === 0) {
+      altarInventoryGrid.innerHTML = `
+        <div class="forge-empty-notice">
+          <span class="forge-empty-icon">🎒</span>
+          <div class="forge-empty-title">No Gear in Backpack</div>
+          <div class="forge-empty-sub">Collect gear from monsters or the shop to wager on the wheel!</div>
         </div>
-        <button class="mini-action-btn" style="border-color:${isSelected ? '#10b981' : '#f59e0b'}; color:${isSelected ? '#4ade80' : '#fbbf24'};">
-          ${isSelected ? 'WAGERED' : 'WAGER'}
-        </button>
       `;
-      card.addEventListener('click', () => {
-        if (wheelAltar && wheelAltar.isSpinning) return;
-        altarWagerItem = item;
-        audio.playSwing();
-        renderWheelAltarModal();
+    } else {
+      gearItems.forEach((item) => {
+        const isSelected = altarWagerItem === item;
+        const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+        const card = document.createElement('div');
+        card.className = `backpack-item-card mini-card wheel-pick-card ${isSelected ? 'selected' : ''}`;
+        card.style.cursor = 'pointer';
+        card.style.borderLeft = `3px solid ${rarity.color}`;
+        card.innerHTML = `
+          <div class="mini-card-left">
+            <div class="mini-card-icon-badge">${getItemSlotIcon(item.slot)}</div>
+            <div class="mini-card-info">
+              <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
+              <div class="mini-card-tags">
+                <span class="mini-rarity-pill" style="color:${rarity.color}; border-color:${rarity.color}50; background:${rarity.color}15;">${item.rarity}</span>
+                <span class="mini-slot-label">${item.slot.toUpperCase()}</span>
+              </div>
+            </div>
+          </div>
+          <button class="mini-action-btn" style="border-color:${isSelected ? '#10b981' : '#f59e0b'}; color:${isSelected ? '#4ade80' : '#fbbf24'};">
+            ${isSelected ? 'WAGERED' : 'WAGER'}
+          </button>
+        `;
+        card.addEventListener('click', () => {
+          if (wheelAltar && wheelAltar.isSpinning) return;
+          altarWagerItem = item;
+          audio.playSwing();
+          renderWheelAltarModal();
+        });
+        altarInventoryGrid.appendChild(card);
       });
-      altarInventoryGrid.appendChild(card);
-    });
+    }
   }
 }
 
