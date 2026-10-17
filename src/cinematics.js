@@ -316,7 +316,15 @@ export class CinematicManager {
     };
   }
 
-  update(dt, targets = [], onHitCallback = null) {
+  _distToSegment(px, py, x1, y1, x2, y2) {
+    const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+  }
+
+  update(dt, targets = [], onHitCallback = null, obstacles = [], onObstacleHitCallback = null) {
     // Screen shake decay
     if (this.screenShake > 0) {
       this.screenShake = Math.max(0, this.screenShake - this.shakeDecay * dt * this.screenShake);
@@ -562,6 +570,8 @@ export class CinematicManager {
     // Update projectiles & hit detection
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const proj = this.projectiles[i];
+      const prevX = proj.x;
+      const prevY = proj.y;
       proj.x += proj.vx * dt;
       proj.y += proj.vy * dt;
       proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - dt : -1;
@@ -569,6 +579,30 @@ export class CinematicManager {
       // Expand projectile radius if applicable (Hollow Purple)
       if (proj.radius && proj.maxRadius) {
         proj.radius = Math.min(proj.maxRadius, proj.radius + 45 * dt);
+      }
+
+      // Check obstacle collision (tactical cover: pillars block all projectiles except piercing ultimates)
+      if (obstacles && obstacles.length > 0 && !proj.piercesObstacles && proj.type !== 'hollow_purple') {
+        let hitObs = null;
+        const projRad = proj.radius || (proj.width ? proj.width * 0.5 : 12);
+        for (const obs of obstacles) {
+          const obsRad = obs.radius || 20;
+          const hitThreshold = projRad + obsRad;
+          const segDist = this._distToSegment(obs.x, obs.y, prevX, prevY, proj.x, proj.y);
+          if (segDist <= hitThreshold) {
+            hitObs = obs;
+            break;
+          }
+        }
+
+        if (hitObs) {
+          proj.life = 0;
+          if (onObstacleHitCallback) {
+            onObstacleHitCallback(hitObs, proj);
+          }
+          this.projectiles.splice(i, 1);
+          continue;
+        }
       }
 
       // Check collision with targets (ONLY local projectiles, NEVER remote projectiles!)

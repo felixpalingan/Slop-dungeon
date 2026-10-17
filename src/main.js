@@ -5578,6 +5578,72 @@ function gameLoop(now) {
         }
       }
     }
+  }, (dungeon && dungeon.currentRoom && dungeon.currentRoom.obstacles) ? dungeon.currentRoom.obstacles : [], (obstacle, proj) => {
+    // Tactical cover: Obstacle / pillar blocks projectile!
+    if (proj.type === 'merchant_rpg_rocket') {
+      audio.playRocketExplosion();
+      cinematics.addScreenShake(18);
+      particles.spawnDashBurst(proj.x, proj.y, 0, '#f97316');
+      particles.spawnComicText(proj.x, proj.y - 32, '💥 RPG BLAST!', '#ef4444');
+
+      // AoE Splash: damages instigator and anyone caught in splash radius!
+      const splashRadius = proj.aoeRadius || 130;
+      const pDist = Math.hypot(player.x - proj.x, player.y - proj.y);
+      if (pDist <= splashRadius) {
+        const splashAngle = Math.atan2(player.y - proj.y, player.x - proj.x);
+        hitPlayer(proj.damage || 65, splashAngle, 650, 'RPG DETONATION! 💥');
+      }
+
+      // Blast nearby remote peers
+      for (const [peerId, remote] of network.remotePlayers.entries()) {
+        const rDist = Math.hypot(remote.x - proj.x, remote.y - proj.y);
+        if (rDist <= splashRadius) {
+          const splashAngle = Math.atan2(remote.y - proj.y, remote.x - proj.x);
+          const kx = Math.cos(splashAngle) * 600;
+          const ky = Math.sin(splashAngle) * 600;
+          const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx, ky };
+          if (network.isHost) network.broadcast(slapMsg);
+          else network.sendToHost(slapMsg);
+        }
+      }
+      return;
+    }
+
+    if (proj.type === 'cannon_arm') {
+      audio.playHammerSmash();
+      cinematics.addScreenShake(14);
+      particles.spawnDashBurst(proj.x, proj.y, 0, '#f59e0b');
+      particles.spawnComicText(proj.x, proj.y - 28, '💥 IMPACT!', '#ef4444');
+      return;
+    }
+
+    if (proj.type === 'bot_micro_missile') {
+      audio.playHammerSmash();
+      cinematics.addScreenShake(8);
+      particles.spawnDashBurst(proj.x, proj.y, 0, '#ef4444');
+      particles.spawnComicText(proj.x, proj.y - 24, '💥 DEFLECTED!', '#f59e0b');
+      return;
+    }
+
+    if (proj.type === 'bot_laser_bolt') {
+      audio.playBonk();
+      particles.spawnDashBurst(proj.x, proj.y, Math.atan2(proj.vy || 0, proj.vx || 0) + Math.PI, '#06b6d4');
+      particles.spawnComicText(proj.x, proj.y - 18, 'BLOCKED! 🛡️', '#06b6d4');
+      return;
+    }
+
+    if (proj.type === 'bot_energy_orb') {
+      audio.playBonk();
+      particles.spawnDashBurst(proj.x, proj.y, Math.atan2(proj.vy || 0, proj.vx || 0) + Math.PI, '#a855f7');
+      particles.spawnComicText(proj.x, proj.y - 18, 'ABSORBED! 🛡️', '#a855f7');
+      return;
+    }
+
+    // Default: shotgun pellets, slashes, other kinetic projectiles
+    audio.playBonk();
+    cinematics.addScreenShake(2);
+    particles.spawnDashBurst(proj.x, proj.y, Math.atan2(proj.vy || 0, proj.vx || 0) + Math.PI, '#cbd5e1');
+    particles.spawnComicText(proj.x, proj.y - 18, 'CLANG! 🛡️', '#94a3b8');
   });
 
   // [T] Key: Cycle Combat Bot / Training Dummy Mode
