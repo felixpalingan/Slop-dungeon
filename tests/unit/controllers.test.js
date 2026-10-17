@@ -147,6 +147,20 @@ describe('ModalController & StationController Unit Tests', () => {
       );
     });
 
+    it('equips the complete 6-piece Saitama set from Dev Armory', () => {
+      stationCtrl.equipFullSet('saitama');
+
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_bald']);
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_suit']);
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_tights']);
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_boots']);
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_glove']);
+      expect(mockPlayer.equipItem).toHaveBeenCalledWith(ITEM_CATALOG['saitama_groceries']);
+      expect(mockParticles.spawnComicText).toHaveBeenCalledWith(
+        0, -30, '🥊 EQUIPPED THE CAPED BALDY SET!', '#facc15'
+      );
+    });
+
     it('strips all equipment on strip set command', () => {
       stationCtrl.equipFullSet('strip');
 

@@ -693,7 +693,13 @@ export class StationController {
 
     const allItems = Object.values(ITEM_CATALOG);
     const filtered = allItems.filter(item => {
-      const matchFilter = filter === 'all' || item.slot === filter || (filter === 'weapon' && (item.slot === 'weapon' || item.slot === 'offhand'));
+      const isArmor = ['helmet', 'chest', 'pants', 'boots'].includes(item.slot);
+      const isWeapon = item.slot === 'weapon' || item.slot === 'offhand';
+      const matchFilter = filter === 'all' ||
+        (filter === 'weapon' && isWeapon) ||
+        (filter === 'armor' && isArmor) ||
+        (filter === 'anime' && !!item.set) ||
+        item.slot === filter;
       const matchQuery = !query || item.name.toLowerCase().includes(query) || (item.desc && item.desc.toLowerCase().includes(query));
       return matchFilter && matchQuery;
     });
