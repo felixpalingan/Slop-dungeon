@@ -250,8 +250,8 @@ export class Dungeon {
    * Dynamically constructs 7 to 9 branching rooms with GUARANTEED Battle, Treasure, Merchant, and Boss rooms!
    */
   generate(seed = null) {
-    this.seed = seed || `seed-${Date.now()}`;
-    const rng = seed ? new RandomProvider(seed) : defaultRng;
+    this.seed = seed || `seed-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const rng = new RandomProvider(this.seed);
 
     this.rooms = [];
     this.roomsMap.clear();
