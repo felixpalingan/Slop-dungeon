@@ -160,7 +160,9 @@ export class Dungeon {
       hasVisited: type === 'spawn',
       hasShownBanner: false,
       torches: [],
-      containers: []
+      containers: [],
+      decorVariant: 0,
+      obstacles: []
     };
   }
 
@@ -428,6 +430,26 @@ export class Dungeon {
     this.combatRooms.forEach((cr, idx) => {
       cr.name = `${this.theme.bannerPrefix} ${combatTitles[idx % combatTitles.length]}`;
       cr.isCleared = false;
+      cr.decorVariant = idx % 4; // Cycles through 4 aesthetic layout variants
+
+      // Subtle tactical obstacles placed strictly in corner dead-zones (leaving center & all 4 door corridors 100% clear)
+      cr.obstacles = [];
+      if (cr.decorVariant === 1) {
+        // Variant 1: Twin tactical corner pillars
+        cr.obstacles.push(
+          { x: cr.centerX - 420, y: cr.centerY - 200, radius: 22, type: 'pillar' },
+          { x: cr.centerX + 420, y: cr.centerY + 200, radius: 22, type: 'pillar' }
+        );
+      } else if (cr.decorVariant === 2) {
+        // Variant 2: Four quadrant obelisks
+        cr.obstacles.push(
+          { x: cr.centerX - 440, y: cr.centerY - 220, radius: 18, type: 'pillar' },
+          { x: cr.centerX + 440, y: cr.centerY - 220, radius: 18, type: 'pillar' },
+          { x: cr.centerX - 440, y: cr.centerY + 220, radius: 18, type: 'pillar' },
+          { x: cr.centerX + 440, y: cr.centerY + 220, radius: 18, type: 'pillar' }
+        );
+      }
+      // Variants 0 and 3 have 0 obstacles (completely open floor with rich battle art/grates)
     });
 
     // 9. Update door special flags (isBoss, isTreasure, isMerchant)
@@ -551,6 +573,25 @@ export class Dungeon {
     let hitWall = false;
     let normX = 0;
     let normY = 0;
+
+    // 0. Check subtle tactical corner obstacles (pillars)
+    if (room.obstacles && room.obstacles.length > 0) {
+      for (const obs of room.obstacles) {
+        const dx = resolvedX - obs.x;
+        const dy = resolvedY - obs.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = radius + obs.radius;
+        if (dist < minDist) {
+          const nx = dist > 0.001 ? (dx / dist) : 1;
+          const ny = dist > 0.001 ? (dy / dist) : 0;
+          resolvedX = obs.x + nx * minDist;
+          resolvedY = obs.y + ny * minDist;
+          hitWall = true;
+          normX = nx;
+          normY = ny;
+        }
+      }
+    }
 
     // Asymmetric 2.5D perspective chamber wall thickness
     const innerMinX = room.bounds.minX + SIDE_WALL;
@@ -676,6 +717,29 @@ export class Dungeon {
     let normalY = 0;
     let hit = false;
 
+    // Check obstacle pillars for grapple impact
+    if (room.obstacles && room.obstacles.length > 0) {
+      for (const obs of room.obstacles) {
+        const ox = obs.x - startX;
+        const oy = obs.y - startY;
+        const proj = ox * uX + oy * uY;
+        if (proj > 0 && proj < closestDist) {
+          const perpDistSq = (ox * ox + oy * oy) - (proj * proj);
+          if (perpDistSq <= obs.radius * obs.radius) {
+            const hitDist = proj - Math.sqrt(Math.max(0, obs.radius * obs.radius - perpDistSq));
+            if (hitDist > 0 && hitDist < closestDist) {
+              closestDist = hitDist;
+              hitX = startX + uX * hitDist;
+              hitY = startY + uY * hitDist;
+              normalX = (hitX - obs.x) / obs.radius;
+              normalY = (hitY - obs.y) / obs.radius;
+              hit = true;
+            }
+          }
+        }
+      }
+    }
+
     // West wall (x = minX)
     if (uX < 0) {
       const t = (minX - startX) / uX;
@@ -778,6 +842,8 @@ export class Dungeon {
         gridY: r.gridY,
         type: r.type,
         name: r.name,
+        decorVariant: r.decorVariant || 0,
+        obstacles: r.obstacles || [],
         isCleared: r.isCleared,
         isLocked: r.isLocked,
         hasVisited: r.hasVisited,
@@ -803,6 +869,8 @@ export class Dungeon {
     for (const r of data.rooms) {
       const room = this.createRoom(r.id, r.gridX, r.gridY, r.type);
       room.name = r.name;
+      room.decorVariant = r.decorVariant || 0;
+      room.obstacles = r.obstacles || [];
       room.isCleared = r.isCleared;
       room.isLocked = r.isLocked;
       room.hasVisited = r.hasVisited;

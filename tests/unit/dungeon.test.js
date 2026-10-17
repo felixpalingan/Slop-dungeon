@@ -82,4 +82,36 @@ describe('Deterministic Dungeon Generator', () => {
     expect(d.merchantRoom).toBeDefined();
     expect(d.treasureRoom).toBeDefined();
   });
+
+  it('generates aesthetic decor variants and validates non-intrusive obstacle collision', () => {
+    const d = new Dungeon({ floorNumber: 1, theme: 'jjk' });
+    d.generate('decor-test-seed-456');
+
+    // Verify decorVariant is assigned to all rooms
+    for (const room of d.rooms) {
+      expect(typeof room.decorVariant).toBe('number');
+      expect(room.decorVariant).toBeGreaterThanOrEqual(0);
+      expect(room.decorVariant).toBeLessThanOrEqual(3);
+    }
+
+    // Find a combat room with obstacle pillars (variant 1 or 2)
+    const roomWithPillars = d.combatRooms.find(r => r.obstacles && r.obstacles.length > 0);
+    expect(roomWithPillars).toBeDefined();
+
+    // Verify pillars are in corner dead-zones and never block center or door lanes
+    for (const obs of roomWithPillars.obstacles) {
+      expect(obs.radius).toBeGreaterThan(0);
+      // Center cross is wide open
+      expect(Math.abs(obs.x - roomWithPillars.centerX)).toBeGreaterThan(200);
+      expect(Math.abs(obs.y - roomWithPillars.centerY)).toBeGreaterThan(150);
+    }
+
+    // Test obstacle collision: walking directly towards a pillar resolves cleanly
+    const pillar = roomWithPillars.obstacles[0];
+    const playerRadius = 22;
+    const colResult = d.resolveCircleCollision(pillar.x, pillar.y, playerRadius, roomWithPillars);
+    expect(colResult.hitWall).toBe(true);
+    const distToPillar = Math.hypot(colResult.x - pillar.x, colResult.y - pillar.y);
+    expect(distToPillar).toBeGreaterThanOrEqual(pillar.radius + playerRadius - 0.01);
+  });
 });

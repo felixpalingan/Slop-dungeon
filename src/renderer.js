@@ -1954,6 +1954,246 @@ export class Renderer {
       }
     }
 
+    // --- 1.5 PROCEDURAL FLOOR DECORS & CENTERPIECE INSIGNIAS (100% Walkable) ---
+    const cx = rw / 2;
+    const cy = rh / 2;
+
+    if (room.type === 'boss') {
+      // Enormous Epic Ritual / Mainframe / Domain Circle
+      cCtx.save();
+      cCtx.translate(cx, cy);
+
+      if (theme.id === 'jjk') {
+        // Domain Expansion Cursed Summoning Seal
+        cCtx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+        cCtx.lineWidth = 3;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 140, 0, Math.PI * 2);
+        cCtx.arc(0, 0, 105, 0, Math.PI * 2);
+        cCtx.stroke();
+        cCtx.strokeStyle = 'rgba(192, 132, 252, 0.35)';
+        cCtx.lineWidth = 1.5;
+        cCtx.beginPath();
+        for (let a = 0; a < 8; a++) {
+          const ang = (a / 8) * Math.PI * 2;
+          cCtx.moveTo(Math.cos(ang) * 85, Math.sin(ang) * 85);
+          cCtx.lineTo(Math.cos(ang) * 140, Math.sin(ang) * 140);
+        }
+        cCtx.stroke();
+      } else if (theme.id === 'cyberpunk') {
+        // Arasaka Cyber Mainframe Hex Node
+        cCtx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+        cCtx.lineWidth = 2.5;
+        cCtx.beginPath();
+        for (let a = 0; a < 6; a++) {
+          const ang = (a / 6) * Math.PI * 2;
+          const hx = Math.cos(ang) * 130;
+          const hy = Math.sin(ang) * 130;
+          if (a === 0) cCtx.moveTo(hx, hy);
+          else cCtx.lineTo(hx, hy);
+        }
+        cCtx.closePath();
+        cCtx.stroke();
+        // Radiating circuit buses
+        cCtx.strokeStyle = 'rgba(250, 204, 21, 0.3)';
+        cCtx.lineWidth = 1.5;
+        for (let a = 0; a < 6; a++) {
+          const ang = (a / 6) * Math.PI * 2;
+          cCtx.beginPath();
+          cCtx.moveTo(Math.cos(ang) * 55, Math.sin(ang) * 55);
+          cCtx.lineTo(Math.cos(ang) * 130, Math.sin(ang) * 130);
+          cCtx.lineTo(Math.cos(ang + 0.2) * 165, Math.sin(ang + 0.2) * 165);
+          cCtx.stroke();
+        }
+      } else if (theme.id === 'aot') {
+        // Wall Maria Rosette Sunburst Medallion
+        cCtx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+        cCtx.lineWidth = 3;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 130, 0, Math.PI * 2);
+        cCtx.arc(0, 0, 75, 0, Math.PI * 2);
+        cCtx.stroke();
+        cCtx.strokeStyle = 'rgba(34, 197, 94, 0.35)';
+        cCtx.lineWidth = 2;
+        for (let a = 0; a < 12; a++) {
+          const ang = (a / 12) * Math.PI * 2;
+          cCtx.beginPath();
+          cCtx.moveTo(Math.cos(ang) * 75, Math.sin(ang) * 75);
+          cCtx.lineTo(Math.cos(ang) * 130, Math.sin(ang) * 130);
+          cCtx.stroke();
+        }
+      } else if (theme.id === 'berserk') {
+        // Brand of Sacrifice Blood Ritual Circle
+        cCtx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
+        cCtx.lineWidth = 3;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 140, 0, Math.PI * 2);
+        cCtx.arc(0, 0, 95, 0, Math.PI * 2);
+        cCtx.stroke();
+        // Brand mark in center
+        cCtx.lineWidth = 3.5;
+        cCtx.beginPath();
+        cCtx.moveTo(0, -50);
+        cCtx.lineTo(0, 50);
+        cCtx.moveTo(-35, -25);
+        cCtx.lineTo(35, 25);
+        cCtx.moveTo(-35, 25);
+        cCtx.lineTo(35, -25);
+        cCtx.moveTo(-35, -25);
+        cCtx.lineTo(0, -50);
+        cCtx.lineTo(35, -25);
+        cCtx.stroke();
+      }
+      cCtx.restore();
+    } else if (room.type === 'treasure') {
+      // Gilded Treasury Carpet & Central Dais
+      cCtx.save();
+      cCtx.translate(cx, cy);
+      cCtx.fillStyle = 'rgba(120, 53, 15, 0.35)';
+      cCtx.fillRect(-70, -220, 140, 440);
+      cCtx.fillRect(-220, -70, 440, 140);
+      cCtx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+      cCtx.lineWidth = 2;
+      cCtx.strokeRect(-70, -220, 140, 440);
+      cCtx.strokeRect(-220, -70, 440, 140);
+      // Golden central diamond dais
+      cCtx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+      cCtx.strokeStyle = '#fde047';
+      cCtx.lineWidth = 2.5;
+      cCtx.beginPath();
+      cCtx.moveTo(0, -90);
+      cCtx.lineTo(90, 0);
+      cCtx.lineTo(0, 90);
+      cCtx.lineTo(-90, 0);
+      cCtx.closePath();
+      cCtx.fill();
+      cCtx.stroke();
+      cCtx.restore();
+    } else if (room.type === 'merchant') {
+      // Merchant Silk Carpet & Coin borders
+      cCtx.save();
+      cCtx.translate(cx, cy);
+      cCtx.fillStyle = 'rgba(6, 78, 59, 0.5)';
+      cCtx.strokeStyle = '#10b981';
+      cCtx.lineWidth = 2.5;
+      cCtx.fillRect(-280, -140, 560, 280);
+      cCtx.strokeRect(-280, -140, 560, 280);
+      cCtx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+      cCtx.lineWidth = 1.5;
+      cCtx.strokeRect(-270, -130, 540, 260);
+      cCtx.restore();
+    } else if (room.type === 'spawn') {
+      // Guiding Compass Rose
+      cCtx.save();
+      cCtx.translate(cx, cy);
+      cCtx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+      cCtx.lineWidth = 2;
+      cCtx.beginPath();
+      cCtx.arc(0, 0, 90, 0, Math.PI * 2);
+      cCtx.stroke();
+      // 4 cardinal pointer arrows
+      cCtx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+      const dirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+      for (const d of dirs) {
+        cCtx.save();
+        cCtx.rotate(d);
+        cCtx.beginPath();
+        cCtx.moveTo(-10, -65);
+        cCtx.lineTo(0, -90);
+        cCtx.lineTo(10, -65);
+        cCtx.closePath();
+        cCtx.fill();
+        cCtx.restore();
+      }
+      cCtx.restore();
+    } else if (room.type === 'combat') {
+      // Diverse Combat Chamber Visual Decors
+      cCtx.save();
+      cCtx.translate(cx, cy);
+      if (room.decorVariant === 0) {
+        // Variant 0: Battle Scorch Marks & Dark Blood Splatters
+        cCtx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        const scorches = [
+          [-360, -180, 55, 30],
+          [320, 160, 65, 35],
+          [-240, 220, 45, 25],
+          [280, -200, 50, 30]
+        ];
+        for (const [sx, sy, sw, sh] of scorches) {
+          cCtx.beginPath();
+          cCtx.ellipse(sx, sy, sw, sh, 0.3, 0, Math.PI * 2);
+          cCtx.fill();
+        }
+        cCtx.fillStyle = 'rgba(185, 28, 28, 0.22)';
+        const splatters = [
+          [-350, -170, 25],
+          [330, 170, 30],
+          [0, -120, 20],
+          [-150, 80, 22]
+        ];
+        for (const [bx, by, br] of splatters) {
+          cCtx.beginPath();
+          cCtx.arc(bx, by, br, 0, Math.PI * 2);
+          cCtx.fill();
+        }
+      } else if (room.decorVariant === 1) {
+        // Variant 1: Gladiator Dueling Arena Ring
+        cCtx.strokeStyle = theme.floorGridColor ? theme.floorGridColor.replace('0.1', '0.35') : 'rgba(255, 255, 255, 0.2)';
+        cCtx.lineWidth = 2.5;
+        cCtx.setLineDash([12, 8]);
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 260, 0, Math.PI * 2);
+        cCtx.stroke();
+        cCtx.setLineDash([]);
+        cCtx.lineWidth = 1.5;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 235, 0, Math.PI * 2);
+        cCtx.stroke();
+      } else if (room.decorVariant === 2) {
+        // Variant 2: Industrial Under-floor Grates with ambient under-glow in 4 quadrants
+        const grates = [
+          [-380, -200],
+          [380, -200],
+          [-380, 200],
+          [380, 200]
+        ];
+        for (const [gx, gy] of grates) {
+          cCtx.fillStyle = theme.torchGlowColor || 'rgba(255, 255, 255, 0.1)';
+          cCtx.fillRect(gx - 40, gy - 40, 80, 80);
+          cCtx.strokeStyle = '#334155';
+          cCtx.lineWidth = 3;
+          cCtx.strokeRect(gx - 36, gy - 36, 72, 72);
+          cCtx.strokeStyle = '#475569';
+          cCtx.lineWidth = 2;
+          cCtx.beginPath();
+          for (let b = -26; b <= 26; b += 10) {
+            cCtx.moveTo(gx + b, gy - 34);
+            cCtx.lineTo(gx + b, gy + 34);
+          }
+          cCtx.stroke();
+        }
+      } else if (room.decorVariant === 3) {
+        // Variant 3: Ancient Runic Diamond Floor Mosaic
+        cCtx.strokeStyle = (theme.accentColor || '#64748b') + '40';
+        cCtx.lineWidth = 2;
+        cCtx.beginPath();
+        cCtx.moveTo(0, -140);
+        cCtx.lineTo(140, 0);
+        cCtx.lineTo(0, 140);
+        cCtx.lineTo(-140, 0);
+        cCtx.closePath();
+        cCtx.stroke();
+        cCtx.beginPath();
+        cCtx.moveTo(0, -110);
+        cCtx.lineTo(110, 0);
+        cCtx.lineTo(0, 110);
+        cCtx.lineTo(-110, 0);
+        cCtx.closePath();
+        cCtx.stroke();
+      }
+      cCtx.restore();
+    }
+
     // 2. Draw Asymmetric Top-Down Walls with Door Openings
     const northWallH = 72; // Tall/wide front-facing North wall
     const sideWallW = 28;  // Thin border curb for West, East, South
@@ -2015,6 +2255,64 @@ export class Renderer {
       // Top ledge highlight bevel
       cCtx.fillStyle = theme.wallBevelColor;
       cCtx.fillRect(sx, 16, sw, 2);
+
+      // Hanging Wall Decors on solid North wall sections (between doors)
+      if (sw > 220) {
+        const midX = sx + sw / 2;
+        if (theme.id === 'jjk') {
+          // Ofuda sealing talisman scrolls hanging on wall
+          cCtx.fillStyle = '#fee2e2';
+          cCtx.fillRect(midX - 9, 24, 18, 38);
+          cCtx.strokeStyle = '#b91c1c';
+          cCtx.lineWidth = 1;
+          cCtx.strokeRect(midX - 9, 24, 18, 38);
+          cCtx.fillStyle = '#dc2626';
+          cCtx.fillRect(midX - 4, 28, 8, 4);
+          cCtx.fillRect(midX - 5, 35, 10, 3);
+          cCtx.fillRect(midX - 4, 41, 8, 14);
+        } else if (theme.id === 'cyberpunk') {
+          // Neon holographic signage
+          cCtx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+          cCtx.fillRect(midX - 42, 24, 84, 24);
+          cCtx.strokeStyle = '#06b6d4';
+          cCtx.lineWidth = 1.5;
+          cCtx.strokeRect(midX - 42, 24, 84, 24);
+          cCtx.fillStyle = '#00f0ff';
+          cCtx.font = 'bold 9px monospace';
+          cCtx.textAlign = 'center';
+          cCtx.fillText('SUB-LEVEL', midX, 39);
+        } else if (theme.id === 'aot') {
+          // Wall Maria / Scout Regiment banner
+          cCtx.fillStyle = '#1e3a5f';
+          cCtx.beginPath();
+          cCtx.moveTo(midX - 16, 22);
+          cCtx.lineTo(midX + 16, 22);
+          cCtx.lineTo(midX + 16, 54);
+          cCtx.lineTo(midX, 64);
+          cCtx.lineTo(midX - 16, 54);
+          cCtx.closePath();
+          cCtx.fill();
+          cCtx.strokeStyle = '#ffffff';
+          cCtx.lineWidth = 1.5;
+          cCtx.stroke();
+          cCtx.fillStyle = '#ffffff';
+          cCtx.fillRect(midX - 4, 30, 8, 16);
+        } else if (theme.id === 'berserk') {
+          // Tattered crimson sacrificial banner
+          cCtx.fillStyle = '#7f1d1d';
+          cCtx.beginPath();
+          cCtx.moveTo(midX - 14, 22);
+          cCtx.lineTo(midX + 14, 22);
+          cCtx.lineTo(midX + 10, 58);
+          cCtx.lineTo(midX, 52);
+          cCtx.lineTo(midX - 10, 58);
+          cCtx.closePath();
+          cCtx.fill();
+          cCtx.strokeStyle = '#ef4444';
+          cCtx.lineWidth = 1.5;
+          cCtx.stroke();
+        }
+      }
 
       // Ambient occlusion drop shadow cast down onto the floor
       const shadowGrad = cCtx.createLinearGradient(0, 72, 0, 86);
@@ -2097,6 +2395,83 @@ export class Renderer {
     cCtx.strokeStyle = theme.wallStrokeColor;
     cCtx.lineWidth = 2;
     cCtx.strokeRect(0, 0, rw, rh);
+
+    // 3. Draw Corner Tactical Pillars (Corner dead-zones only, leaving door corridors 100% open)
+    if (room.obstacles && room.obstacles.length > 0) {
+      for (const obs of room.obstacles) {
+        const lx = obs.x - room.bounds.minX;
+        const ly = obs.y - room.bounds.minY;
+        const rad = obs.radius;
+
+        // Drop shadow cast onto floor
+        cCtx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        cCtx.beginPath();
+        cCtx.ellipse(lx, ly + 6, rad * 1.3, rad * 0.75, 0, 0, Math.PI * 2);
+        cCtx.fill();
+
+        // 2.5D Themed Pillar Body & Cap
+        if (theme.id === 'cyberpunk') {
+          // Matte black hexagonal tech tower with cyan energy pipe
+          cCtx.fillStyle = '#0f172a';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#06b6d4';
+          cCtx.lineWidth = 2.5;
+          cCtx.stroke();
+          // Glowing cyan core
+          cCtx.fillStyle = '#00f0ff';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad * 0.45, 0, Math.PI * 2);
+          cCtx.fill();
+        } else if (theme.id === 'berserk') {
+          // Spiked obsidian bone pillar
+          cCtx.fillStyle = '#1c1917';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#7f1d1d';
+          cCtx.lineWidth = 2.5;
+          cCtx.stroke();
+          // Crimson rune on pillar cap
+          cCtx.strokeStyle = '#ef4444';
+          cCtx.lineWidth = 1.8;
+          cCtx.beginPath();
+          cCtx.moveTo(lx, ly - rad * 0.5);
+          cCtx.lineTo(lx, ly + rad * 0.5);
+          cCtx.moveTo(lx - rad * 0.4, ly);
+          cCtx.lineTo(lx + rad * 0.4, ly);
+          cCtx.stroke();
+        } else if (theme.id === 'aot') {
+          // Chiseled limestone pillar with moss
+          cCtx.fillStyle = '#44403c';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#292524';
+          cCtx.lineWidth = 2.5;
+          cCtx.stroke();
+          // Moss trim
+          cCtx.fillStyle = '#166534';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad * 0.5, 0, Math.PI * 2);
+          cCtx.fill();
+        } else {
+          // JJK: Weathered stone pillar with purple cursed seal
+          cCtx.fillStyle = '#27272a';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#3f3f46';
+          cCtx.lineWidth = 2.5;
+          cCtx.stroke();
+          cCtx.fillStyle = '#a855f7';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad * 0.4, 0, Math.PI * 2);
+          cCtx.fill();
+        }
+      }
+    }
   }
 
   renderRoomStaticDirect(ctx, room, theme, tileSize) {
