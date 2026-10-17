@@ -62,6 +62,9 @@ export class CombatSystem {
     } else if (weapon.visual === 'david_shotgun') {
       reach = Math.max(reach, 175);
       arcHalfAngle = Math.PI * 0.38; // ~44° shotgun spread cone
+    } else if (weapon.visual === 'saitama_glove') {
+      reach = Math.max(reach, 74);
+      arcHalfAngle = Math.PI * 0.52; // explosive forward punch cleave
     }
 
     const isShotgun = weapon.visual === 'david_shotgun';
@@ -169,7 +172,7 @@ export class CombatSystem {
             ? Math.round(finalDamage * (1 - (target.equipment?.offhand?.blockMitigation || 0.6)))
             : finalDamage;
 
-          let knockback = weapon.hands === 2 ? 520 : 340;
+          let knockback = weapon.hands === 2 ? 520 : (weapon.visual === 'saitama_glove' ? 620 : 340);
           if (isBlue) {
             knockback = -480;
           } else if (attacker.isBerserk) {
@@ -248,6 +251,12 @@ export class CombatSystem {
       baseDamage = 52;
       knockback = 760; // Powerful hydraulic cybernetic punch!
       attackType = 'gorilla_punch';
+    } else if (offhandVisual === 'saitama_groceries') {
+      reach = 65;
+      arcHalfAngle = Math.PI * 0.44;
+      baseDamage = 35;
+      knockback = 540; // Heavy crinkly supermarket bag smack!
+      attackType = 'grocery_smack';
     }
 
     if (attacker.isBerserk) {

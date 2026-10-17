@@ -75,6 +75,16 @@ export const SET_DEFINITIONS = {
     ultimateQ: 'sandevistan_time_dilation',
     ultimateTitle: 'SANDEVISTAN TIME DILATION',
     desc: '[Q] Overclocks the military-grade Sandevistan: slows global time to 10% for everyone (monsters, projectiles, players) for 4s, while the wearer moves freely with persistent cyan/lime ghost trails!'
+  },
+  'saitama': {
+    name: 'The Caped Baldy',
+    title: 'One-Punch Hero',
+    anime: 'One Punch Man',
+    color: '#facc15',
+    requiredItems: ['saitama_bald', 'saitama_suit', 'saitama_tights', 'saitama_boots', 'saitama_glove', 'saitama_groceries'],
+    ultimateQ: 'serious_punch',
+    ultimateTitle: 'SERIOUS PUNCH',
+    desc: '[Q] Unleashes the Serious Punch: reality inverts into monochrome manga ink, unleashing an apocalyptic 400 True Damage shockwave!'
   }
 };
 
@@ -753,6 +763,86 @@ export const ITEM_CATALOG = {
     armorPenetration: 0.35,
     visual: 'david_gorilla_arms',
     desc: 'Hydraulic titanium arm prosthetics. Right-click unleashes a heavy cybernetic piston punch with forward lunge and high knockback.'
+  },
+
+  // --- SAITAMA (ONE PUNCH MAN) THE CAPED BALDY SET ---
+  'saitama_bald': {
+    id: 'saitama_bald',
+    name: "Hero's Polished Scalp",
+    set: 'saitama',
+    slot: 'helmet',
+    rarity: 'MYTHIC',
+    hp: 45,
+    knockbackImmunity: true,
+    price: 150,
+    visual: 'saitama_bald',
+    desc: "A completely polished, glinting scalp forged from 100 pushups, 100 situps, and a 10km run every single day. HP +45, Knockback Immunity, and periodic sunlight sparkles."
+  },
+  'saitama_suit': {
+    id: 'saitama_suit',
+    name: 'Yellow Hero Suit & Cape',
+    set: 'saitama',
+    slot: 'chest',
+    rarity: 'MYTHIC',
+    hp: 70,
+    armor: 22,
+    baseQ: 'consecutive_normal_punches',
+    price: 150,
+    visual: 'saitama_suit',
+    desc: 'The iconic canary yellow hero suit with white trailing cape. Base Q: Consecutive Normal Punches unleashes a devastating rapid-fire fist barrage.'
+  },
+  'saitama_tights': {
+    id: 'saitama_tights',
+    name: 'Yellow Hero Tights',
+    set: 'saitama',
+    slot: 'pants',
+    rarity: 'LEGENDARY',
+    hp: 30,
+    speedBonus: 30,
+    rollCostReduction: 15,
+    price: 75,
+    visual: 'saitama_tights',
+    desc: 'Flexible yellow leggings secured by a dark charcoal leather belt with golden buckle. HP +30, Speed +30, Dash Stamina Cost -15%.'
+  },
+  'saitama_boots': {
+    id: 'saitama_boots',
+    name: 'Red Rubber Hero Boots',
+    set: 'saitama',
+    slot: 'boots',
+    rarity: 'LEGENDARY',
+    speedBonus: 35,
+    trapImmunity: true,
+    price: 75,
+    visual: 'saitama_boots',
+    desc: 'Heavy-duty cherry red rubber boots. Speed +35, grants complete immunity to spikes and ground hazards.'
+  },
+  'saitama_glove': {
+    id: 'saitama_glove',
+    name: 'Red Serious Fist',
+    set: 'saitama',
+    slot: 'weapon',
+    hands: 1,
+    rarity: 'MYTHIC',
+    damage: 68,
+    speed: 1.45,
+    reach: 72,
+    price: 150,
+    visual: 'saitama_glove',
+    desc: 'Oversized red rubber hero glove. Extremely swift punch strikes that unleash explosive shockwave cleaves.'
+  },
+  'saitama_groceries': {
+    id: 'saitama_groceries',
+    name: 'Supermarket Bargain Bag',
+    set: 'saitama',
+    slot: 'offhand',
+    rarity: 'MYTHIC',
+    armor: 16,
+    slopCoinBonus: 0.50,
+    bonusSlopsPerFloor: 30,
+    damageBuff: 15,
+    price: 150,
+    visual: 'saitama_groceries',
+    desc: 'Bargain grocery haul stuffed with Japanese leeks and daikon. Armor +16, Damage +15, Slop Coin Drop Rate +50%, +30 Slops per floor.'
   },
   'health_flask': {
     id: 'health_flask',

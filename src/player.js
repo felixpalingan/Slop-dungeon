@@ -309,7 +309,7 @@ export class Player {
   }
 
   applyKnockback(kx, ky) {
-    if (this.isBerserk) return; // Berserker armor ignores all knockback!
+    if (this.isBerserk || this.equipment?.helmet?.knockbackImmunity) return; // Berserker armor or Saitama polished scalp ignores all knockback!
     this.knockbackVx = kx;
     this.knockbackVy = ky;
   }
@@ -540,7 +540,8 @@ export class Player {
       }
     }
 
-    if (knockback > 0 && !this.isBerserk) {
+    const hasKnockbackImmunity = this.isBerserk || this.equipment?.helmet?.knockbackImmunity;
+    if (knockback > 0 && !hasKnockbackImmunity) {
       this.applyKnockback(Math.cos(angle) * knockback, Math.sin(angle) * knockback);
     }
     return {

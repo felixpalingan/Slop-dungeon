@@ -722,6 +722,7 @@ export class Renderer {
     else if (boots?.visual === 'toji_slippers') bootColor = '#1e293b';
     else if (boots?.visual === 'guts_sollerets') bootColor = '#0f172a';
     else if (boots?.visual === 'david_sneakers') bootColor = '#94a3b8';
+    else if (boots?.visual === 'saitama_boots') bootColor = '#dc2626';
 
     ctx.fillStyle = bootColor;
     ctx.beginPath();
@@ -750,6 +751,22 @@ export class Renderer {
       ctx.ellipse(-10, radius * 0.6, 7, 5, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.shadowBlur = 0;
+    } else if (boots?.visual === 'saitama_boots') {
+      // Chunky cherry red rubber boots with defined dark tread soles
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.ellipse(-12, -radius * 0.6, 7, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(-12, radius * 0.6, 7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.ellipse(-10, -radius * 0.6, 6, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(-10, radius * 0.6, 6, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
     }
 
     // --- HANDS & WEAPONS ---
@@ -940,8 +957,77 @@ export class Renderer {
           ctx.fillStyle = '#7e22ce';
           ctx.fillRect(-6, -10, 12, 20);
           ctx.strokeStyle = '#c084fc';
+        } else if (offhand.visual === 'saitama_groceries') {
+          // Saitama's Supermarket Bargain Bag: Crinkly white plastic grocery bag with leeks & daikon!
+          const sway = Math.sin(Date.now() * 0.007) * 2.5;
+
+          ctx.save();
+          ctx.translate(0, sway);
+
+          // Green Japanese leek (negi) stalks poking out top
+          ctx.fillStyle = '#22c55e';
+          ctx.strokeStyle = '#15803d';
           ctx.lineWidth = 1.5;
-          ctx.strokeRect(-6, -10, 12, 20);
+          ctx.beginPath();
+          ctx.moveTo(-2, -6);
+          ctx.lineTo(-8, -20);
+          ctx.lineTo(-4, -22);
+          ctx.lineTo(0, -6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // White daikon radish root top
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(3, -10, 5, 7, Math.PI * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // Green radish leaf sprigs
+          ctx.strokeStyle = '#16a34a';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(3, -15);
+          ctx.lineTo(6, -23);
+          ctx.stroke();
+
+          // Crinkly white plastic shopping bag
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(-8, -6, 18, 22, [3, 3, 5, 5]);
+          ctx.fill();
+          ctx.stroke();
+
+          // Supermarket red discount logo / horizontal stripe
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(-6, 2, 14, 4);
+
+          // Bag handles gripped in hand
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(1, -6, 4, Math.PI, 0);
+          ctx.stroke();
+
+          ctx.restore();
+
+          // Grocery bag smack impact on slap
+          if (isSlapping && slapProgress > 0 && slapProgress < 1) {
+            ctx.save();
+            const smackAlpha = Math.max(0, 1 - slapProgress * 1.5);
+            ctx.strokeStyle = `rgba(250, 204, 21, ${smackAlpha})`;
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(14 * slapProgress, 0, 12 + slapProgress * 20, -Math.PI * 0.45, Math.PI * 0.45);
+            ctx.stroke();
+            ctx.restore();
+          }
         } else {
           // Default / Wooden Buckler
           ctx.fillStyle = '#78350f';
@@ -1032,6 +1118,12 @@ export class Renderer {
         rightHandX = 14 + recoil;
         rightHandY = handDistance * 0.5;
         swordAngle = p * 0.08; // slight upward lift during recoil
+      } else if (weapon?.visual === 'saitama_glove') {
+        // Saitama: Explosive forward piston punch lunge
+        const punchLunge = Math.sin(p * Math.PI) * 38;
+        rightHandX = 14 + punchLunge;
+        rightHandY = handDistance * 0.4;
+        swordAngle = 0;
       } else {
         // Standard sword swing
         const swingArc = -Math.PI * 0.45 + p * Math.PI * (is2H ? 1.4 : 1.1);
@@ -1297,6 +1389,49 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(8, 6, 4, 0, Math.PI);
       ctx.stroke();
+    } else if (weapon?.visual === 'saitama_glove') {
+      // Saitama's Red Serious Fist: Oversized cherry red rubber hero glove with white rolled cuff
+      // Crisp white folded cuff
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-4, -8, 8, 16, [2]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Oversized cherry-red fist
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(2, -9, 20, 18, [6, 8, 8, 6]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Knuckle ridge accents
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 1.5;
+      for (let k = -6; k <= 6; k += 4) {
+        ctx.beginPath();
+        ctx.moveTo(18, k);
+        ctx.lineTo(21, k);
+        ctx.stroke();
+      }
+
+      // Shockwave burst during attack swing
+      if (isAttacking && attackProgress > 0 && attackProgress < 1) {
+        ctx.save();
+        const shockAlpha = Math.max(0, 1 - attackProgress * 1.4);
+        ctx.strokeStyle = `rgba(239, 68, 68, ${shockAlpha})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(22, 0, 10 + attackProgress * 26, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.stroke();
+        ctx.restore();
+      }
     } else {
       // Default Rusty Shortsword
       ctx.fillStyle = '#f7fafc';
@@ -1317,6 +1452,37 @@ export class Renderer {
     }
 
     ctx.restore();
+
+    // --- SAITAMA FLOWING CAPE (Behind Torso & Legs) ---
+    if (chest?.visual === 'saitama_suit') {
+      const animT = (entity.animTime || Date.now() * 0.006);
+      const capeWave = Math.sin(animT * 6) * 4;
+      const capeWave2 = Math.cos(animT * 7) * 3;
+
+      ctx.save();
+      ctx.fillStyle = '#f8fafc';
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.3, -radius * 0.75);
+      ctx.quadraticCurveTo(-radius * 1.3, -radius * 1.1 + capeWave, -radius * 2.0, -radius * 0.85 + capeWave * 1.2);
+      ctx.quadraticCurveTo(-radius * 1.7, capeWave2, -radius * 2.0, radius * 0.85 - capeWave * 1.2);
+      ctx.quadraticCurveTo(-radius * 1.3, radius * 1.1 - capeWave, -radius * 0.3, radius * 0.75);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Folds / ripples down the center
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.4, -radius * 0.3);
+      ctx.quadraticCurveTo(-radius * 1.2, -radius * 0.2 + capeWave * 0.8, -radius * 1.9, -radius * 0.3 + capeWave);
+      ctx.moveTo(-radius * 0.4, radius * 0.3);
+      ctx.quadraticCurveTo(-radius * 1.2, radius * 0.2 - capeWave * 0.8, -radius * 1.9, radius * 0.3 - capeWave);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // --- MAIN BODY / TORSO CIRCLE ---
     ctx.beginPath();
@@ -1362,6 +1528,22 @@ export class Renderer {
         ctx.beginPath();
         ctx.arc(0, 0, radius * 0.65, Math.PI * 0.6, Math.PI * 1.4);
         ctx.stroke();
+      } else if (pants.visual === 'saitama_tights') {
+        // Saitama Yellow Hero Tights with dark leather belt & metallic gold buckle
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.9, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.fill();
+
+        // Dark charcoal leather belt across waist
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-radius * 0.55, -radius * 0.45, 7, radius * 0.9);
+
+        // Metallic gold rectangular buckle
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-radius * 0.55 - 1, -5, 9, 10);
+        ctx.fillStyle = '#854d0e';
+        ctx.fillRect(-radius * 0.55 + 1, -3, 5, 6);
       }
     }
 
@@ -1506,6 +1688,37 @@ export class Renderer {
         ctx.beginPath();
         ctx.arc(-2, 0, radius * 0.7, -Math.PI / 2, Math.PI / 2);
         ctx.fill();
+        ctx.stroke();
+      } else if (chest.visual === 'saitama_suit') {
+        // Saitama Yellow Hero Suit: Canary yellow with central silver zipper & black round collar studs
+        ctx.fillStyle = '#eab308';
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.76, -Math.PI / 2, Math.PI / 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Central silver zipper
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(radius * 0.1, 0);
+        ctx.lineTo(radius * 0.72, 0);
+        ctx.stroke();
+
+        // White zipper pull slider
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(radius * 0.45, -2, 4, 4);
+
+        // Twin black round button clasps on collar (cape anchors)
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.arc(radius * 0.2, -radius * 0.45, 3.5, 0, Math.PI * 2);
+        ctx.arc(radius * 0.2, radius * 0.45, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
         ctx.stroke();
       } else {
         // Leather tunic
@@ -1698,6 +1911,75 @@ export class Renderer {
       ctx.beginPath();
       ctx.roundRect(radius * 0.2, -7, radius * 0.55, 14, [4]);
       ctx.fill();
+    } else if (helmet?.visual === 'saitama_bald') {
+      // Saitama's Polished Scalp: Smooth glossy scalp with blank chibi eyes and sunlight sparkle!
+      // Smooth bare head / flesh tone
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(radius * 0.35, 0, radius * 0.48, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Glossy scalp sheen arc highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(radius * 0.35, 0, radius * 0.38, -Math.PI * 0.7, -Math.PI * 0.3);
+      ctx.stroke();
+
+      // Minimalist blank oval eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(radius * 0.52, -5, 3.5, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(radius * 0.52, 5, 3.5, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Tiny stoic dark dot pupils
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath();
+      ctx.arc(radius * 0.54, -5, 1.2, 0, Math.PI * 2);
+      ctx.arc(radius * 0.54, 5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Horizontal nonplussed eyebrows
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.42, -7.5);
+      ctx.lineTo(radius * 0.58, -7.5);
+      ctx.moveTo(radius * 0.42, 7.5);
+      ctx.lineTo(radius * 0.58, 7.5);
+      ctx.stroke();
+
+      // Animated Periodic Sunlight Sparkle (✨) glint star
+      const glintTime = Date.now() * 0.005;
+      const glintPulse = (Math.sin(glintTime * 4) + 1) * 0.5; // 0 to 1
+      if (glintPulse > 0.25) {
+        ctx.save();
+        ctx.translate(radius * 0.22, -radius * 0.35);
+        ctx.rotate(glintTime * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${glintPulse})`;
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 12 * glintPulse;
+        const starSize = 5.5 * glintPulse;
+        ctx.beginPath();
+        ctx.moveTo(0, -starSize);
+        ctx.lineTo(starSize * 0.25, -starSize * 0.25);
+        ctx.lineTo(starSize, 0);
+        ctx.lineTo(starSize * 0.25, starSize * 0.25);
+        ctx.lineTo(0, starSize);
+        ctx.lineTo(-starSize * 0.25, starSize * 0.25);
+        ctx.lineTo(-starSize, 0);
+        ctx.lineTo(-starSize * 0.25, -starSize * 0.25);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     } else {
       // Default / Cowl Visor
       const visorBaseColor = helmet?.visual === 'cowl_hood' ? '#1e1b4b' : '#0f172a';

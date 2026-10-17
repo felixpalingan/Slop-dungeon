@@ -658,6 +658,10 @@ export class StationController {
       itemsToEquip = ['david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'];
       bannerText = '⚡ EQUIPPED NIGHT CITY LEGEND SET!';
       bannerColor = '#00ff88';
+    } else if (setName === 'saitama') {
+      itemsToEquip = ['saitama_bald', 'saitama_suit', 'saitama_tights', 'saitama_boots', 'saitama_glove', 'saitama_groceries'];
+      bannerText = '🥊 EQUIPPED THE CAPED BALDY SET!';
+      bannerColor = '#facc15';
     } else if (setName === 'starter') {
       itemsToEquip = ['iron_visor', 'leather_tunic', 'cloth_pants', 'travel_boots', 'rusty_sword', 'wooden_buckler'];
       bannerText = '🛡️ EQUIPPED STARTER GEAR!';

@@ -2907,6 +2907,17 @@ kbd {
   color: #00ff88;
 }
 
+.saitama-set-btn {
+  border-color: rgba(250, 204, 21, 0.4);
+}
+.saitama-set-btn:hover {
+  border-color: #facc15;
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.28);
+}
+.saitama-set-btn .set-btn-name {
+  color: #facc15;
+}
+
 .starter-set-btn {
   border-color: rgba(148, 163, 184, 0.4);
 }

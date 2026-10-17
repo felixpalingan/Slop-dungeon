@@ -318,7 +318,9 @@ monsterManager.onMonsterKilled = (monster) => {
     spawnSlopCoins(monster.x, monster.y, 3, 5, killer);
   }
 
-  spawnSlopCoins(monster.x, monster.y, 2 + Math.floor(Math.random() * 3), 5, killer);
+  const coinBonus = killer?.equipment?.offhand?.slopCoinBonus ? (1.0 + killer.equipment.offhand.slopCoinBonus) : 1.0;
+  const coinCount = Math.round((2 + Math.floor(Math.random() * 3)) * coinBonus);
+  spawnSlopCoins(monster.x, monster.y, coinCount, 5, killer);
 
   // 35% chance to drop a minor heal orb
   if (Math.random() < 0.35) {
@@ -2205,6 +2207,15 @@ function startFloorDescent(floorNumber, broadcast = true) {
   player.reviveProgress = 0;
   player.hp = player.maxHp;
   player.syncHUD();
+
+  // Supermarket Bargain Bag floor bonus: +30 Slops per floor!
+  if (player.equipment?.offhand?.bonusSlopsPerFloor && !wasFromLobby) {
+    const bonusCoins = player.equipment.offhand.bonusSlopsPerFloor;
+    sharedSlops += bonusCoins;
+    updateSlopsUI();
+    broadcastSlops();
+    particles.spawnComicText(player.x, player.y - 45, `+${bonusCoins} SUPERMARKET BARGAIN SLOPS! 🥬`, '#facc15');
+  }
 
   // If player was dead on previous floor and dropped gear, re-equip starter gear so they can fight!
   if (wasDead && !player.equipment?.weapon) {
@@ -4208,6 +4219,10 @@ function equipFullSet(setName) {
     itemsToEquip = ['david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'];
     bannerText = '⚡ EQUIPPED NIGHT CITY LEGEND SET!';
     bannerColor = '#00ff88';
+  } else if (setName === 'saitama') {
+    itemsToEquip = ['saitama_bald', 'saitama_suit', 'saitama_tights', 'saitama_boots', 'saitama_glove', 'saitama_groceries'];
+    bannerText = '🥊 EQUIPPED THE CAPED BALDY SET!';
+    bannerColor = '#facc15';
   } else if (setName === 'starter') {
     itemsToEquip = ['iron_visor', 'leather_tunic', 'cloth_pants', 'travel_boots', 'rusty_sword', 'wooden_buckler'];
     bannerText = '🛡️ EQUIPPED STARTER GEAR!';
