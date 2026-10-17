@@ -2043,6 +2043,43 @@ export class Renderer {
         cCtx.lineTo(0, -50);
         cCtx.lineTo(35, -25);
         cCtx.stroke();
+      } else if (theme.id === 'opm') {
+        // Monster Association Bio-Eye & Hazard Quarantine Seal
+        cCtx.strokeStyle = 'rgba(234, 179, 8, 0.55)';
+        cCtx.lineWidth = 3.5;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 140, 0, Math.PI * 2);
+        cCtx.arc(0, 0, 95, 0, Math.PI * 2);
+        cCtx.stroke();
+        // Radiating seismic shockwave lines
+        cCtx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+        cCtx.lineWidth = 2;
+        for (let a = 0; a < 8; a++) {
+          const ang = (a / 8) * Math.PI * 2;
+          cCtx.beginPath();
+          cCtx.moveTo(Math.cos(ang) * 95, Math.sin(ang) * 95);
+          cCtx.lineTo(Math.cos(ang) * 140, Math.sin(ang) * 140);
+          cCtx.stroke();
+        }
+        // Central Monster Association cyclops eye
+        cCtx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 50, 0, Math.PI * 2);
+        cCtx.fill();
+        cCtx.strokeStyle = '#ef4444';
+        cCtx.lineWidth = 3;
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 50, 0, Math.PI * 2);
+        cCtx.stroke();
+        // Golden iris and pupil
+        cCtx.fillStyle = '#facc15';
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 22, 0, Math.PI * 2);
+        cCtx.fill();
+        cCtx.fillStyle = '#09090b';
+        cCtx.beginPath();
+        cCtx.arc(0, 0, 9, 0, Math.PI * 2);
+        cCtx.fill();
       }
       cCtx.restore();
     } else if (room.type === 'treasure') {
@@ -2311,6 +2348,24 @@ export class Renderer {
           cCtx.strokeStyle = '#ef4444';
           cCtx.lineWidth = 1.5;
           cCtx.stroke();
+        } else if (theme.id === 'opm') {
+          // Industrial Hazard Caution Plate & Disaster Alert
+          cCtx.fillStyle = '#1c1917';
+          cCtx.fillRect(midX - 36, 24, 72, 26);
+          cCtx.strokeStyle = '#eab308';
+          cCtx.lineWidth = 2;
+          cCtx.strokeRect(midX - 36, 24, 72, 26);
+          // Diagonal hazard caution stripes
+          cCtx.fillStyle = '#facc15';
+          for (let hx = midX - 30; hx <= midX + 26; hx += 14) {
+            cCtx.beginPath();
+            cCtx.moveTo(hx, 48);
+            cCtx.lineTo(hx + 8, 26);
+            cCtx.lineTo(hx + 12, 26);
+            cCtx.lineTo(hx + 4, 48);
+            cCtx.closePath();
+            cCtx.fill();
+          }
         }
       }
 
@@ -2456,6 +2511,28 @@ export class Renderer {
           cCtx.beginPath();
           cCtx.arc(lx, ly, rad * 0.5, 0, Math.PI * 2);
           cCtx.fill();
+        } else if (theme.id === 'opm') {
+          // Industrial reinforced steel column with hazard warning cross
+          cCtx.fillStyle = '#262626';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#eab308';
+          cCtx.lineWidth = 2.5;
+          cCtx.stroke();
+          // Yellow hazard cross cap
+          cCtx.fillStyle = '#facc15';
+          cCtx.beginPath();
+          cCtx.arc(lx, ly, rad * 0.45, 0, Math.PI * 2);
+          cCtx.fill();
+          cCtx.strokeStyle = '#09090b';
+          cCtx.lineWidth = 1.5;
+          cCtx.beginPath();
+          cCtx.moveTo(lx - rad * 0.3, ly - rad * 0.3);
+          cCtx.lineTo(lx + rad * 0.3, ly + rad * 0.3);
+          cCtx.moveTo(lx + rad * 0.3, ly - rad * 0.3);
+          cCtx.lineTo(lx - rad * 0.3, ly + rad * 0.3);
+          cCtx.stroke();
         } else {
           // JJK: Weathered stone pillar with purple cursed seal
           cCtx.fillStyle = '#27272a';

@@ -981,6 +981,12 @@ kbd {
   border: 1px solid rgba(239, 68, 68, 0.5);
 }
 
+.opm-tag {
+  background: rgba(234, 179, 8, 0.2);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.5);
+}
+
 .lobby-tag {
   background: rgba(56, 189, 248, 0.2);
   color: #38bdf8;
@@ -1077,6 +1083,16 @@ kbd {
 .berserk-btn:hover {
   background: #dc2626;
   box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+}
+
+.opm-btn {
+  background: #ca8a04;
+  color: #ffffff;
+}
+.opm-btn:hover {
+  background: #eab308;
+  color: #000000;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.6);
 }
 
 .lobby-warp-btn {

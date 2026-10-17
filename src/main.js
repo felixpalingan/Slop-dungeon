@@ -69,19 +69,24 @@ const groundItems = new Map();
 
 const dungeonBounds = { minX: -600, minY: -600, maxX: 600, maxY: 600 };
 
+// Dynamic BGM Track selector based on floor and chamber
+function updateFloorBgm() {
+  if (currentFloor === 0) {
+    audio.updateBgmTrack('lobby');
+  } else if (currentDungeon && currentDungeon.currentRoom && currentDungeon.currentRoom.type === 'boss') {
+    audio.updateBgmTrack('boss');
+  } else if (currentDungeon && currentDungeon.themeKey === 'opm') {
+    audio.updateBgmTrack('opm');
+  } else {
+    audio.updateBgmTrack('dungeon');
+  }
+}
+
 // Auto-initialize audio and procedural BGM on user gesture
 const unlockAudio = () => {
   audio.init();
   if (audio.initialized) {
-    if (currentFloor === 0) {
-      audio.updateBgmTrack('lobby');
-    } else if (currentFloor >= 1) {
-      if (currentDungeon && currentDungeon.currentRoom && currentDungeon.currentRoom.type === 'boss') {
-        audio.updateBgmTrack('boss');
-      } else {
-        audio.updateBgmTrack('dungeon');
-      }
-    }
+    updateFloorBgm();
   }
 };
 window.addEventListener('pointerdown', unlockAudio, { passive: true });
@@ -1917,8 +1922,8 @@ function startFloorDescent(floorNumber, broadcast = true) {
   const gameOverModalEl = document.getElementById('game-over-modal');
   if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
 
-  // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, Floor 4 = Berserk, subsequent cycle
-  const themePool = ['jjk', 'cyberpunk', 'aot', 'berserk'];
+  // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, Floor 4 = Berserk, Floor 5 = One Punch Man, subsequent cycle
+  const themePool = ['jjk', 'cyberpunk', 'aot', 'berserk', 'opm'];
   const themeKey = themePool[(floorNumber - 1) % themePool.length];
   currentDungeon = new Dungeon({ floorNumber, theme: themeKey }).generate();
 
@@ -1982,7 +1987,7 @@ function startFloorDescent(floorNumber, broadcast = true) {
     hudDevHint.classList.add('hidden');
   }
 
-  audio.updateBgmTrack('dungeon');
+  updateFloorBgm();
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
 }
 
@@ -4433,7 +4438,7 @@ network.onMessageReceived = (fromPeerId, msg) => {
         if (room.type === 'boss') {
           audio.updateBgmTrack('boss');
         } else {
-          audio.updateBgmTrack('dungeon');
+          updateFloorBgm();
         }
         if (!room.isCleared) {
           room.isLocked = true;
@@ -5141,7 +5146,7 @@ function gameLoop(now) {
       if (doorTrans.targetRoom.type === 'boss') {
         audio.updateBgmTrack('boss');
       } else {
-        audio.updateBgmTrack('dungeon');
+        updateFloorBgm();
       }
 
       // Check if targetRoom has monsters and is not cleared -> trigger combat lockdown!

@@ -87,6 +87,24 @@ export const DUNGEON_THEMES = {
     ambientColor: 'rgba(23, 9, 11, 0.88)',
     bannerPrefix: 'SACRIFICE CHAMBER',
     musicTrack: 'berserk'
+  },
+  opm: {
+    id: 'opm',
+    name: 'One Punch Man: City Z Subterranean Ruins',
+    shortName: 'CITY Z RUINS',
+    floorColor: '#18181b',          // Cracked industrial asphalt & concrete
+    floorAltColor: '#27272a',       // Concrete slab tiles
+    floorGridColor: 'rgba(250, 204, 21, 0.16)', // Hazard yellow caution grid
+    wallColor: '#262626',           // Reinforced industrial concrete
+    wallTopColor: '#3f3f46',
+    wallBevelColor: '#eab308',      // Hazard yellow reinforced steel girder
+    wallStrokeColor: '#09090b',
+    torchColor: '#facc15',          // Halogen emergency work lights
+    torchGlowColor: 'rgba(250, 204, 21, 0.38)',
+    accentColor: '#ef4444',         // Hero punch red
+    ambientColor: 'rgba(24, 24, 27, 0.86)',
+    bannerPrefix: 'DISASTER LEVEL: DEMON',
+    musicTrack: 'opm'
   }
 };
 

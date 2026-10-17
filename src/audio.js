@@ -223,6 +223,7 @@ export class AudioManager {
     if (this.currentBgmTrack === 'lobby') stepDuration = 0.28;
     else if (this.currentBgmTrack === 'dungeon') stepDuration = 0.25;
     else if (this.currentBgmTrack === 'boss') stepDuration = 0.13;
+    else if (this.currentBgmTrack === 'opm') stepDuration = 0.14;
 
     while (this.bgmNextNoteTime < scheduleHorizon) {
       const time = this.bgmNextNoteTime;
@@ -301,6 +302,27 @@ export class AudioManager {
           const leadFreq = (cycle === 4) ? 293.66 : (cycle === 10 ? 349.23 : 440.00);
           this.playBgmNote(leadFreq, time, 0.28, 'sawtooth', 1800, 0.2);
           this.playBgmNote(leadFreq * 1.5, time, 0.28, 'triangle', 2200, 0.13);
+        }
+      } else if (this.currentBgmTrack === 'opm') {
+        // High-energy driving hard rock gallop (One Punch Man theme style: E-minor rock progression)
+        const cycle = step % 16;
+        const opmRiff = [164.81, 164.81, 196.00, 164.81, 220.00, 196.00, 164.81, 246.94]; // E-G-E-A-G-E-B
+        const noteFreq = opmRiff[cycle % opmRiff.length];
+
+        // Heavy distortion-filtered sawtooth riff
+        this.playBgmNote(noteFreq, time, 0.12, 'sawtooth', 1400, 0.20);
+        this.playBgmNote(noteFreq * 2, time, 0.10, 'triangle', 2000, 0.12);
+
+        // Punchy double-kick drum on driving beats
+        if (cycle % 4 === 0 || cycle % 4 === 2) {
+          this.playBgmPulse(time, cycle % 4 === 0);
+          this.playBgmSubBass(82.41, time, 0.35, 0.28); // E2 bass thump
+        }
+
+        // Heroic brass synth lead blast on phrase accents (steps 0, 6, 12)
+        if (cycle === 0 || cycle === 6 || cycle === 12) {
+          const leadTone = cycle === 0 ? 329.63 : (cycle === 6 ? 392.00 : 493.88); // E4, G4, B4
+          this.playBgmNote(leadTone, time, 0.24, 'sawtooth', 2200, 0.18);
         }
       }
 

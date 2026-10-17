@@ -114,4 +114,23 @@ describe('Deterministic Dungeon Generator', () => {
     const distToPillar = Math.hypot(colResult.x - pillar.x, colResult.y - pillar.y);
     expect(distToPillar).toBeGreaterThanOrEqual(pillar.radius + playerRadius - 0.01);
   });
+
+  it('generates Floor 5 One Punch Man City Z subterranean ruins with valid theme tokens', () => {
+    const d = new Dungeon({ floorNumber: 5, theme: 'opm' });
+    d.generate('opm-seed-999');
+
+    expect(d.themeKey).toBe('opm');
+    expect(d.theme.id).toBe('opm');
+    expect(d.theme.name).toBe('One Punch Man: City Z Subterranean Ruins');
+    expect(d.theme.shortName).toBe('CITY Z RUINS');
+    expect(d.theme.wallBevelColor).toBe('#eab308');
+    expect(d.theme.torchColor).toBe('#facc15');
+    expect(d.theme.bannerPrefix).toBe('DISASTER LEVEL: DEMON');
+
+    expect(d.rooms.length).toBeGreaterThanOrEqual(7);
+    expect(d.bossRoom).toBeDefined();
+    expect(d.spawnRoom).toBeDefined();
+    expect(d.merchantRoom).toBeDefined();
+    expect(d.treasureRoom).toBeDefined();
+  });
 });
