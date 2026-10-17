@@ -7,10 +7,15 @@
 export class CinematicManager {
   constructor(settings = null) {
     this.settings = settings;
+    this.audio = settings?.audio || null;
     this.activeCinematics = []; // Array of active cinematics { type, timer, duration, caster, x, y, angle }
     this.projectiles = []; // e.g. Hollow Purple orbs, Dismantle wind blades, Spartan Kick
     this.screenShake = 0;
     this.shakeDecay = 8; // decay per second
+  }
+
+  isSeriousPunchFreezing() {
+    return this.activeCinematics.some(c => c.type === 'serious_punch' && (1 - (c.timer / c.duration)) < 0.30);
   }
 
   spawnProjectile(proj) {
@@ -275,6 +280,34 @@ export class CinematicManager {
         y: player.y
       });
       this.addScreenShake(6);
+    } else if (type === 'consecutive_normal_punches') {
+      // Saitama Base Q: Consecutive Normal Punches
+      this.activeCinematics.push({
+        type: 'consecutive_normal_punches',
+        timer: 0.6,
+        duration: 0.6,
+        caster: player,
+        isRemote: !!isRemote,
+        x: player.x,
+        y: player.y,
+        angle: player.angle,
+        punchesFired: 0
+      });
+      this.addScreenShake(8);
+    } else if (type === 'serious_punch') {
+      // Saitama Set Ultimate Q: Serious Punch (0.45s monochrome ink freeze -> 400 True Damage beam)
+      this.activeCinematics.push({
+        type: 'serious_punch',
+        timer: 1.5,
+        duration: 1.5,
+        caster: player,
+        isRemote: !!isRemote,
+        x: player.x,
+        y: player.y,
+        angle: player.angle,
+        hasFired: false
+      });
+      this.addScreenShake(28);
     }
     this.shakeDecay = 16.0;
   }
@@ -293,6 +326,9 @@ export class CinematicManager {
       caster: proj.caster || null,
       color: proj.color || '#a855f7',
       radius: proj.radius || 10,
+      width: proj.width || (proj.radius ? proj.radius * 2 : 20),
+      piercesObstacles: !!proj.piercesObstacles || proj.type === 'hollow_purple' || proj.type === 'serious_punch_beam',
+      knockback: proj.knockback || 0,
       life: life,
       maxLife: life,
       maxDist: proj.maxDist || 500,
@@ -324,7 +360,7 @@ export class CinematicManager {
     return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
   }
 
-  update(dt, targets = [], onHitCallback = null, obstacles = [], onObstacleHitCallback = null) {
+  update(dt, targets = [], onHitCallback = null, obstacles = [], onObstacleHitCallback = null, timeScale = 1.0) {
     // Screen shake decay
     if (this.screenShake > 0) {
       this.screenShake = Math.max(0, this.screenShake - this.shakeDecay * dt * this.screenShake);
@@ -560,6 +596,64 @@ export class CinematicManager {
             c.timer = 0;
           }
         }
+      } else if (c.type === 'consecutive_normal_punches') {
+        const caster = c.caster;
+        const progress = 1 - (c.timer / c.duration); // 0 to 1
+        const targetPunches = Math.min(8, Math.floor(progress * 8) + 1);
+
+        while (c.punchesFired < targetPunches && c.punchesFired < 8) {
+          const pIndex = c.punchesFired;
+          c.punchesFired++;
+          const spread = (Math.random() - 0.5) * 0.45;
+          const punchAngle = c.angle + spread;
+          const speed = 780;
+          const perp = punchAngle + Math.PI * 0.5;
+          const sideOffset = (pIndex % 2 === 0 ? 1 : -1) * (12 + Math.random() * 8);
+          const spawnX = (caster ? caster.x : c.x) + Math.cos(c.angle) * 24 + Math.cos(perp) * sideOffset;
+          const spawnY = (caster ? caster.y : c.y) + Math.sin(c.angle) * 24 + Math.sin(perp) * sideOffset;
+
+          this.projectiles.push({
+            type: 'normal_punch',
+            caster: caster,
+            isRemote: c.isRemote,
+            x: spawnX,
+            y: spawnY,
+            vx: Math.cos(punchAngle) * speed,
+            vy: Math.sin(punchAngle) * speed,
+            radius: 26,
+            damage: 32,
+            knockback: 600,
+            life: 0.35,
+            angle: punchAngle
+          });
+          this.addScreenShake(4);
+        }
+      } else if (c.type === 'serious_punch') {
+        const progress = 1 - (c.timer / c.duration);
+        if (progress >= 0.30 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(28);
+          if (this.audio?.playSeriousPunchImpact) {
+            this.audio.playSeriousPunchImpact();
+          }
+          const speed = 1100;
+          const caster = c.caster;
+          this.projectiles.push({
+            type: 'serious_punch_beam',
+            caster: caster,
+            isRemote: c.isRemote,
+            x: caster ? caster.x : c.x,
+            y: caster ? caster.y : c.y,
+            vx: Math.cos(c.angle) * speed,
+            vy: Math.sin(c.angle) * speed,
+            width: 180,
+            radius: 140,
+            damage: 400,
+            piercesObstacles: true,
+            life: 0.75,
+            angle: c.angle
+          });
+        }
       }
 
       if (c.timer <= 0 || c.phase === 'finished') {
@@ -567,82 +661,86 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const proj = this.projectiles[i];
-      const prevX = proj.x;
-      const prevY = proj.y;
-      proj.x += proj.vx * dt;
-      proj.y += proj.vy * dt;
-      proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - dt : -1;
+    // Update projectiles & hit detection (frozen in mid-air during Serious Punch manga windup)
+    const isFrozen = this.isSeriousPunchFreezing();
+    if (!isFrozen) {
+      const projDt = dt * timeScale;
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const proj = this.projectiles[i];
+        const prevX = proj.x;
+        const prevY = proj.y;
+        proj.x += proj.vx * projDt;
+        proj.y += proj.vy * projDt;
+        proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - projDt : -1;
 
-      // Expand projectile radius if applicable (Hollow Purple)
-      if (proj.radius && proj.maxRadius) {
-        proj.radius = Math.min(proj.maxRadius, proj.radius + 45 * dt);
-      }
+        // Expand projectile radius if applicable (Hollow Purple)
+        if (proj.radius && proj.maxRadius) {
+          proj.radius = Math.min(proj.maxRadius, proj.radius + 45 * projDt);
+        }
 
-      // Check obstacle collision (tactical cover: pillars block all projectiles except piercing ultimates)
-      if (obstacles && obstacles.length > 0 && !proj.piercesObstacles && proj.type !== 'hollow_purple') {
-        let hitObs = null;
-        const projRad = proj.radius || (proj.width ? proj.width * 0.5 : 12);
-        for (const obs of obstacles) {
-          const obsRad = obs.radius || 20;
-          const hitThreshold = projRad + obsRad;
-          const segDist = this._distToSegment(obs.x, obs.y, prevX, prevY, proj.x, proj.y);
-          if (segDist <= hitThreshold) {
-            hitObs = obs;
-            break;
+        // Check obstacle collision (tactical cover: pillars block all projectiles except piercing ultimates)
+        if (obstacles && obstacles.length > 0 && !proj.piercesObstacles && proj.type !== 'hollow_purple' && proj.type !== 'serious_punch_beam') {
+          let hitObs = null;
+          const projRad = proj.radius || (proj.width ? proj.width * 0.5 : 12);
+          for (const obs of obstacles) {
+            const obsRad = obs.radius || 20;
+            const hitThreshold = projRad + obsRad;
+            const segDist = this._distToSegment(obs.x, obs.y, prevX, prevY, proj.x, proj.y);
+            if (segDist <= hitThreshold) {
+              hitObs = obs;
+              break;
+            }
+          }
+
+          if (hitObs) {
+            proj.life = 0;
+            if (onObstacleHitCallback) {
+              onObstacleHitCallback(hitObs, proj);
+            }
+            this.projectiles.splice(i, 1);
+            continue;
           }
         }
 
-        if (hitObs) {
-          proj.life = 0;
-          if (onObstacleHitCallback) {
-            onObstacleHitCallback(hitObs, proj);
+        // Check collision with targets (ONLY local projectiles, NEVER remote projectiles!)
+        if (!proj.isRemote) {
+          if (!proj.hitTargets) {
+            proj.hitTargets = new Set();
           }
+
+          for (const target of targets) {
+            if (!target || target === proj.caster) continue;
+            // Monsters do not shoot or hit fellow monsters
+            if (proj.caster && proj.caster.roomId !== undefined && target.roomId !== undefined) continue;
+            if (proj.trappedBy === target) continue; // Trapped in Gojo's Mugen: deals 0 damage, cannot hit!
+            if (target.isLimitlessBarrier && !proj.isRepelled) continue; // Barrier active: completely protects target!
+
+            // Don't hit the same target multiple times while the projectile passes through/overlaps them
+            const targetKey = target.id || target.peerId || target;
+            if (proj.hitTargets.has(target) || (targetKey && proj.hitTargets.has(targetKey))) continue;
+
+            const dx = target.x - proj.x;
+            const dy = target.y - proj.y;
+            const dist = Math.hypot(dx, dy);
+            const hitRadius = (proj.radius || (proj.width ? proj.width * 0.5 : 40)) + (target.radius || 24);
+
+            if (dist <= hitRadius) {
+              proj.hitTargets.add(target);
+              if (targetKey) proj.hitTargets.add(targetKey);
+              proj.hasHit = true;
+              if (proj.type === 'shotgun_pellet') {
+                proj.life = 0; // Pellet is consumed on hit
+              }
+              if (onHitCallback) {
+                onHitCallback(target, proj);
+              }
+            }
+          }
+        }
+
+        if (proj.life <= 0) {
           this.projectiles.splice(i, 1);
-          continue;
         }
-      }
-
-      // Check collision with targets (ONLY local projectiles, NEVER remote projectiles!)
-      if (!proj.isRemote) {
-        if (!proj.hitTargets) {
-          proj.hitTargets = new Set();
-        }
-
-        for (const target of targets) {
-          if (!target || target === proj.caster) continue;
-          // Monsters do not shoot or hit fellow monsters
-          if (proj.caster && proj.caster.roomId !== undefined && target.roomId !== undefined) continue;
-          if (proj.trappedBy === target) continue; // Trapped in Gojo's Mugen: deals 0 damage, cannot hit!
-          if (target.isLimitlessBarrier && !proj.isRepelled) continue; // Barrier active: completely protects target!
-
-          // Don't hit the same target multiple times while the projectile passes through/overlaps them
-          const targetKey = target.id || target.peerId || target;
-          if (proj.hitTargets.has(target) || (targetKey && proj.hitTargets.has(targetKey))) continue;
-
-          const dx = target.x - proj.x;
-          const dy = target.y - proj.y;
-          const dist = Math.hypot(dx, dy);
-          const hitRadius = (proj.radius || (proj.width ? proj.width * 0.5 : 40)) + (target.radius || 24);
-
-          if (dist <= hitRadius) {
-            proj.hitTargets.add(target);
-            if (targetKey) proj.hitTargets.add(targetKey);
-            proj.hasHit = true;
-            if (proj.type === 'shotgun_pellet') {
-              proj.life = 0; // Pellet is consumed on hit
-            }
-            if (onHitCallback) {
-              onHitCallback(target, proj);
-            }
-          }
-        }
-      }
-
-      if (proj.life <= 0) {
-        this.projectiles.splice(i, 1);
       }
     }
   }
@@ -977,6 +1075,114 @@ export class CinematicManager {
         ctx.lineTo(8, 7);
         ctx.closePath();
         ctx.fill();
+      } else if (proj.type === 'normal_punch') {
+        // Saitama's Iconic Red Hero Punch Fist
+        ctx.rotate(proj.angle);
+
+        // Trailing comic speedlines behind the punch
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-10, -8);
+        ctx.lineTo(-34, -8);
+        ctx.moveTo(-6, 0);
+        ctx.lineTo(-42, 0);
+        ctx.moveTo(-10, 8);
+        ctx.lineTo(-34, 8);
+        ctx.stroke();
+
+        // Crisp white glove cuff
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(-16, -9, 8, 18, 3);
+        else ctx.rect(-16, -9, 8, 18);
+        ctx.fill();
+
+        // Scarlet hero glove body
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#dc2626';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(-8, -12, 24, 24, 8);
+        else ctx.rect(-8, -12, 24, 24);
+        ctx.fill();
+
+        // Knuckle shading definition
+        ctx.fillStyle = '#b91c1c';
+        ctx.beginPath();
+        ctx.arc(8, -4, 4, 0, Math.PI * 2);
+        ctx.arc(10, 2, 4.5, 0, Math.PI * 2);
+        ctx.arc(8, 7, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Comic punch spark on knuckles
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(16, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (proj.type === 'serious_punch_beam') {
+        // Serious Punch: Apocalyptic Atmospheric-Parting Shockwave Beam
+        ctx.rotate(proj.angle);
+
+        // 1. Concentric atmospheric parting shockwave arcs expanding forward
+        const pulse = 1 + Math.sin(Date.now() * 0.03) * 0.15;
+        for (let ring = 0; ring < 4; ring++) {
+          const ringOffset = ring * 55 - 40;
+          const ringRadiusY = (70 + ring * 25) * pulse;
+          const ringRadiusX = (30 + ring * 12);
+          ctx.strokeStyle = ring === 0 ? 'rgba(255, 255, 255, 0.95)' : `rgba(250, 204, 21, ${0.8 - ring * 0.18})`;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 24;
+          ctx.lineWidth = 5 - ring * 0.8;
+          ctx.beginPath();
+          if (typeof ctx.ellipse === 'function') {
+            ctx.ellipse(ringOffset, 0, ringRadiusX, ringRadiusY, 0, -Math.PI * 0.45, Math.PI * 0.45);
+          } else {
+            ctx.arc(ringOffset, 0, ringRadiusY, -Math.PI * 0.45, Math.PI * 0.45);
+          }
+          ctx.stroke();
+        }
+
+        // 2. Colossal Energy Beam Core
+        // Outer golden plasma cone
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.45)';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 36;
+        ctx.beginPath();
+        ctx.moveTo(-80, -75);
+        ctx.lineTo(160, -25);
+        ctx.lineTo(210, 0);
+        ctx.lineTo(160, 25);
+        ctx.lineTo(-80, 75);
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner searing white shockwave spear
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 28;
+        ctx.beginPath();
+        ctx.moveTo(-60, -25);
+        ctx.lineTo(150, -8);
+        ctx.lineTo(200, 0);
+        ctx.lineTo(150, 8);
+        ctx.lineTo(-60, 25);
+        ctx.closePath();
+        ctx.fill();
+
+        // 3. Lateral wind cleave speedlines
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        for (let s = -3; s <= 3; s++) {
+          if (s === 0) continue;
+          const ly = s * 24;
+          ctx.beginPath();
+          ctx.moveTo(-50, ly);
+          ctx.lineTo(120 - Math.abs(s) * 20, ly * 1.3);
+          ctx.stroke();
+        }
       }
 
       ctx.restore();
@@ -1292,6 +1498,132 @@ export class CinematicManager {
         grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      } else if (c.type === 'consecutive_normal_punches') {
+        // High-velocity comic action speedlines at viewport corners
+        ctx.save();
+        const flash = Math.sin(progress * Math.PI * 8) * 0.15;
+        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.35, width / 2, height / 2, width * 0.72);
+        grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        grad.addColorStop(1, `rgba(239, 68, 68, ${0.25 + flash})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Subtitle indicator on screen
+        ctx.font = '900 18px "Impact", "Arial Black", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 12;
+        ctx.fillText('連打 [CONSECUTIVE NORMAL PUNCHES]', width / 2, height - 36);
+        ctx.restore();
+      } else if (c.type === 'serious_punch') {
+        ctx.save();
+        if (progress < 0.30) {
+          // --- 1. MONOCHROME MANGA INK FREEZE FRAME (0.0s - 0.45s) ---
+          // Dark ink wash
+          ctx.fillStyle = 'rgba(12, 12, 18, 0.75)';
+          ctx.fillRect(0, 0, width, height);
+
+          // Manga screentone radial vignette
+          const mangaGrad = ctx.createRadialGradient(width / 2, height / 2, 80, width / 2, height / 2, Math.max(width, height) * 0.75);
+          mangaGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+          mangaGrad.addColorStop(0.5, 'rgba(20, 20, 24, 0.4)');
+          mangaGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+          ctx.fillStyle = mangaGrad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Manga radial speedlines converging toward center
+          const centerX = width / 2;
+          const centerY = height / 2;
+          const numLines = 36;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+          ctx.lineWidth = 2.5;
+          for (let i = 0; i < numLines; i++) {
+            const radAngle = (i / numLines) * Math.PI * 2;
+            const outerR = Math.hypot(width, height) * 0.55;
+            const innerR = 120 + ((i * 37) % 80);
+            const x1 = centerX + Math.cos(radAngle) * outerR;
+            const y1 = centerY + Math.sin(radAngle) * outerR;
+            const x2 = centerX + Math.cos(radAngle) * innerR;
+            const y2 = centerY + Math.sin(radAngle) * innerR;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
+
+          // Menacing Japanese Onomatopoeia: ゴゴゴゴ (rumble)
+          ctx.font = '900 48px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 7;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 16;
+
+          // Left side
+          ctx.textAlign = 'left';
+          ctx.strokeText('ゴ', width * 0.12, height * 0.35);
+          ctx.fillText('ゴ', width * 0.12, height * 0.35);
+          ctx.strokeText('ゴ', width * 0.16, height * 0.50);
+          ctx.fillText('ゴ', width * 0.16, height * 0.50);
+          ctx.strokeText('ゴ', width * 0.20, height * 0.65);
+          ctx.fillText('ゴ', width * 0.20, height * 0.65);
+
+          // Right side
+          ctx.textAlign = 'right';
+          ctx.strokeText('ゴ', width * 0.88, height * 0.35);
+          ctx.fillText('ゴ', width * 0.88, height * 0.35);
+          ctx.strokeText('ゴ', width * 0.84, height * 0.50);
+          ctx.fillText('ゴ', width * 0.84, height * 0.50);
+          ctx.strokeText('ゴ', width * 0.80, height * 0.65);
+          ctx.fillText('ゴ', width * 0.80, height * 0.65);
+        } else {
+          // --- 2. APOCALYPTIC UNFREEZE & STRIKE IMPACT ---
+          const strikeProgress = (progress - 0.30) / 0.70; // 0 to 1
+
+          // Initial blinding white/gold flash (first 150ms of strike)
+          if (strikeProgress < 0.25) {
+            const flashAlpha = (0.25 - strikeProgress) / 0.25;
+            ctx.fillStyle = `rgba(255, 255, 240, ${flashAlpha * 0.9})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Golden atmospheric shockwave vignette
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.2, width / 2, height / 2, width * 0.75);
+          const vigAlpha = Math.max(0, (1 - strikeProgress) * 0.65);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0.7, `rgba(245, 158, 11, ${vigAlpha * 0.4})`);
+          grad.addColorStop(1, `rgba(220, 38, 38, ${vigAlpha * 0.7})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Massive Impact Typography: ドンッ!! (DOOOON!) + マジ殴り
+          if (strikeProgress < 0.65) {
+            const textAlpha = Math.max(0, 1 - (strikeProgress / 0.65));
+            ctx.textAlign = 'center';
+
+            // Main impact Katakana
+            ctx.font = '900 84px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${textAlpha})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${textAlpha})`;
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 32;
+            ctx.strokeText('ドンッ!!', width / 2, height / 2 - 20);
+            ctx.fillText('ドンッ!!', width / 2, height / 2 - 20);
+
+            // Subtext: マジ殴り [SERIOUS PUNCH]
+            ctx.font = '900 32px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${textAlpha})`;
+            ctx.fillStyle = `rgba(250, 204, 21, ${textAlpha})`;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 24;
+            ctx.strokeText('マジ殴り [SERIOUS PUNCH]', width / 2, height / 2 + 35);
+            ctx.fillText('マジ殴り [SERIOUS PUNCH]', width / 2, height / 2 + 35);
+          }
+        }
         ctx.restore();
       }
     }

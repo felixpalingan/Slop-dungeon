@@ -1532,6 +1532,128 @@ export class AudioManager {
   }
 
   /**
+   * Consecutive Normal Punches: Rapid staccato punch impact barrage
+   */
+  playConsecutivePunches() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      for (let i = 0; i < 8; i++) {
+        const t = now + i * 0.075;
+        // Heavy low-mid punch thud
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(170 + (i % 3) * 25, t);
+        osc.frequency.exponentialRampToValueAtTime(35, t + 0.09);
+
+        gain.gain.setValueAtTime(0.35, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.09);
+
+        // Crisp crackle transient
+        const crackle = this.ctx.createOscillator();
+        const crackleGain = this.ctx.createGain();
+        crackle.type = 'square';
+        crackle.frequency.setValueAtTime(450, t);
+        crackle.frequency.exponentialRampToValueAtTime(80, t + 0.04);
+
+        crackleGain.gain.setValueAtTime(0.18, t);
+        crackleGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+        crackle.connect(crackleGain);
+        crackleGain.connect(this.ctx.destination);
+        crackle.start(t);
+        crackle.stop(t + 0.04);
+      }
+    } catch (e) {
+      console.warn('Audio error in Consecutive Punches:', e);
+    }
+  }
+
+  /**
+   * Serious Punch Windup: Deep sub-bass frequency dive with eerie silence vacuum
+   */
+  playSeriousPunchWindup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Sub-bass frequency vacuum dive (reverse sucking swoosh)
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(95, now);
+      sub.frequency.exponentialRampToValueAtTime(26, now + 0.45);
+
+      subGain.gain.setValueAtTime(0.1, now);
+      subGain.gain.linearRampToValueAtTime(0.5, now + 0.35);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.46);
+    } catch (e) {
+      console.warn('Audio error in Serious Punch Windup:', e);
+    }
+  }
+
+  /**
+   * Serious Punch Impact: Apocalyptic explosive blast with prolonged rumbling decay
+   */
+  playSeriousPunchImpact() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // Colossal bass drop explosion
+      const boom = this.ctx.createOscillator();
+      const boomGain = this.ctx.createGain();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(360, now);
+      boom.frequency.exponentialRampToValueAtTime(24, now + 1.2);
+
+      boomGain.gain.setValueAtTime(0.85, now);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+      boom.connect(boomGain);
+      boomGain.connect(this.ctx.destination);
+      boom.start(now);
+      boom.stop(now + 1.4);
+
+      // Lowpass filtered atmospheric rumble
+      const rumble = this.ctx.createOscillator();
+      const rumbleGain = this.ctx.createGain();
+      rumble.type = 'sawtooth';
+      rumble.frequency.setValueAtTime(80, now);
+      rumble.frequency.exponentialRampToValueAtTime(20, now + 1.8);
+
+      rumbleGain.gain.setValueAtTime(0.45, now);
+      rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+
+      rumble.connect(rumbleGain);
+      rumbleGain.connect(this.ctx.destination);
+      rumble.start(now);
+      rumble.stop(now + 1.8);
+    } catch (e) {
+      console.warn('Audio error in Serious Punch Impact:', e);
+    }
+  }
+
+  /**
    * Slow-Mo Ticking: Sub-bass ticking heartbeat pulse during slow motion
    */
   playSlowMoTick() {

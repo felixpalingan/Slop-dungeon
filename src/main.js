@@ -56,6 +56,7 @@ const particles = new ParticleManager(settings);
 const network = new NetworkManager();
 const combat = new CombatSystem(audio, particles);
 const cinematics = new CinematicManager(settings);
+cinematics.audio = audio;
 
 // Lobby entities
 const dummy = new Dummy(0, -180);
@@ -4585,6 +4586,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
       if (audio.playSandevistanBoot) audio.playSandevistanBoot();
     } else if (msg.ultimateType === 'overcharge_boost') {
       if (audio.playGravitationalSurge) audio.playGravitationalSurge();
+    } else if (msg.ultimateType === 'consecutive_normal_punches') {
+      if (audio.playConsecutivePunches) audio.playConsecutivePunches();
+    } else if (msg.ultimateType === 'serious_punch') {
+      if (audio.playSeriousPunchWindup) audio.playSeriousPunchWindup();
     }
     // Note: network.handleIncomingData already relays to other peers on the host; no duplicate broadcast here!
   } else if (msg.type === 'TARGET_STUNNED') {
@@ -5390,13 +5395,15 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
+  // If Serious Punch is in its monochrome windup freeze (0.45s), world physics/monsters freeze completely (0.0)!
   // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
-  const worldTimeScale = isAnySandevistan ? 0.10 : 1.0;
+  const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
+  const worldTimeScale = isSeriousPunchFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 
   // 1. Update entities
   // David (the caster) moves at normal/boosted dt; all others update at worldDt!
-  const playerDt = player.isSandevistan ? dt : worldDt;
+  const playerDt = isSeriousPunchFreeze ? 0.0 : (player.isSandevistan ? dt : worldDt);
   const activeBounds = (currentFloor >= 1 && currentDungeon) ? currentDungeon : dungeonBounds;
   player.update(playerDt, input, activeBounds);
 
@@ -5675,7 +5682,7 @@ function gameLoop(now) {
   const cinematicTargets = currentFloor === 0
     ? [dummy, player, ...network.remotePlayers.values()]
     : [player, ...monsterManager.getAliveMonsters(), ...network.remotePlayers.values()];
-  cinematics.update(worldDt, cinematicTargets, (target, proj) => {
+  cinematics.update(dt, cinematicTargets, (target, proj) => {
     // Spelunky Slop Merchant RPG Rocket Detonation
     if (proj.type === 'merchant_rpg_rocket') {
       proj.life = 0; // consumed on impact
@@ -5784,6 +5791,27 @@ function gameLoop(now) {
         else network.sendToHost(hitMsg);
         return;
       }
+      if (proj.type === 'normal_punch') {
+        dummy.takeHit(proj.damage, proj.angle, proj.knockback || 600);
+        audio.playBonk();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(dummy.x, dummy.y - 28, `POW! -${proj.damage} 👊`, '#ef4444');
+        particles.spawnDashBurst(dummy.x, dummy.y, proj.angle, '#ef4444');
+        const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: proj.angle, isCrit: false };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'serious_punch_beam') {
+        dummy.takeHit(proj.damage, proj.angle, 900);
+        cinematics.addScreenShake(28);
+        particles.spawnComicText(dummy.x, dummy.y - 36, `マジ殴り!! -${proj.damage} 💀💥`, '#facc15');
+        particles.spawnDashBurst(dummy.x, dummy.y, proj.angle, '#f59e0b');
+        const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: proj.angle, isCrit: true };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
       dummy.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.isStun ? 0 : 350);
       if (proj.isStun) {
         dummy.applyStun(proj.stunDuration || 2.5);
@@ -5842,6 +5870,27 @@ function gameLoop(now) {
         else network.sendToHost(hitMsg);
         return;
       }
+      if (proj.type === 'normal_punch') {
+        target.takeHit(proj.damage, proj.angle, proj.knockback || 600, false, proj.caster);
+        audio.playBonk();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(target.x, target.y - 28, `POW! -${proj.damage} 👊`, '#ef4444');
+        particles.spawnDashBurst(target.x, target.y, proj.angle, '#ef4444');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: proj.angle, knockback: proj.knockback || 600, isCrit: false };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'serious_punch_beam') {
+        target.takeHit(proj.damage, proj.angle, 900, true, proj.caster);
+        cinematics.addScreenShake(28);
+        particles.spawnComicText(target.x, target.y - 36, `マジ殴り!! -${proj.damage} 💀💥`, '#facc15');
+        particles.spawnDashBurst(target.x, target.y, proj.angle, '#f59e0b');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: proj.angle, knockback: 900, isCrit: true };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
       target.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.isStun ? 0 : 350, true, proj.caster);
       if (proj.isStun) {
         target.applyStun(proj.stunDuration || 2.5);
@@ -5876,6 +5925,19 @@ function gameLoop(now) {
             const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
             particles.spawnComicText(remote.x, remote.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
             particles.spawnDashBurst(remote.x, remote.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#f59e0b');
+            return;
+          }
+          if (proj.type === 'normal_punch') {
+            audio.playBonk();
+            cinematics.addScreenShake(5);
+            particles.spawnComicText(remote.x, remote.y - 24, `POW! -${proj.damage} 👊`, '#ef4444');
+            particles.spawnDashBurst(remote.x, remote.y, proj.angle, '#ef4444');
+            return;
+          }
+          if (proj.type === 'serious_punch_beam') {
+            cinematics.addScreenShake(28);
+            particles.spawnComicText(remote.x, remote.y - 36, `マジ殴り!! -${proj.damage} 💀💥`, '#facc15');
+            particles.spawnDashBurst(remote.x, remote.y, proj.angle, '#f59e0b');
             return;
           }
           if (proj.type === 'levi_whirlwind') {
@@ -5954,12 +6016,20 @@ function gameLoop(now) {
       return;
     }
 
+    if (proj.type === 'normal_punch') {
+      audio.playBonk();
+      cinematics.addScreenShake(3);
+      particles.spawnDashBurst(proj.x, proj.y, Math.atan2(proj.vy || 0, proj.vx || 0) + Math.PI, '#ef4444');
+      particles.spawnComicText(proj.x, proj.y - 18, 'POW! 💥', '#ef4444');
+      return;
+    }
+
     // Default: shotgun pellets, slashes, other kinetic projectiles
     audio.playBonk();
     cinematics.addScreenShake(2);
     particles.spawnDashBurst(proj.x, proj.y, Math.atan2(proj.vy || 0, proj.vx || 0) + Math.PI, '#cbd5e1');
     particles.spawnComicText(proj.x, proj.y - 18, 'CLANG! 🛡️', '#94a3b8');
-  });
+  }, isAnySandevistan ? 0.10 : 1.0);
 
   // [T] Key: Cycle Combat Bot / Training Dummy Mode
   if (input.justPressedT && !modalsOpen) {

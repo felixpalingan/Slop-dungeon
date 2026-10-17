@@ -414,6 +414,14 @@ export class CombatSystem {
           triggerCinematicCallback('sandevistan', player);
         }
         return true;
+      } else if (setBonus.ultimateQ === 'serious_punch') {
+        // Saitama: Serious Punch!
+        this.audio?.playSeriousPunchWindup?.();
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'SERIOUS PUNCH! 💥', '#facc15');
+        if (triggerCinematicCallback) {
+          triggerCinematicCallback('serious_punch', player);
+        }
+        return true;
       }
     }
 
@@ -483,6 +491,14 @@ export class CombatSystem {
       this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ffffff');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('odm_gas_boost', player);
+      }
+    } else if (chest.baseQ === 'consecutive_normal_punches' || chest.visual === 'saitama_suit') {
+      // Saitama Base Q: Consecutive Normal Punches
+      this.audio?.playConsecutivePunches?.();
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'CONSECUTIVE NORMAL PUNCHES! 🥊', '#facc15');
+      this.particles?.spawnDashBurst?.(player.x, player.y, player.angle, '#facc15');
+      if (triggerCinematicCallback) {
+        triggerCinematicCallback('consecutive_normal_punches', player);
       }
     } else if (chest.visual === 'celestial_chest') {
       // Celestial Radiance: Heal 35 HP + Shockwave
