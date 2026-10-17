@@ -67,4 +67,19 @@ describe('Deterministic Dungeon Generator', () => {
     // While individual rooms might overlap, the overall graph fingerprint differs
     expect(coords1 === coords2 && d1.bossRoom.id === d2.bossRoom.id).toBe(false);
   });
+
+  it('correctly instantiates and generates Floor 4 with Berserk (The Eclipse Sanctum) theme', () => {
+    const d = new Dungeon({ floorNumber: 4, theme: 'berserk' });
+    d.generate('berserk-eclipse-seed');
+
+    expect(d.themeKey).toBe('berserk');
+    expect(d.theme.id).toBe('berserk');
+    expect(d.theme.name).toContain('The Eclipse Sanctum');
+    expect(d.theme.bannerPrefix).toBe('SACRIFICE CHAMBER');
+    expect(d.rooms.length).toBeGreaterThanOrEqual(7);
+    expect(d.spawnRoom).toBeDefined();
+    expect(d.bossRoom).toBeDefined();
+    expect(d.merchantRoom).toBeDefined();
+    expect(d.treasureRoom).toBeDefined();
+  });
 });

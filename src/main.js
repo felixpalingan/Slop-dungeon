@@ -244,6 +244,7 @@ monsterManager.onMonsterKilled = (monster) => {
   }
   const isCyber = monster.theme === 'cyberpunk' || (currentDungeon && currentDungeon.themeKey === 'cyberpunk');
   const isAot = monster.theme === 'aot' || (currentDungeon && currentDungeon.themeKey === 'aot');
+  const isBerserk = monster.theme === 'berserk' || (currentDungeon && currentDungeon.themeKey === 'berserk');
   const isBoss = monster.archetype === 'boss';
 
   // Only spawn mob kill text if not the final boss (boss has dedicated onBossKilled banner)
@@ -259,6 +260,10 @@ monsterManager.onMonsterKilled = (monster) => {
       killText = 'TITAN SLAIN! ⚔️';
       killColor = '#22c55e';
       burstColor = '#16a34a';
+    } else if (isBerserk) {
+      killText = 'APOSTLE PURGED! 🩸';
+      killColor = '#ef4444';
+      burstColor = '#dc2626';
     }
     particles.spawnComicText(monster.x, monster.y - 20, killText, killColor);
     particles.spawnDashBurst(monster.x, monster.y, 0, burstColor);
@@ -313,6 +318,9 @@ monsterManager.onBossKilled = (boss) => {
   } else if (currentDungeon && currentDungeon.themeKey === 'aot') {
     bossTitle = 'ARMORED TITAN VANQUISHED! 🏆';
     bossColor = '#22c55e';
+  } else if (currentDungeon && currentDungeon.themeKey === 'berserk') {
+    bossTitle = 'NOSFERATU ZODD SLAIN! 🏆🩸';
+    bossColor = '#ef4444';
   }
   particles.spawnComicText(boss.x, boss.y - 40, bossTitle, bossColor);
 
@@ -368,6 +376,7 @@ monsterManager.onBossKilled = (boss) => {
       let clearTitle = 'SPECIAL GRADE EXORCISED!';
       if (currentDungeon.themeKey === 'cyberpunk') clearTitle = 'CHROME TITAN FLATLINED!';
       else if (currentDungeon.themeKey === 'aot') clearTitle = 'ARMORED TITAN VANQUISHED!';
+      else if (currentDungeon.themeKey === 'berserk') clearTitle = 'NOSFERATU ZODD SLAIN!';
       currentDungeon.activeBanner = {
         title: clearTitle,
         subtitle: 'ALL FOES DEFEATED • DESCENT PORTAL UNLOCKED',
@@ -379,6 +388,7 @@ monsterManager.onBossKilled = (boss) => {
       let pendingTitle = 'BOSS EXORCISED!';
       if (currentDungeon.themeKey === 'cyberpunk') pendingTitle = 'TITAN FLATLINED!';
       else if (currentDungeon.themeKey === 'aot') pendingTitle = 'ARMORED TITAN DOWN!';
+      else if (currentDungeon.themeKey === 'berserk') pendingTitle = 'IMMORTAL APOSTLE DOWN!';
       currentDungeon.activeBanner = {
         title: pendingTitle,
         subtitle: `ELIMINATE REMAINING GUARDS (${remainingInBossRoom.length} REMAINING)`,
@@ -605,6 +615,48 @@ function populateFloorMonsters(dungeon) {
           speed = 185;
           name = 'Pure Titan Crawler';
         }
+      } else if (theme === 'berserk') {
+        if (m === 0) {
+          // 1 Heavy Brute per chamber
+          monsterType = 'executioner_brute';
+          archetype = 'brute';
+          hp = 290;
+          radius = 30;
+          speed = 78;
+          name = 'Torturer Executioner';
+        } else if (m === 1 || m === 2) {
+          // 2 Ranged Casters per chamber
+          monsterType = 'eclipse_heretic';
+          archetype = 'ranged';
+          hp = 78;
+          radius = 20;
+          speed = 115;
+          name = 'Eclipse Heretic';
+        } else if (m === 3) {
+          // 1 Kamikaze Exploder
+          monsterType = 'apostle_hound';
+          archetype = 'exploder';
+          hp = 50;
+          radius = 19;
+          speed = 230;
+          name = 'Apostle Demonic Hound';
+        } else if (m === 4) {
+          // 1 Support Shaman Buffer
+          monsterType = 'apostle_shaman';
+          archetype = 'shaman';
+          hp = 135;
+          radius = 23;
+          speed = 125;
+          name = 'Egg Apostle Shaman';
+        } else {
+          // Possessed Corpse Swarmers
+          monsterType = 'corpse_legionary';
+          archetype = 'swarmer';
+          hp = 46;
+          radius = 18;
+          speed = 180;
+          name = 'Possessed Corpse Legionary';
+        }
       } else {
         // Default JJK Theme
         if (m === 0) {
@@ -665,6 +717,9 @@ function populateFloorMonsters(dungeon) {
           } else if (theme === 'aot') {
             audio.playTitanThud();
             applyDamageToTarget(target, 12, monster.angle, 150, '-12 (TITAN BITE)', '#22c55e');
+          } else if (theme === 'berserk') {
+            audio.playClang();
+            applyDamageToTarget(target, 14, monster.angle, 170, '-14 (RUSTED FALCHION)', '#ef4444');
           } else {
             audio.playFlyHeadBuzz();
             applyDamageToTarget(target, 12, monster.angle, 160, '-12 (CURSE BITE)', '#c084fc');
@@ -704,6 +759,22 @@ function populateFloorMonsters(dungeon) {
               maxDist: 580
             });
             particles.spawnComicText(monster.x, monster.y - 24, 'SNIPER ROUND!', '#ef4444');
+          } else if (theme === 'berserk') {
+            audio.playCursedEnergyBeam();
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: monster.x,
+              y: monster.y,
+              vx: Math.cos(monster.angle) * 310,
+              vy: Math.sin(monster.angle) * 310,
+              damage: 24,
+              caster: monster,
+              color: '#ef4444',
+              radius: 11,
+              life: 2.2,
+              maxDist: 520
+            });
+            particles.spawnComicText(monster.x, monster.y - 24, 'BLOOD CURSE!', '#dc2626');
           } else {
             audio.playFlyHeadBuzz();
             cinematics.spawnProjectile({
@@ -745,6 +816,18 @@ function populateFloorMonsters(dungeon) {
               const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
               if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
                 applyDamageToTarget(target, 42, monster.angle, 560, '-42 CRYSTAL SMASH!', '#38bdf8');
+              }
+            }
+          } else if (theme === 'berserk') {
+            audio.playClang();
+            audio.playCleaverSlash();
+            cinematics.addScreenShake(11);
+            particles.spawnDashBurst(monster.x, monster.y, 0, '#ef4444');
+            particles.spawnComicText(monster.x, monster.y - 30, 'EXECUTIONER CLEAVE! 🪓', '#ef4444');
+            if (target) {
+              const dist = Math.hypot(target.x - monster.x, target.y - monster.y);
+              if (dist <= monster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 44, monster.angle, 580, '-44 HEAVY CLEAVE!', '#ef4444');
               }
             }
           } else {
@@ -1247,6 +1330,225 @@ function populateFloorMonsters(dungeon) {
 
         monsterManager.addMonster(escortMonster);
       }
+    } else if (theme === 'berserk') {
+      // Floor 4 Boss: Nosferatu Zodd (The Immortal Apostle)
+      const boss = new Monster({
+        id: `boss_fl${dungeon.floorNumber}_${Date.now()}`,
+        type: 'nosferatu_zodd',
+        name: 'Nosferatu Zodd (The Immortal)',
+        theme,
+        archetype: 'boss',
+        x: dungeon.bossRoom.centerX,
+        y: dungeon.bossRoom.centerY - 50,
+        hp: 1250,
+        radius: 48,
+        speed: 92,
+        deathType: 'apostle_dissolve',
+        roomId: dungeon.bossRoom.id,
+        isActive: false // Dormant until player enters Boss Sanctum!
+      });
+
+      boss.onPhase2Trigger = (b) => {
+        audio.playBerserkRoar();
+        audio.playClang();
+        cinematics.addScreenShake(20);
+        particles.spawnComicText(b.x, b.y - 55, 'APOSTLE AWAKENING: BEAST OF DARKNESS! 🦇🩸', '#ef4444');
+        particles.spawnDashBurst(b.x, b.y, 0, '#dc2626');
+        b.radius = 58;
+        b.baseSpeed = 115;
+      };
+
+      boss.onBossStartDying = (b) => {
+        audio.playBerserkRoar();
+        cinematics.addScreenShake(16);
+        particles.spawnComicText(b.x, b.y - 45, 'APOSTLE DISSOLUTION... 🩸', '#ef4444');
+      };
+
+      // Boss Windup Telegraph Callbacks
+      boss.onBossWindup = (attackIndex, phase, duration) => {
+        if (attackIndex === 1) {
+          const text = phase === 2 ? '🦇 SUPERSONIC APOSTLE DIVE! 🩸' : '⚠️ SCIMITAR HEAVY CLEAVE!';
+          const col = phase === 2 ? '#dc2626' : '#f97316';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 2) {
+          const text = phase === 2 ? '🩸 CONCUSSIVE BLOODLUST ROAR! 📢' : '⚠️ FLYING CLEAVER THROW! 🪓';
+          const col = phase === 2 ? '#b91c1c' : '#fb923c';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        } else if (attackIndex === 3) {
+          const text = phase === 2 ? '🌌 ECLIPSE MAELSTROM 12-ORB NOVA! 🩸' : '⚠️ 4-WAY SEISMIC STOMP! 💥';
+          const col = phase === 2 ? '#7f1d1d' : '#ef4444';
+          particles.spawnComicText(boss.x, boss.y - 48, text, col);
+        }
+      };
+
+      // Attack 1: Melee / Dive (Phase 1: Colossal Scimitar Cleave -> Phase 2: Supersonic Winged Dive Tackle)
+      boss.onBossAttack1 = (target, phase) => {
+        if (phase === 2) {
+          audio.playBerserkRoar();
+          audio.playClang();
+          boss.vx = Math.cos(boss.angle) * 450;
+          boss.vy = Math.sin(boss.angle) * 450;
+          cinematics.addScreenShake(18);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#dc2626');
+          particles.spawnComicText(boss.x, boss.y - 40, 'APOSTLE DIVE TACKLE! 🦇🩸', '#dc2626');
+          applyDamageToTarget(target, 48, boss.angle, 650, '-48 APOSTLE TACKLE!', '#dc2626');
+        } else {
+          audio.playClang();
+          cinematics.addScreenShake(8);
+          particles.spawnDashBurst(boss.x, boss.y, boss.angle, '#f97316');
+          applyDamageToTarget(target, 34, boss.angle, 450, '-34 SCIMITAR CLEAVE!', '#f97316');
+        }
+      };
+
+      // Attack 2: Ranged / Wave (Phase 1: Flying Cleaver Throw -> Phase 2: Concussive Bloodlust Roar 5-Orb Wave)
+      boss.onBossAttack2 = (target, phase) => {
+        if (phase === 2) {
+          audio.playBerserkRoar();
+          cinematics.addScreenShake(16);
+          particles.spawnComicText(boss.x, boss.y - 50, 'BLOODLUST ROAR! 📢🩸', '#ef4444');
+          for (let b = -2; b <= 2; b++) {
+            const beamAngle = boss.angle + b * 0.28;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(beamAngle) * 36,
+              y: boss.y + Math.sin(beamAngle) * 36,
+              vx: Math.cos(beamAngle) * 440,
+              vy: Math.sin(beamAngle) * 440,
+              damage: 38,
+              caster: boss,
+              color: '#ef4444',
+              radius: 18,
+              life: 2.6,
+              maxDist: 850
+            });
+          }
+        } else {
+          audio.playCleaverSlash();
+          cinematics.addScreenShake(7);
+          particles.spawnComicText(boss.x, boss.y - 50, 'FLYING CLEAVER! 🪓', '#f97316');
+          cinematics.spawnProjectile({
+            type: 'bot_energy_orb',
+            x: boss.x + Math.cos(boss.angle) * 32,
+            y: boss.y + Math.sin(boss.angle) * 32,
+            vx: Math.cos(boss.angle) * 380,
+            vy: Math.sin(boss.angle) * 380,
+            damage: 32,
+            caster: boss,
+            color: '#f97316',
+            radius: 16,
+            life: 2.4,
+            maxDist: 800
+          });
+        }
+      };
+
+      // Attack 3: Ground Stomp / AoE Nova (Phase 1: 4-Way Seismic Stomp -> Phase 2: 12-Orb Eclipse Maelstrom Nova)
+      boss.onBossAttack3 = (target, phase) => {
+        if (phase === 2) {
+          audio.playEnrageRoar();
+          cinematics.addScreenShake(18);
+          particles.spawnComicText(boss.x, boss.y - 50, 'ECLIPSE MAELSTROM NOVA! 🌌🩸', '#dc2626');
+          for (let k = 0; k < 12; k++) {
+            const kAngle = (k / 12) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 36,
+              y: boss.y + Math.sin(kAngle) * 36,
+              vx: Math.cos(kAngle) * 310,
+              vy: Math.sin(kAngle) * 310,
+              damage: 36,
+              caster: boss,
+              color: '#dc2626',
+              radius: 16,
+              life: 2.8,
+              maxDist: 800
+            });
+          }
+        } else {
+          audio.playTitanThud();
+          cinematics.addScreenShake(10);
+          particles.spawnComicText(boss.x, boss.y - 50, 'SEISMIC STOMP! 💥', '#ef4444');
+          for (let k = 0; k < 4; k++) {
+            const kAngle = (k / 4) * Math.PI * 2;
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: boss.x + Math.cos(kAngle) * 30,
+              y: boss.y + Math.sin(kAngle) * 30,
+              vx: Math.cos(kAngle) * 260,
+              vy: Math.sin(kAngle) * 260,
+              damage: 30,
+              caster: boss,
+              color: '#ef4444',
+              radius: 14,
+              life: 2.2,
+              maxDist: 600
+            });
+          }
+        }
+      };
+
+      monsterManager.addMonster(boss);
+
+      // Spawn 3 Elite Apostle Escort guards (1 Executioner Brute, 2 Eclipse Heretics)
+      const escorts = [
+        { type: 'executioner_brute', archetype: 'brute', hp: 280, radius: 28, speed: 82, ox: -160, oy: 60, name: 'Elite Apostle Executioner' },
+        { type: 'eclipse_heretic', archetype: 'ranged', hp: 85, radius: 20, speed: 120, ox: 160, oy: -80, name: 'Elite Eclipse Heretic' },
+        { type: 'eclipse_heretic', archetype: 'ranged', hp: 85, radius: 20, speed: 120, ox: -160, oy: -80, name: 'Elite Eclipse Heretic' }
+      ];
+
+      for (let e = 0; e < escorts.length; e++) {
+        const esc = escorts[e];
+        const escortMonster = new Monster({
+          id: `boss_escort_${e}_${Date.now()}`,
+          type: esc.type,
+          name: esc.name,
+          theme,
+          archetype: esc.archetype,
+          x: dungeon.bossRoom.centerX + esc.ox,
+          y: dungeon.bossRoom.centerY + esc.oy,
+          hp: esc.hp,
+          radius: esc.radius,
+          speed: esc.speed,
+          roomId: dungeon.bossRoom.id,
+          isActive: false
+        });
+
+        if (esc.archetype === 'ranged') {
+          escortMonster.onRangedAttack = (target) => {
+            audio.playLaserShot();
+            cinematics.spawnProjectile({
+              type: 'bot_energy_orb',
+              x: escortMonster.x,
+              y: escortMonster.y,
+              vx: Math.cos(escortMonster.angle) * 350,
+              vy: Math.sin(escortMonster.angle) * 350,
+              damage: 24,
+              caster: escortMonster,
+              color: '#ef4444',
+              radius: 12,
+              life: 2.4,
+              maxDist: 650
+            });
+            particles.spawnComicText(escortMonster.x, escortMonster.y - 24, 'BLOOD CURSE! 🩸', '#ef4444');
+          };
+        } else if (esc.archetype === 'brute') {
+          escortMonster.onBruteSlam = (target) => {
+            audio.playClang();
+            audio.playHammerSmash();
+            cinematics.addScreenShake(10);
+            particles.spawnDashBurst(escortMonster.x, escortMonster.y, 0, '#ef4444');
+            particles.spawnComicText(escortMonster.x, escortMonster.y - 30, 'EXECUTION CLEAVE! 🩸', '#ef4444');
+            if (target) {
+              const dist = Math.hypot(target.x - escortMonster.x, target.y - escortMonster.y);
+              if (dist <= escortMonster.radius * 2.2 + (target.radius || 24)) {
+                applyDamageToTarget(target, 40, escortMonster.angle, 520, '-40 EXECUTION CLEAVE!', '#ef4444');
+              }
+            }
+          };
+        }
+
+        monsterManager.addMonster(escortMonster);
+      }
     } else {
       // Default JJK Boss: Special Grade Finger Bearer
       const boss = new Monster({
@@ -1615,8 +1917,8 @@ function startFloorDescent(floorNumber, broadcast = true) {
   const gameOverModalEl = document.getElementById('game-over-modal');
   if (gameOverModalEl) gameOverModalEl.classList.add('hidden');
 
-  // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, subsequent cycle
-  const themePool = ['jjk', 'cyberpunk', 'aot'];
+  // Dynamic Theme Cycling: Floor 1 = JJK, Floor 2 = Cyberpunk, Floor 3 = Attack on Titan, Floor 4 = Berserk, subsequent cycle
+  const themePool = ['jjk', 'cyberpunk', 'aot', 'berserk'];
   const themeKey = themePool[(floorNumber - 1) % themePool.length];
   currentDungeon = new Dungeon({ floorNumber, theme: themeKey }).generate();
 

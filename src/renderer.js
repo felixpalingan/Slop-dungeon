@@ -1930,6 +1930,27 @@ export class Renderer {
             cCtx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
           }
         }
+
+        // Berserk: Brand of Sacrifice blood fissures & sacrificial magma veins
+        if (theme.id === 'berserk') {
+          const hash = Math.abs(Math.sin(c * 23.41 + r * 67.89) * 43758.5453) % 1;
+          if (hash > 0.68) {
+            cCtx.strokeStyle = 'rgba(239, 68, 68, 0.28)';
+            cCtx.lineWidth = 1.4;
+            cCtx.beginPath();
+            // Jagged sacrificial rune fissure
+            cCtx.moveTo(fx + 10, fy + 8);
+            cCtx.lineTo(fx + tileSize / 2, fy + tileSize / 2 - 4);
+            cCtx.lineTo(fx + tileSize / 2, fy + tileSize - 8);
+            cCtx.moveTo(fx + tileSize / 2 - 8, fy + tileSize / 2);
+            cCtx.lineTo(fx + tileSize / 2 + 8, fy + tileSize / 2);
+            cCtx.stroke();
+
+            // Glowing ember dot
+            cCtx.fillStyle = 'rgba(220, 38, 38, 0.45)';
+            cCtx.fillRect(fx + tileSize / 2 - 2, fy + tileSize / 2 - 2, 4, 4);
+          }
+        }
       }
     }
 
@@ -3892,6 +3913,501 @@ export class Renderer {
         ctx.arc(8, -m.radius * 0.2, 3.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
+      } else if (m.type === 'corpse_legionary') {
+        // Berserk Swarmer: Possessed Corpse Legionary (Skeletal fiend with rusted iron falchion)
+        ctx.save();
+        ctx.rotate(m.angle);
+        const wobble = Math.sin(m.animTime * 14) * 3;
+
+        // Battered iron breastplate & ribcage
+        ctx.fillStyle = '#1c1917';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#44403c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Exposed white bone ribs
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.8;
+        for (let r = -6; r <= 6; r += 4) {
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.5, r);
+          ctx.lineTo(m.radius * 0.5, r);
+          ctx.stroke();
+        }
+
+        // Battered iron helmet with nose guard
+        ctx.fillStyle = '#292524';
+        ctx.beginPath();
+        ctx.arc(0, -2, m.radius * 0.6, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#78716c';
+        ctx.stroke();
+
+        // Glowing crimson eye sockets inside dark skull
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(-4, -1, 2.5, 0, Math.PI * 2);
+        ctx.arc(4, -1, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Right hand: Rusted Jagged Iron Falchion
+        ctx.fillStyle = '#44403c';
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.4, -m.radius * 0.6);
+        ctx.lineTo(m.radius * 0.4 + 20, -m.radius * 0.6 + wobble);
+        ctx.lineTo(m.radius * 0.4 + 16, -m.radius * 0.6 - 4 + wobble);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (m.type === 'apostle_hound') {
+        // Berserk Exploder: Apostle Demonic Hound (Quadrupedal fiend wrapped in thorns)
+        ctx.save();
+        ctx.rotate(m.angle);
+
+        // Scuttling clawed legs
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        const legRun = Math.sin(m.animTime * 20) * 6;
+        ctx.moveTo(-m.radius * 0.5, -m.radius * 0.7);
+        ctx.lineTo(-m.radius * 1.1, -m.radius * 0.8 + legRun);
+        ctx.moveTo(m.radius * 0.5, -m.radius * 0.7);
+        ctx.lineTo(m.radius * 1.1, -m.radius * 0.8 - legRun);
+        ctx.moveTo(-m.radius * 0.4, m.radius * 0.7);
+        ctx.lineTo(-m.radius * 0.9, m.radius * 0.8 - legRun);
+        ctx.moveTo(m.radius * 0.4, m.radius * 0.7);
+        ctx.lineTo(m.radius * 0.9, m.radius * 0.8 + legRun);
+        ctx.stroke();
+
+        // Dark demonic hound body
+        ctx.fillStyle = '#0c0a09';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, m.radius, m.radius * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#991b1b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Pulsating crimson sacrificial core on back
+        const houndPulse = m.isPriming ? Math.sin(m.animTime * 35) * 0.5 + 0.5 : Math.sin(m.animTime * 8) * 0.25 + 0.75;
+        ctx.fillStyle = `rgba(239, 68, 68, ${houndPulse})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = m.isPriming ? 18 : 8;
+        ctx.beginPath();
+        ctx.arc(-2, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Snouted predator head with twin horns & red fangs
+        ctx.fillStyle = '#1c1917';
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.6, -7);
+        ctx.lineTo(m.radius * 1.25, 0); // Spiked snout
+        ctx.lineTo(m.radius * 0.6, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ef4444';
+        ctx.stroke();
+
+        // Twin backwards curved horns
+        ctx.strokeStyle = '#44403c';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(m.radius * 0.5, -6);
+        ctx.lineTo(m.radius * 0.1, -12);
+        ctx.moveTo(m.radius * 0.5, 6);
+        ctx.lineTo(m.radius * 0.1, 12);
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (m.type === 'eclipse_heretic') {
+        // Berserk Ranged: Eclipse Heretic (Dark robed cultist casting crimson blood curses)
+        ctx.save();
+        // Dark crimson ragged cowl & robes
+        ctx.fillStyle = '#26080b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Deep hood cowl
+        ctx.fillStyle = '#180407';
+        ctx.beginPath();
+        ctx.arc(0, -3, m.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing Brand of Sacrifice on forehead/face
+        ctx.strokeStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -8);
+        ctx.lineTo(0, -2);
+        ctx.moveTo(-3, -6);
+        ctx.lineTo(3, -4);
+        ctx.moveTo(-3, -4);
+        ctx.lineTo(3, -6);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Orbiting blood skull orbs
+        for (let o = 0; o < 3; o++) {
+          const oAng = m.animTime * 3.5 + (o / 3) * Math.PI * 2;
+          const ox = Math.cos(oAng) * (m.radius + 12);
+          const oy = Math.sin(oAng) * (m.radius + 12);
+          ctx.fillStyle = '#dc2626';
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(ox, oy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
+      } else if (m.type === 'executioner_brute') {
+        // Berserk Brute: Torturer Executioner (Towering black iron tank with executioner blade)
+        if (m.windupTimer > 0) {
+          // Telegraphed Crimson Executioner Cleave Arc
+          const p = 1 - (m.windupTimer / 0.8);
+          ctx.strokeStyle = '#ef4444';
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * 2.3 * p, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Bulky iron armor torso
+        ctx.fillStyle = '#18181b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#52525b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Heavy spiked shoulder pauldrons
+        ctx.fillStyle = '#27272a';
+        ctx.fillRect(-m.radius * 0.95, -10, 8, 20);
+        ctx.fillRect(m.radius * 0.95 - 8, -10, 8, 20);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-m.radius * 0.95, -12, 3, 4); // Red spike tips
+        ctx.fillRect(m.radius * 0.95 - 3, -12, 3, 4);
+
+        // Leather Executioner Hood with eye slits
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-5, -3, 3, 2);
+        ctx.fillRect(2, -3, 3, 2);
+
+        // Colossal Two-Handed Executioner Iron Blade
+        ctx.save();
+        ctx.rotate(m.angle);
+        ctx.fillStyle = '#3f3f46';
+        ctx.strokeStyle = '#71717a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(m.radius * 0.4, -m.radius * 0.75, 28, 11, [2]);
+        ctx.fill();
+        ctx.stroke();
+        // Bloodstained blade edge
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(m.radius * 0.4 + 20, -m.radius * 0.75, 8, 11);
+        ctx.restore();
+      } else if (m.type === 'apostle_shaman') {
+        // Berserk Shaman: Egg Apostle Shaman (Egg-shaped apostle channeling unholy blood wards)
+        ctx.save();
+        // Pale egg-like carapace
+        ctx.fillStyle = '#2e1014';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, m.radius * 0.9, m.radius * 1.15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#991b1b';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Eerie weeping bloody eyes embedded in egg surface
+        ctx.fillStyle = '#fee2e2';
+        ctx.beginPath();
+        ctx.arc(-4, -6, 3, 0, Math.PI * 2);
+        ctx.arc(4, -6, 3, 0, Math.PI * 2);
+        ctx.arc(0, 4, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-5, -6, 2, 2);
+        ctx.fillRect(3, -6, 2, 2);
+        ctx.fillRect(-1, 4, 2, 2);
+
+        // Chanting Crimson Halo Ring hovering overhead
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(0, -m.radius * 1.25, 12, 4.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+      } else if (m.type === 'nosferatu_zodd') {
+        // Berserk Boss: Nosferatu Zodd (The Immortal Apostle)
+        const isPhase2 = m.phase === 2;
+        const pulse = Math.sin(m.animTime * (isPhase2 ? 8 : 4)) * (isPhase2 ? 6 : 3.5);
+
+        if (m.isDying) {
+          // Death Animation: Apostle Dissolution & Blood Mist Spiral
+          const deathProg = Math.max(0, 1 - (m.deathTimer / m.deathDuration));
+          ctx.translate((Math.random() - 0.5) * 8 * deathProg, (Math.random() - 0.5) * 8 * deathProg);
+
+          // Dark crimson blood miasma spirals
+          for (let s = 0; s < 10; s++) {
+            const sAngle = (s / 10) * Math.PI * 2 + m.animTime * 5;
+            const sDist = (m.radius + deathProg * 45) * (0.6 + (s % 3) * 0.2);
+            const sY = -deathProg * 70 - (s * 4);
+            ctx.fillStyle = s % 2 === 0 ? 'rgba(239, 68, 68, 0.55)' : 'rgba(127, 29, 29, 0.65)';
+            ctx.beginPath();
+            ctx.arc(Math.cos(sAngle) * sDist, Math.sin(sAngle) * (sDist * 0.4) + sY, 8 * (1 - deathProg * 0.5), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Demonic Blood Aura (Expands and intensifies in Phase 2)
+        const auraColor = isPhase2 ? 'rgba(220, 38, 38, 0.48)' : 'rgba(185, 28, 28, 0.26)';
+        ctx.strokeStyle = isPhase2 ? '#ef4444' : '#b91c1c';
+        ctx.fillStyle = auraColor;
+        ctx.lineWidth = isPhase2 ? 3.5 : 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 24 : 14) + pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // If winding up attack or special
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.strokeStyle = isPhase2 ? '#dc2626' : '#f59e0b';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.2 : 2.5), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (isPhase2) {
+          // --- PHASE 2: WINGED APOSTLE (BEAST OF DARKNESS FORM) ---
+          ctx.save();
+          ctx.rotate(m.angle);
+
+          // Giant Bat Wings unfolding and flapping with animTime
+          const wingFlap = Math.sin(m.animTime * 12) * 16;
+          ctx.fillStyle = '#140507';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2.5;
+
+          // Left Wing
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.3, -m.radius * 0.4);
+          ctx.lineTo(-m.radius * 1.6, -m.radius * 1.5 + wingFlap); // Upper wing joint
+          ctx.lineTo(-m.radius * 1.1, -m.radius * 0.6 + wingFlap * 0.6);
+          ctx.lineTo(-m.radius * 0.4, -m.radius * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Right Wing
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.3, m.radius * 0.4);
+          ctx.lineTo(-m.radius * 1.6, m.radius * 1.5 - wingFlap); // Upper wing joint
+          ctx.lineTo(-m.radius * 1.1, m.radius * 0.6 - wingFlap * 0.6);
+          ctx.lineTo(-m.radius * 0.4, m.radius * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Massive Demonic Minotaur Torso (Pitch Black Hide)
+          ctx.fillStyle = '#09090b';
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#7f1d1d';
+          ctx.lineWidth = 3.5;
+          ctx.stroke();
+
+          // Crimson muscle striations across chest
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let i = -m.radius * 0.6; i <= m.radius * 0.6; i += 9) {
+            ctx.moveTo(i, -m.radius * 0.5);
+            ctx.lineTo(i, m.radius * 0.5);
+          }
+          ctx.stroke();
+
+          // Twin Swept-Back Curved Ram/Bull Horns
+          ctx.strokeStyle = '#27272a';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.3, -m.radius * 0.6);
+          ctx.quadraticCurveTo(-m.radius * 0.4, -m.radius * 1.4, -m.radius * 0.9, -m.radius * 0.9);
+          ctx.moveTo(m.radius * 0.3, m.radius * 0.6);
+          ctx.quadraticCurveTo(-m.radius * 0.4, m.radius * 1.4, -m.radius * 0.9, m.radius * 0.9);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#71717a';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.3, -m.radius * 0.6);
+          ctx.quadraticCurveTo(-m.radius * 0.4, -m.radius * 1.4, -m.radius * 0.9, -m.radius * 0.9);
+          ctx.moveTo(m.radius * 0.3, m.radius * 0.6);
+          ctx.quadraticCurveTo(-m.radius * 0.4, m.radius * 1.4, -m.radius * 0.9, m.radius * 0.9);
+          ctx.stroke();
+
+          // Snarling Demonic Snout & Jaw
+          ctx.fillStyle = '#180407';
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.5, 0, m.radius * 0.45, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.fill();
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Sharp bloody fangs
+          ctx.fillStyle = '#fee2e2';
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.75, -6);
+          ctx.lineTo(m.radius * 0.95, -4);
+          ctx.lineTo(m.radius * 0.75, -2);
+          ctx.moveTo(m.radius * 0.75, 2);
+          ctx.lineTo(m.radius * 0.95, 4);
+          ctx.lineTo(m.radius * 0.75, 6);
+          ctx.fill();
+
+          // Blazing Crimson Neon Eyes
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.4, -8, 4.5, 0, Math.PI * 2);
+          ctx.arc(m.radius * 0.4, 8, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Razor-sharp beast claws in front
+          ctx.fillStyle = '#1c1917';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2;
+          ctx.fillRect(m.radius * 0.4, -m.radius * 0.9, 14, 8);
+          ctx.fillRect(m.radius * 0.4, m.radius * 0.9 - 8, 14, 8);
+
+          ctx.restore();
+        } else {
+          // --- PHASE 1: HUMAN MERCENARY SWORDSMAN FORM ---
+          ctx.save();
+          ctx.rotate(m.angle);
+
+          // Muscular Warrior Torso (Dark bronze / tanned berserker flesh)
+          ctx.fillStyle = '#78350f';
+          ctx.beginPath();
+          ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#451a03';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Battle-scarred chest cuts
+          ctx.strokeStyle = '#991b1b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.4, -6);
+          ctx.lineTo(m.radius * 0.3, 8);
+          ctx.moveTo(-m.radius * 0.2, 8);
+          ctx.lineTo(m.radius * 0.4, -4);
+          ctx.stroke();
+
+          // Thick spiky wild black mane hair framing head and shoulders
+          ctx.fillStyle = '#09090b';
+          ctx.beginPath();
+          ctx.arc(-m.radius * 0.3, 0, m.radius * 0.8, -Math.PI * 0.8, Math.PI * 0.8);
+          ctx.fill();
+          // Spiky hair tufts
+          for (let h = -3; h <= 3; h++) {
+            ctx.beginPath();
+            ctx.moveTo(-m.radius * 0.6, h * 10);
+            ctx.lineTo(-m.radius * 1.25, h * 12);
+            ctx.lineTo(-m.radius * 0.6, (h + 1) * 10);
+            ctx.fill();
+          }
+
+          // Leather combat kilt & iron skull belt
+          ctx.fillStyle = '#1c1917';
+          ctx.fillRect(-m.radius * 0.4, -m.radius * 0.5, 8, m.radius);
+          ctx.fillStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.arc(-m.radius * 0.3, 0, 5, 0, Math.PI * 2); // skull buckle
+          ctx.fill();
+
+          // Furrowed brow & predatory face
+          ctx.fillStyle = '#92400e';
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.3, 0, m.radius * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Glowing predatory amber-yellow eyes
+          ctx.fillStyle = '#fbbf24';
+          ctx.shadowColor = '#fbbf24';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.45, -5, 3, 0, Math.PI * 2);
+          ctx.arc(m.radius * 0.45, 5, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Fangs
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(m.radius * 0.6, -3, 3, 2);
+          ctx.fillRect(m.radius * 0.6, 2, 3, 2);
+
+          // Right Hand: Colossal Curved Scimitar
+          ctx.fillStyle = '#475569';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.4, m.radius * 0.6);
+          ctx.lineTo(m.radius * 0.4 + 36, m.radius * 0.6 + 8); // curved blade tip
+          ctx.lineTo(m.radius * 0.4 + 26, m.radius * 0.6 - 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Left Hand: Heavy Iron Battleaxe
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.4, -m.radius * 0.6);
+          ctx.lineTo(m.radius * 0.4 + 22, -m.radius * 0.6 - 12);
+          ctx.lineTo(m.radius * 0.4 + 22, -m.radius * 0.6 + 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+        }
       } else {
         // Generic / Fallback Monster
         ctx.fillStyle = '#475569';

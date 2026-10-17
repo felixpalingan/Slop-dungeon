@@ -50,7 +50,7 @@ export class Monster {
     this.isDying = false;
     this.deathTimer = 0;
     this.deathDuration = options.deathDuration || 2.0;
-    this.deathType = options.deathType || (this.type === 'adam_smasher_prototype' ? 'core_detonation' : (this.type === 'finger_bearer' ? 'curse_vaporize' : (this.type === 'armored_titan' ? 'titan_evaporate' : 'default')));
+    this.deathType = options.deathType || (this.type === 'adam_smasher_prototype' ? 'core_detonation' : (this.type === 'finger_bearer' ? 'curse_vaporize' : (this.type === 'armored_titan' ? 'titan_evaporate' : (this.type === 'nosferatu_zodd' ? 'apostle_dissolve' : 'default'))));
     this.specialCooldownTimer = 2.0;
     this.isPreparingSpecial = false;
     this.afterImages = [];

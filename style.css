@@ -975,6 +975,12 @@ kbd {
   border: 1px solid rgba(34, 197, 94, 0.5);
 }
 
+.berserk-tag {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
 .lobby-tag {
   background: rgba(56, 189, 248, 0.2);
   color: #38bdf8;
@@ -1062,6 +1068,15 @@ kbd {
 .aot-btn:hover {
   background: #16a34a;
   box-shadow: 0 0 14px rgba(34, 197, 94, 0.5);
+}
+
+.berserk-btn {
+  background: #b91c1c;
+  color: #ffffff;
+}
+.berserk-btn:hover {
+  background: #dc2626;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
 }
 
 .lobby-warp-btn {
