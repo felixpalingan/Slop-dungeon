@@ -139,6 +139,13 @@ export class Player {
     this.onShotgunReloadComplete = null;
     this.lastSliceMap = new Map();
 
+    // Armor and Active Buff states
+    this.armor = 0;
+    this.isWarCry = false;
+    this.warCryTimer = 0;
+    this.isInfiniteStamina = false;
+    this.infiniteStaminaTimer = 0;
+
     // Dual Wield independent blade attack animations (Levi Snap Blades)
     this.isLeftAttacking = false;
     this.leftAttackDuration = 0.14;
@@ -313,7 +320,7 @@ export class Player {
    * If equipping an off-hand while holding a 2-handed weapon, un-equips the 2H weapon!
    */
   equipItem(item) {
-    if (!item || !item.slot) return null;
+    if (!item || !item.slot || item.slot === 'consumable') return null;
 
     let unequippedItems = [];
 
@@ -368,6 +375,7 @@ export class Player {
     let bonusSpeed = 0;
     let bonusStaminaRegen = 0;
     let rollCostReduction = 0;
+    let totalArmor = 0;
 
     for (const slot in this.equipment) {
       const item = this.equipment[slot];
@@ -376,6 +384,7 @@ export class Player {
       if (item.speedBonus) bonusSpeed += item.speedBonus;
       if (item.staminaRegen) bonusStaminaRegen += item.staminaRegen;
       if (item.rollCostReduction) rollCostReduction += item.rollCostReduction;
+      if (item.armor) totalArmor += item.armor;
     }
 
     const oldMaxHp = this.maxHp || 100;
@@ -385,13 +394,15 @@ export class Player {
     this.baseSpeed = 260 + bonusSpeed;
     this.staminaRegen = 32 + bonusStaminaRegen;
     this.rollCost = Math.max(15, 35 - rollCostReduction);
+    this.armor = totalArmor;
 
     if (this.eventBus) {
       this.eventBus.emit('player:statsChanged', {
         maxHp: this.maxHp,
         baseSpeed: this.baseSpeed,
         staminaRegen: this.staminaRegen,
-        rollCost: this.rollCost
+        rollCost: this.rollCost,
+        armor: this.armor
       });
     }
   }
@@ -446,6 +457,14 @@ export class Player {
     if (this.isBerserk) {
       // Berserker armor absorbs 35% damage
       finalDamage = Math.max(1, Math.round(finalDamage * 0.65));
+    }
+    if (this.armor > 0 && !isBlocked) {
+      // Armor mitigation with diminishing returns:
+      // 6 armor (leather tunic) = ~11% mitigation
+      // 16 armor (spiked cuirass) = ~24% mitigation
+      // 26 armor = ~34% mitigation
+      const armorFactor = 50 / (50 + this.armor);
+      finalDamage = Math.max(1, Math.round(finalDamage * armorFactor));
     }
 
     this.hp = Math.max(0, this.hp - finalDamage);
@@ -679,9 +698,40 @@ export class Player {
       if (this.overchargeTimer <= 0) {
         this.isOvercharged = false;
         this.overchargeTimer = 0;
-        if (!this.isSandevistan) {
+        if (!this.isSandevistan && !this.isWarCry) {
           this.currentSpeed = this.baseSpeed;
         }
+      }
+    }
+
+    // War Cry Berserk Surge countdown (Leather Tunic active Q)
+    if (this.isWarCry) {
+      this.warCryTimer -= dt;
+      if (Math.random() < 0.35) {
+        this.afterImages.push({
+          x: this.x,
+          y: this.y,
+          angle: this.angle,
+          color: '#ff3366',
+          alpha: 0.5
+        });
+      }
+      if (this.warCryTimer <= 0) {
+        this.isWarCry = false;
+        this.warCryTimer = 0;
+        if (!this.isSandevistan && !this.isOvercharged) {
+          this.currentSpeed = this.baseSpeed;
+        }
+      }
+    }
+
+    // Infinite Stamina Tonic countdown
+    if (this.isInfiniteStamina) {
+      this.infiniteStaminaTimer -= dt;
+      this.stamina = this.maxStamina;
+      if (this.infiniteStaminaTimer <= 0) {
+        this.isInfiniteStamina = false;
+        this.infiniteStaminaTimer = 0;
       }
     }
 
@@ -728,9 +778,11 @@ export class Player {
     }
 
     // 2. Mouse Aiming angle
-    const screenCenterX = window.innerWidth / 2;
-    const screenCenterY = window.innerHeight / 2;
-    this.angle = Math.atan2(input.mouse.screenY - screenCenterY, input.mouse.screenX - screenCenterX);
+    const screenCenterX = (typeof window !== 'undefined' ? window.innerWidth : 800) / 2;
+    const screenCenterY = (typeof window !== 'undefined' ? window.innerHeight : 600) / 2;
+    if (input && input.mouse) {
+      this.angle = Math.atan2(input.mouse.screenY - screenCenterY, input.mouse.screenX - screenCenterX);
+    }
 
     // 3. Weapon Attack Animation update
     if (this.isAttacking) {
@@ -933,10 +985,12 @@ export class Player {
       // 5. Normal Movement
       const { dx, dy } = input.getMovementVector();
 
-      if (input.justPressedShift && this.stamina >= this.rollCost) {
+      if (input.justPressedShift && (this.stamina >= this.rollCost || this.isInfiniteStamina)) {
         this.isRolling = true;
         this.rollTimer = this.rollDuration;
-        this.stamina -= this.rollCost;
+        if (!this.isInfiniteStamina) {
+          this.stamina -= this.rollCost;
+        }
 
         if (dx !== 0 || dy !== 0) {
           this.rollDirX = dx;

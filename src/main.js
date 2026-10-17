@@ -318,28 +318,41 @@ monsterManager.onBossKilled = (boss) => {
 
   if (currentDungeon) {
     // Drop fountain of diverse Mythic / Legendary anime loot!
-    const bossLoot = [];
-    const excludedIds = [];
-    for (let b = 0; b < 3; b++) {
-      const item = getRandomDungeonLoot(currentDungeon.themeKey, {
-        minRarity: 'LEGENDARY',
-        guaranteeTheme: true,
-        excludeIds: excludedIds
-      });
-      if (item) {
-        bossLoot.push(item);
-        excludedIds.push(item.id);
+    if (!network.isJoined || network.isHost) {
+      const bossLoot = [];
+      const excludedIds = [];
+      for (let b = 0; b < 3; b++) {
+        const item = getRandomDungeonLoot(currentDungeon.themeKey, {
+          minRarity: 'LEGENDARY',
+          guaranteeTheme: true,
+          excludeIds: excludedIds
+        });
+        if (item) {
+          bossLoot.push(item);
+          excludedIds.push(item.id);
+        }
       }
-    }
 
-    bossLoot.forEach((item, idx) => {
-      if (!item) return;
-      const dropAngle = (idx / bossLoot.length) * Math.PI * 2;
-      const lx = boss.x + Math.cos(dropAngle) * 55;
-      const ly = boss.y + Math.sin(dropAngle) * 55;
-      const lootObj = new GroundLoot(item, lx, ly, `boss_drop_${idx}_${Date.now()}`);
-      groundItems.set(lootObj.id, lootObj);
-    });
+      bossLoot.forEach((item, idx) => {
+        if (!item) return;
+        const dropAngle = (idx / bossLoot.length) * Math.PI * 2;
+        const lx = boss.x + Math.cos(dropAngle) * 55;
+        const ly = boss.y + Math.sin(dropAngle) * 55;
+        const dropId = `boss_drop_${idx}_${Date.now()}`;
+        const lootObj = new GroundLoot(item, lx, ly, dropId);
+        groundItems.set(lootObj.id, lootObj);
+
+        if (network.isHost && network.peers.size > 0) {
+          network.broadcast({
+            type: 'LOOT_SPAWNED',
+            item,
+            x: lx,
+            y: ly,
+            id: dropId
+          });
+        }
+      });
+    }
 
     // Shower of Slops coins for vanquishing the Floor Guardian!
     spawnSlopCoins(boss.x, boss.y, 14, 15);
@@ -441,6 +454,9 @@ function spawnRoomReward(room) {
   if (!room) return;
   particles.spawnDashBurst(room.centerX, room.centerY, 0, '#00ff88');
 
+  // Authoritative loot spawn: Host spawns and broadcasts to all clients
+  if (network.isJoined && !network.isHost) return;
+
   // Spawn diverse, theme-appropriate room clear reward directly on the ground (no obstacle pots!)
   const roomLoot = getRandomDungeonLoot(currentDungeon ? currentDungeon.themeKey : 'jjk', {
     minRarity: 'RARE'
@@ -451,6 +467,16 @@ function spawnRoomReward(room) {
     groundItems.set(lootObj.id, lootObj);
     particles.spawnComicText(room.centerX, room.centerY - 24, `${roomLoot.name.toUpperCase()}! 🎁`, '#00ff88');
 
+    if (network.isHost && network.peers.size > 0) {
+      network.broadcast({
+        type: 'LOOT_SPAWNED',
+        item: roomLoot,
+        x: room.centerX,
+        y: room.centerY,
+        id: lootObj.id
+      });
+    }
+
     // 45% chance of a second diverse drop
     if (Math.random() < 0.45) {
       const extraLoot = getRandomDungeonLoot(currentDungeon ? currentDungeon.themeKey : 'jjk', {
@@ -459,6 +485,15 @@ function spawnRoomReward(room) {
       if (extraLoot) {
         const lootObj2 = new GroundLoot(extraLoot, room.centerX + 36, room.centerY, `extra_reward_${room.id}_${Date.now()}`);
         groundItems.set(lootObj2.id, lootObj2);
+        if (network.isHost && network.peers.size > 0) {
+          network.broadcast({
+            type: 'LOOT_SPAWNED',
+            item: extraLoot,
+            x: room.centerX + 36,
+            y: room.centerY,
+            id: lootObj2.id
+          });
+        }
       }
     }
   }
@@ -1846,6 +1881,7 @@ function renderInventoryUI() {
 
   player.inventory.forEach((item, index) => {
     const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+    const isConsumable = item.slot === 'consumable';
     const card = document.createElement('div');
     card.className = 'backpack-item-card';
     card.innerHTML = `
@@ -1854,7 +1890,10 @@ function renderInventoryUI() {
         <div style="font-size:0.7rem; color:#94a3b8;">${item.desc || ''}</div>
       </div>
       <div class="backpack-actions">
-        <button class="item-action-btn equip-item-btn" data-idx="${index}">EQUIP</button>
+        ${isConsumable
+          ? `<button class="item-action-btn use-item-btn" style="background:#059669; border-color:#10b981; color:#fff;" data-idx="${index}">USE</button>`
+          : `<button class="item-action-btn equip-item-btn" data-idx="${index}">EQUIP</button>`
+        }
         <button class="item-action-btn drop-item-btn" style="border-color:#ef4444;" data-idx="${index}">DROP</button>
       </div>
     `;
@@ -1876,6 +1915,36 @@ function renderInventoryUI() {
         renderInventoryUI();
         broadcastMyState();
       }
+    });
+  });
+
+  // Consumable USE listeners
+  document.querySelectorAll('.use-item-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const itemToUse = player.inventory[idx];
+      if (!itemToUse) return;
+
+      player.inventory.splice(idx, 1);
+      if (itemToUse.id === 'health_flask' || itemToUse.healAmount) {
+        const heal = itemToUse.healAmount || 50;
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+        player.syncHUD();
+        audio.playShopBuy();
+        particles.spawnComicText(player.x, player.y - 32, `+${heal} HP 💚 (FLASK)`, '#22c55e');
+      } else if (itemToUse.id === 'stamina_tonic' || itemToUse.staminaDuration) {
+        const duration = itemToUse.staminaDuration || 8.0;
+        player.stamina = player.maxStamina;
+        player.isInfiniteStamina = true;
+        player.infiniteStaminaTimer = duration;
+        player.syncHUD();
+        audio.playGravitationalSurge?.();
+        particles.spawnComicText(player.x, player.y - 32, `STAMINA SURGE! ⚡ (${Math.round(duration)}s)`, '#38bdf8');
+        particles.spawnDashBurst(player.x, player.y, 0, '#38bdf8');
+      }
+
+      renderInventoryUI();
+      broadcastMyState();
     });
   });
 
@@ -1911,29 +1980,41 @@ function renderInventoryUI() {
   });
 }
 
-// Pick up nearby ground loot with [E]
+// Pick up nearby ground loot with [E] - ALWAYS targets the closest item!
 function tryPickupNearbyLoot() {
+  let closestLoot = null;
+  let closestDist = Infinity;
+  let closestId = null;
+
   for (const [id, loot] of groundItems.entries()) {
     if (loot.isNear(player)) {
-      if (player.inventory.length >= player.maxInventorySize) {
-        particles.spawnComicText(player.x, player.y - 30, 'BACKPACK FULL!', '#ef4444');
-        return;
+      const dist = Math.hypot(player.x - loot.x, player.y - loot.y);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestLoot = loot;
+        closestId = id;
       }
+    }
+  }
 
-      // Add to inventory
-      player.inventory.push(loot.item);
-      groundItems.delete(id);
-
-      // Sync pickup
-      const pickupMsg = { type: 'LOOT_PICKED_UP', id };
-      if (network.isHost) network.broadcast(pickupMsg);
-      else network.sendToHost(pickupMsg);
-
-      audio.playDescentFanfare();
-      particles.spawnComicText(player.x, player.y - 28, `GOT ${loot.item.name}!`, '#fbbf24');
-      if (!invModal.classList.contains('hidden')) renderInventoryUI();
+  if (closestLoot) {
+    if (player.inventory.length >= player.maxInventorySize) {
+      particles.spawnComicText(player.x, player.y - 30, 'BACKPACK FULL!', '#ef4444');
       return;
     }
+
+    // Add deep cloned item to inventory
+    player.inventory.push({ ...closestLoot.item });
+    groundItems.delete(closestId);
+
+    // Sync pickup
+    const pickupMsg = { type: 'LOOT_PICKED_UP', id: closestId };
+    if (network.isHost) network.broadcast(pickupMsg);
+    else network.sendToHost(pickupMsg);
+
+    audio.playDescentFanfare();
+    particles.spawnComicText(player.x, player.y - 28, `GOT ${closestLoot.item.name}!`, '#fbbf24');
+    if (!invModal.classList.contains('hidden')) renderInventoryUI();
   }
 }
 
@@ -5461,10 +5542,22 @@ function gameLoop(now) {
     renderer.drawMonsters(monsterManager.monsters, now * 0.001);
   }
 
-  // Ground Loot Items (frustum culled with glowing rarity beams and proximity [E] pickup)
+  // Ground Loot Items (frustum culled with glowing rarity beams and closest-item [E] pickup highlight)
+  let closestNearbyLoot = null;
+  let closestDist = Infinity;
+  for (const [_, loot] of groundItems.entries()) {
+    if (loot.isNear(player)) {
+      const d = Math.hypot(player.x - loot.x, player.y - loot.y);
+      if (d < closestDist) {
+        closestDist = d;
+        closestNearbyLoot = loot;
+      }
+    }
+  }
+
   for (const [_, loot] of groundItems.entries()) {
     if (renderer.isEntityVisible(loot.x, loot.y, 45)) {
-      loot.draw(renderer.ctx, loot.isNear(player));
+      loot.draw(renderer.ctx, loot === closestNearbyLoot);
     }
   }
 

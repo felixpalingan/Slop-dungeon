@@ -125,6 +125,7 @@ export class ModalController {
 
     this.player.inventory.forEach((item, index) => {
       const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+      const isConsumable = item.slot === 'consumable';
       const card = document.createElement('div');
       card.className = 'backpack-item-card';
       card.innerHTML = `
@@ -133,7 +134,10 @@ export class ModalController {
           <span style="font-size:0.75rem; color:#888;"> [${item.slot.toUpperCase()}]</span>
         </div>
         <div class="backpack-btn-group">
-          <button class="item-action-btn equip-item-btn" data-idx="${index}">EQUIP</button>
+          ${isConsumable
+            ? `<button class="item-action-btn use-item-btn" style="background:#059669; border-color:#10b981; color:#fff;" data-idx="${index}">USE</button>`
+            : `<button class="item-action-btn equip-item-btn" data-idx="${index}">EQUIP</button>`
+          }
           <button class="item-action-btn drop-item-btn" style="border-color:#ef4444;" data-idx="${index}">DROP</button>
         </div>
       `;
@@ -154,6 +158,40 @@ export class ModalController {
         }
 
         if (this.audio) this.audio.playSwing();
+        this.renderInventoryUI();
+        this.broadcastMyState();
+      });
+    });
+
+    // Attach consumable use listeners
+    document.querySelectorAll('.use-item-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        const itemToUse = this.player.inventory[idx];
+        if (!itemToUse) return;
+
+        this.player.inventory.splice(idx, 1);
+        if (itemToUse.id === 'health_flask' || itemToUse.healAmount) {
+          const heal = itemToUse.healAmount || 50;
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+          this.player.syncHUD();
+          if (this.audio) this.audio.playShopBuy?.();
+          if (this.particles) {
+            this.particles.spawnComicText(this.player.x, this.player.y - 32, `+${heal} HP 💚 (FLASK)`, '#22c55e');
+          }
+        } else if (itemToUse.id === 'stamina_tonic' || itemToUse.staminaDuration) {
+          const duration = itemToUse.staminaDuration || 8.0;
+          this.player.stamina = this.player.maxStamina;
+          this.player.isInfiniteStamina = true;
+          this.player.infiniteStaminaTimer = duration;
+          this.player.syncHUD();
+          if (this.audio) this.audio.playGravitationalSurge?.();
+          if (this.particles) {
+            this.particles.spawnComicText(this.player.x, this.player.y - 32, `STAMINA SURGE! ⚡ (${Math.round(duration)}s)`, '#38bdf8');
+            this.particles.spawnDashBurst(this.player.x, this.player.y, 0, '#38bdf8');
+          }
+        }
+
         this.renderInventoryUI();
         this.broadcastMyState();
       });

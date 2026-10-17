@@ -827,7 +827,8 @@ export function getRandomDungeonLoot(themeKey = 'jjk', options = {}) {
     if (pool.length === 0) pool = allItems;
   }
 
-  return pool[Math.floor(Math.random() * pool.length)];
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  return picked ? { ...picked } : null;
 }
 
 // --- SLOP DUNGEON ECONOMY, TRADE-UP & GACHA SYSTEM ---

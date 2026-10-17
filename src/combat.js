@@ -488,10 +488,12 @@ export class CombatSystem {
       this.particles?.spawnComicText?.(player.x, player.y - 32, 'IRON BASTION!', '#38bdf8');
       this.audio?.playShieldLock?.();
     } else {
-      // War Cry
-      this.particles?.spawnComicText?.(player.x, player.y - 32, 'WAR CRY! +SPEED', '#ff3366');
-      player.vx *= 1.5;
-      player.vy *= 1.5;
+      // War Cry (Leather Tunic Base Q)
+      player.isWarCry = true;
+      player.warCryTimer = 4.0;
+      player.currentSpeed = player.baseSpeed * 1.35;
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'WAR CRY! ⚔️ +35% SPEED (4s)', '#ff3366');
+      this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ff3366');
       this.audio?.playWarCry?.();
     }
 

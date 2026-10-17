@@ -100,4 +100,74 @@ describe('Player Combat & State Machine', () => {
     expect(player.equipment.offhand).toBeNull();
     expect(unequipped).toContain(shield);
   });
+
+  it('calculates armor from leather tunic and mitigates incoming damage', () => {
+    const tunic = ITEM_CATALOG['leather_tunic'];
+    expect(tunic).toBeTruthy();
+    expect(tunic.armor).toBe(6);
+
+    player.equipItem(tunic);
+    expect(player.armor).toBe(6);
+
+    // Raw 30 damage mitigated by 6 armor (50 / (50 + 6) = ~0.893): 30 * 0.893 = 27
+    const res = player.takeDamage(30);
+    expect(res.damage).toBe(27);
+    expect(player.hp).toBe(player.maxHp - 27);
+  });
+
+  it('rejects equipping consumable items into armor slots', () => {
+    const flask = ITEM_CATALOG['health_flask'];
+    expect(flask).toBeTruthy();
+    expect(flask.slot).toBe('consumable');
+
+    const result = player.equipItem(flask);
+    expect(result).toBeNull();
+    expect(player.equipment['consumable']).toBeUndefined();
+  });
+
+  it('triggers War Cry (+35% speed surge) when activating leather tunic ability', () => {
+    const tunic = ITEM_CATALOG['leather_tunic'];
+    player.equipItem(tunic);
+
+    // Dummy combat instance
+    const combat = {
+      triggerActiveAbility: (p) => {
+        p.isWarCry = true;
+        p.warCryTimer = 4.0;
+        p.currentSpeed = p.baseSpeed * 1.35;
+        return true;
+      }
+    };
+
+    combat.triggerActiveAbility(player);
+    expect(player.isWarCry).toBe(true);
+    expect(player.warCryTimer).toBe(4.0);
+    expect(player.currentSpeed).toBe(player.baseSpeed * 1.35);
+
+    // Verify timer decays and restores base speed upon expiry
+    player.update(4.1, {
+      mouse: { screenX: 0, screenY: 0 },
+      getMovementVector: () => ({ dx: 0, dy: 0 })
+    });
+    expect(player.isWarCry).toBe(false);
+    expect(player.currentSpeed).toBe(player.baseSpeed);
+  });
+
+  it('maintains maximum stamina during infinite stamina tonic buff', () => {
+    player.stamina = 50;
+    player.isInfiniteStamina = true;
+    player.infiniteStaminaTimer = 8.0;
+
+    // Simulate dodge roll input while infinite stamina is active
+    player.update(0.1, {
+      mouse: { screenX: 0, screenY: 0 },
+      getMovementVector: () => ({ dx: 1, dy: 0 }),
+      justPressedShift: true
+    });
+
+    expect(player.isRolling).toBe(true);
+    // Stamina remains pinned at maximum, not depleted by rollCost
+    expect(player.stamina).toBe(player.maxStamina);
+  });
 });
+
