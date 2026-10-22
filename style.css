@@ -229,7 +229,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 10;
+  z-index: 50;
+  pointer-events: auto !important;
 }
 
 .run-timer-badge {
@@ -268,6 +269,7 @@ html, body {
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s ease;
+  pointer-events: auto !important;
 }
 
 .floor-badge-btn:hover {

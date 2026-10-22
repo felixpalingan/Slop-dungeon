@@ -5955,7 +5955,7 @@ function gameLoop(now) {
         }
       }
     }
-  }, (dungeon && dungeon.currentRoom && dungeon.currentRoom.obstacles) ? dungeon.currentRoom.obstacles : [], (obstacle, proj) => {
+  }, (currentDungeon && currentDungeon.currentRoom && currentDungeon.currentRoom.obstacles) ? currentDungeon.currentRoom.obstacles : [], (obstacle, proj) => {
     // Tactical cover: Obstacle / pillar blocks projectile!
     if (proj.type === 'merchant_rpg_rocket') {
       audio.playRocketExplosion();
