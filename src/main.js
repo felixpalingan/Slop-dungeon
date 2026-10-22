@@ -3600,24 +3600,39 @@ btnCreateRoom.addEventListener('click', async () => {
     hudNetworkStatus.textContent = `HOST [${code}]`;
     updatePartyRoster();
   } catch (err) {
-    alert('Failed to host room: ' + err.message);
+    alert('Failed to create lobby: ' + err.message);
   } finally {
     btnCreateRoom.disabled = false;
-    btnCreateRoom.textContent = 'CREATE ROOM (HOST)';
+    btnCreateRoom.textContent = 'CREATE LOBBY';
   }
 });
 
-btnJoinRoom.addEventListener('click', async () => {
-  const code = inputRoomCode.value.trim();
-  if (!code) return alert('Please enter a room code (e.g. SLOP-XXXX)');
+// Auto-sanitize typed or pasted room codes to strip any 'SLOP-' prefix
+inputRoomCode.addEventListener('input', (e) => {
+  const clean = network.formatRoomCode(e.target.value);
+  if (e.target.value !== clean) {
+    e.target.value = clean;
+  }
+});
 
+inputRoomCode.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    joinLobbyRoom(inputRoomCode.value);
+  }
+});
+
+async function joinLobbyRoom(rawCode) {
+  const code = network.formatRoomCode(rawCode);
+  if (!code) return alert('Please enter a room code (e.g. XXXXXX)');
+
+  inputRoomCode.value = code;
   btnJoinRoom.disabled = true;
   btnJoinRoom.textContent = 'JOINING...';
   try {
     await network.joinRoom(code);
-    displayRoomCode.textContent = code;
+    displayRoomCode.textContent = network.roomCode || code;
     activeRoomBox.classList.remove('hidden');
-    hudNetworkStatus.textContent = `CO-OP [${code}]`;
+    hudNetworkStatus.textContent = `CO-OP [${network.roomCode || code}]`;
     updatePartyRoster();
     broadcastMyState();
 
@@ -3634,12 +3649,20 @@ btnJoinRoom.addEventListener('click', async () => {
         });
       }
     }, 350);
+    return true;
   } catch (err) {
+    console.error('[Multiplayer] Join failed:', err);
+    modalManager.open('lobby-modal');
     alert('Could not join room. Make sure the host has created it!');
+    return false;
   } finally {
     btnJoinRoom.disabled = false;
-    btnJoinRoom.textContent = 'JOIN';
+    btnJoinRoom.textContent = 'JOIN ROOM';
   }
+}
+
+btnJoinRoom.addEventListener('click', () => {
+  joinLobbyRoom(inputRoomCode.value);
 });
 
 btnCopyLink.addEventListener('click', () => {
@@ -3650,10 +3673,12 @@ btnCopyLink.addEventListener('click', () => {
 });
 
 const urlParams = new URLSearchParams(window.location.search);
-const roomParam = urlParams.get('room');
+const roomParam = urlParams.get('room') || (window.location.hash.startsWith('#room=') ? window.location.hash.slice(6) : null);
 if (roomParam) {
-  inputRoomCode.value = roomParam;
-  lobbyModal.classList.remove('hidden');
+  const cleanCode = network.formatRoomCode(roomParam);
+  inputRoomCode.value = cleanCode;
+  // Direct auto-join from shared invite link without requiring user to click join button
+  joinLobbyRoom(cleanCode);
 }
 
 // --- GAME OVER SUMMARY MODAL (STEP 5.2) ---

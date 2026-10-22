@@ -4,12 +4,23 @@ import { validatePacket, PacketTypes } from '../../src/packetSchemas.js';
 
 describe('Phase 7.6: Network Evolution, Host Migration & Packet Schemas', () => {
   describe('Room Code Collision Prevention', () => {
-    it('generates a 6-character high-entropy room code matching SLOP-XXXXXX', () => {
+    it('generates a 6-character high-entropy room code without prefix', () => {
       const net = new NetworkManager();
       const code = net.generateRoomCode();
 
-      expect(code).toMatch(/^SLOP-[A-Z0-9]{6}$/);
-      expect(code.length).toBe(11);
+      expect(code).toMatch(/^[A-Z0-9]{6}$/);
+      expect(code.length).toBe(6);
+    });
+
+    it('formats and strips SLOP prefix if entered or pasted', () => {
+      const net = new NetworkManager();
+      expect(net.formatRoomCode('SLOP-A7B9X2')).toBe('A7B9X2');
+      expect(net.formatRoomCode('slop-a7b9x2')).toBe('A7B9X2');
+      expect(net.formatRoomCode('slopa7b9x2')).toBe('A7B9X2');
+      expect(net.formatRoomCode('A7B9X2')).toBe('A7B9X2');
+      expect(net.formatRoomCode('  k4b8w9  ')).toBe('K4B8W9');
+      expect(net.formatRoomCode('')).toBe('');
+      expect(net.formatRoomCode(null)).toBe('');
     });
 
     it('generates distinct codes with negligible collision probability', () => {

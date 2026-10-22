@@ -36,19 +36,26 @@ test.describe('Slop Dungeon - Base Camp & HUD User Journeys', () => {
     await expect(settingsModal).toHaveClass(/hidden/);
   });
 
-  test('can open and close Multiplayer Mabar Lobby modal', async ({ page }) => {
+  test('can open and close Multiplayer Mabar Lobby modal with English CREATE LOBBY buttons', async ({ page }) => {
     const lobbyBtn = page.getByTestId('btn-open-lobby');
-    const lobbyModal = page.locator('#lobby-modal');
+    await expect(lobbyBtn).toContainText('CREATE LOBBY');
 
+    const lobbyModal = page.locator('#lobby-modal');
     await expect(lobbyModal).toHaveClass(/hidden/);
 
     // Open lobby modal
     await lobbyBtn.click();
     await expect(lobbyModal).not.toHaveClass(/hidden/);
 
-    // Check presence of Create Room button
+    // Check presence and label of Create Lobby button
     const createRoomBtn = page.getByTestId('btn-room-create');
     await expect(createRoomBtn).toBeVisible();
+    await expect(createRoomBtn).toContainText('CREATE LOBBY');
+
+    // Test that typing or pasting SLOP- prefix into room input gets automatically stripped
+    const roomInput = page.locator('#input-room-code');
+    await roomInput.fill('SLOP-A7B9X2');
+    await expect(roomInput).toHaveValue('A7B9X2');
 
     // Close modal
     const closeBtn = page.locator('#btn-close-lobby');
@@ -99,4 +106,19 @@ test.describe('Slop Dungeon - Base Camp & HUD User Journeys', () => {
     await page.keyboard.press('Escape');
     await expect(settingsModal).toHaveClass(/hidden/);
   });
+
+  test('auto-populates sanitized room code from URL query and initiates join without opening lobby modal', async ({ page }) => {
+    // Navigate with a shared link including SLOP- prefix
+    await page.goto('/?room=SLOP-K7M2X9');
+    await expect(page.locator('#game-canvas')).toBeVisible();
+
+    // Lobby modal should not be open/blocking
+    const lobbyModal = page.locator('#lobby-modal');
+    await expect(lobbyModal).toHaveClass(/hidden/);
+
+    // The room input field should have the sanitized code without SLOP- prefix
+    const roomInput = page.locator('#input-room-code');
+    await expect(roomInput).toHaveValue('K7M2X9');
+  });
 });
+

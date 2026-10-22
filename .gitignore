@@ -22,8 +22,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Test results
+test-results/
+playwright-report/
+
 # AI Artifacts & Agent handovers
 .agents/
 AI_HANDOVER_MEMORY.md
 agent.txt
 skills-lock.json
+

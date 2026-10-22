@@ -61,7 +61,7 @@
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
-        <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Bikin Room / Mabar Co-op" data-testid="btn-open-lobby">🎮 BIKIN LOBBY / MABAR</button>
+        <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Create Lobby / Multiplayer Co-op" data-testid="btn-open-lobby">🎮 CREATE LOBBY</button>
         <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]" data-testid="hud-settings-btn">⚙️ SETTINGS</button>
       </div>
 
@@ -185,18 +185,18 @@
           <p class="modal-subtitle">Main bareng kawan (hingga 6 pemain). Bikin room baru atau gabung pakai room code.</p>
 
           <div class="lobby-actions">
-            <button id="btn-create-room" class="action-btn primary-btn" data-testid="btn-room-create">👑 BIKIN ROOM / HOST LOBBY</button>
+            <button id="btn-create-room" class="action-btn primary-btn" data-testid="btn-room-create">👑 CREATE LOBBY</button>
 
             <div class="join-row">
-              <input type="text" id="input-room-code" placeholder="SLOP-XXXXXX" maxlength="11" />
-              <button id="btn-join-room" class="action-btn secondary-btn">🚀 GABUNG / JOIN</button>
+              <input type="text" id="input-room-code" placeholder="ROOM CODE (e.g. XXXXXX)" maxlength="12" />
+              <button id="btn-join-room" class="action-btn secondary-btn">🚀 JOIN ROOM</button>
             </div>
           </div>
 
           <div id="lobby-active-room" class="active-room-box hidden">
             <div class="room-code-display">
               <span>ROOM CODE:</span>
-              <strong id="display-room-code">SLOP-XXXXXX</strong>
+              <strong id="display-room-code">XXXXXX</strong>
             </div>
             <button id="btn-copy-link" class="action-btn outline-btn">COPY INVITE LINK</button>
             <div class="connected-players-list">

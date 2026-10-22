@@ -28,12 +28,12 @@ export class NetworkManager {
   }
 
   /**
-   * Generates a high-entropy 6-character room code (e.g. SLOP-A7B9X2)
+   * Generates a high-entropy 6-character room code (e.g. A7B9X2)
    * Expanding keyspace to 32^6 (> 1,073,741,824 combinations)
    */
   generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'SLOP-';
+    let code = '';
     for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -41,11 +41,19 @@ export class NetworkManager {
   }
 
   /**
+   * Normalizes room codes: uppercase, trim, and strip any 'SLOP-' prefix
+   */
+  formatRoomCode(code) {
+    if (!code) return '';
+    return String(code).trim().toUpperCase().replace(/^SLOP-?/i, '');
+  }
+
+  /**
    * Host starts a room with a 6-character room code
    */
   createRoom(customCode = null) {
     return new Promise((resolve, reject) => {
-      this.roomCode = customCode || this.generateRoomCode();
+      this.roomCode = this.formatRoomCode(customCode) || this.generateRoomCode();
       this.isHost = true;
       const fullPeerId = `dungeonslop-${this.roomCode.toLowerCase()}`;
 
@@ -89,11 +97,11 @@ export class NetworkManager {
   }
 
   /**
-   * Peer joins an existing room by code (e.g. SLOP-A7B9X2)
+   * Peer joins an existing room by code (e.g. A7B9X2)
    */
   joinRoom(roomCode) {
     return new Promise((resolve, reject) => {
-      this.roomCode = roomCode.toUpperCase().trim();
+      this.roomCode = this.formatRoomCode(roomCode);
       this.isHost = false;
 
       this.peer = new Peer({
