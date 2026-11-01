@@ -318,38 +318,9 @@ export class CombatSystem {
   triggerActiveAbility(player, setBonus = null, triggerCinematicCallback = null) {
     const now = performance.now() / 1000;
 
-    // --- LEVI ACKERMAN ODM MODE TOGGLE (Dual Snap Blades, ODM Harness, or Full Set) ---
-    const isLevi = (setBonus && (setBonus.ultimateQ === 'levi_grapple_whirlwind' || setBonus.setKey === 'levi')) ||
-      (player.equipment?.weapon?.visual === 'dual_snap_blades') ||
-      (player.equipment?.chest?.visual === 'odm_harness') ||
-      (player.equipment?.helmet?.visual === 'scout_hood') ||
-      (player.equipment?.pants?.visual === 'scout_trousers') ||
-      (player.equipment?.boots?.visual === 'scout_boots');
-
-    if (isLevi) {
-      // Rapid fluid stance switch debounce (0.2s) - NOT locked by 8.0s ultimate cooldown!
-      if (player.lastOdmToggleTime && now - player.lastOdmToggleTime < 0.2) {
-        return false;
-      }
-      player.lastOdmToggleTime = now;
-      player.isOdmMode = !player.isOdmMode;
-
-      if (player.isOdmMode) {
-        this.audio?.playOdmGasHiss?.();
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'ODM MODE: ACTIVE! ⚔️', '#10b981');
-        this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ffffff');
-      } else {
-        player.activeCables = [];
-        player.isAirborne = false;
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'ODM MODE: OFF', '#94a3b8');
-      }
-      player.syncHUD();
-      return true;
-    }
-
     const cooldownDuration = setBonus ? 8.0 : 5.0;
 
-    // Cooldown check for all other ultimate / active abilities
+    // Cooldown check for all ultimate / active abilities
     if (player.lastAbilityTime && now - player.lastAbilityTime < cooldownDuration) {
       const remaining = (cooldownDuration - (now - player.lastAbilityTime)).toFixed(1);
       this.particles?.spawnComicText?.(player.x, player.y - 30, `COOLDOWN ${remaining}s`, '#94a3b8');
@@ -402,6 +373,24 @@ export class CombatSystem {
         this.particles?.spawnComicText?.(player.x, player.y - 36, 'BERSERKER RAGE! 🩸 LIFE STEAL + UNSTOPPABLE', '#ef4444');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('berserker_rage', player);
+        }
+        return true;
+      } else if (setBonus.ultimateQ === 'levi_grapple_whirlwind') {
+        // Levi Ackerman Full Set Ultimate: ODM Overdrive (6.0s Unlimited Gas + Supercharged Pass-Through Slice)!
+        player.isOdmMode = true;
+        player.isOdmOverdrive = true;
+        player.odmOverdriveTimer = 6.0;
+        player.odmGas = player.maxOdmGas || 100;
+        if (this.audio?.playLeviOverdriveWindup) {
+          this.audio.playLeviOverdriveWindup();
+        } else if (this.audio?.playOdmGasHiss) {
+          this.audio.playOdmGasHiss();
+        }
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'ODM OVERDRIVE! 🦅 ∞ GAS + SUPER SLICE', '#10b981');
+        this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#10b981');
+        player.syncHUD?.();
+        if (triggerCinematicCallback) {
+          triggerCinematicCallback('levi_grapple_whirlwind', player);
         }
         return true;
       } else if (setBonus.ultimateQ === 'sandevistan_time_dilation') {
@@ -486,12 +475,14 @@ export class CombatSystem {
         triggerCinematicCallback('cannon_arm', player);
       }
     } else if (chest.baseQ === 'odm_gas_boost' || chest.visual === 'odm_harness') {
-      // Levi Base Q: ODM Gas Boost
+      // Levi Base Q: ODM Gas Boost (+40 Gas Refill + High-Pressure Steam Lunge)
       this.audio?.playOdmGasHiss?.();
+      player.odmGas = Math.min(player.maxOdmGas || 100, (player.odmGas || 0) + 40);
+      player.syncHUD?.();
       if (player.startLunge) {
         player.startLunge(player.angle, 780, 0.25);
       }
-      this.particles?.spawnComicText?.(player.x, player.y - 32, 'GAS BOOST! 💨', '#10b981');
+      this.particles?.spawnComicText?.(player.x, player.y - 32, 'GAS BOOST! 💨 +40 GAS', '#10b981');
       this.particles?.spawnDashBurst?.(player.x, player.y, player.angle + Math.PI, '#ffffff');
       if (triggerCinematicCallback) {
         triggerCinematicCallback('odm_gas_boost', player);

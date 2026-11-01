@@ -22,6 +22,10 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'world_cutting_slash' && (1 - (c.timer / c.duration)) < 0.28);
   }
 
+  isLeviOverdriveFreezing() {
+    return this.activeCinematics.some(c => c.type === 'levi_grapple_whirlwind' && (1 - (c.timer / c.duration)) < 0.06);
+  }
+
   spawnProjectile(proj) {
     if (!proj) return;
     this.projectiles.push({
@@ -215,37 +219,29 @@ export class CinematicManager {
         angle: player.angle
       });
     } else if (type === 'levi_grapple_whirlwind') {
-      // Levi Full Set Q: Dual High-Tension Grapple Wires (Unlimited Reach, Max 2 Cables)
-      // Reeling in at high velocity; only spins once he hits an enemy!
-      const reach = 980; // unlimited cross-arena line-of-sight reach
-      const targetAngle = player.angle;
-      const anchorX = player.x + Math.cos(targetAngle) * reach;
-      const anchorY = player.y + Math.sin(targetAngle) * reach;
+      // Levi Full Set Ultimate Q: ODM Overdrive (立体機動・限界突破)
+      // Phase 1 (0.0s - 0.36s): Reality freezes with Wings of Freedom emblem & 「心臓を捧げよ」 cut-in!
+      // Phase 2 (0.36s - 6.0s): 6.0s Unlimited Gas (∞), +45% grapple speed, and supercharged 155+ pass-through slice damage!
+      if (player) {
+        player.isOdmMode = true;
+        player.isOdmOverdrive = true;
+        player.odmOverdriveTimer = 6.0;
+        player.odmGas = player.maxOdmGas || 100;
+      }
 
       this.activeCinematics.push({
         type: 'levi_grapple_whirlwind',
         caster: player,
         isRemote: !!isRemote,
-        timer: 2.2,
-        duration: 2.2,
-        x: player.x,
-        y: player.y,
-        anchorX,
-        anchorY,
-        cable1: {
-          endX: anchorX - Math.sin(targetAngle) * 18,
-          endY: anchorY + Math.cos(targetAngle) * 18
-        },
-        cable2: {
-          endX: anchorX + Math.sin(targetAngle) * 18,
-          endY: anchorY - Math.cos(targetAngle) * 18
-        },
-        phase: 'zipping', // 'zipping' -> 'spinning' -> 'finished'
-        spinTimer: 0,
-        spinDuration: 0.85,
+        timer: 6.0,
+        duration: 6.0,
+        x: player ? player.x : 0,
+        y: player ? player.y : 0,
+        angle: player ? player.angle : 0,
+        hasFired: false,
         hitMap: new Map()
       });
-      this.addScreenShake(14);
+      this.addScreenShake(18);
     } else if (type === 'sandevistan') {
       // David Martinez: Military-Grade Sandevistan Overclock!
       // Full-screen cyberpunk matrix post-processing for 4.0s
@@ -485,107 +481,61 @@ export class CinematicManager {
         }
       }
 
-      // 4. Levi's Dual Grapple Wires & 360° Blade Whirlwind
+      // 4. Levi's ODM Overdrive (Wings of Freedom Cut-In -> 6.0s Unlimited Gas + Supercharged Blade Vortex)
       if (c.type === 'levi_grapple_whirlwind') {
         const caster = c.caster;
-        if (c.phase === 'zipping') {
-          // Levi reels towards the anchor along the wire trajectory at high velocity
-          const currentX = caster ? caster.x : c.x;
-          const currentY = caster ? caster.y : c.y;
-          const dx = c.anchorX - currentX;
-          const dy = c.anchorY - currentY;
-          const dist = Math.hypot(dx, dy);
+        const progress = 1 - (c.timer / c.duration);
+        if (caster) {
+          c.x = caster.x;
+          c.y = caster.y;
+          c.angle = caster.angle;
+          caster.isOdmMode = true;
+          caster.isOdmOverdrive = true;
+          caster.odmOverdriveTimer = Math.max(0, c.timer);
+          caster.odmGas = caster.maxOdmGas || 100;
+        }
 
-          if (dist > 35 && caster) {
-            const step = Math.min(dist, 1100 * dt);
-            caster.x += (dx / dist) * step;
-            caster.y += (dy / dist) * step;
-            caster.angle = Math.atan2(dy, dx);
-            c.x = caster.x;
-            c.y = caster.y;
-
-            // Spawn green and white ODM steam exhaust after-images
-            if (caster.afterImages && Math.random() < 0.65) {
-              caster.afterImages.push({
-                x: caster.x,
-                y: caster.y,
-                angle: caster.angle,
-                color: '#10b981',
-                alpha: 0.55
-              });
-            }
-
-            // CHECK ENEMY COLLISION: ONLY SPINS ONCE HE HITS AN ENEMY!
-            if (!c.isRemote) {
-              for (const target of targets) {
-                if (!target || target === caster) continue;
-                const tdx = target.x - caster.x;
-                const tdy = target.y - caster.y;
-                const tdist = Math.hypot(tdx, tdy);
-                const hitRadius = (target.radius || 24) + 36;
-
-                if (tdist <= hitRadius) {
-                  // HIT AN ENEMY! Switch immediately to 360° spinning blade whirlwind!
-                  c.phase = 'spinning';
-                  c.spinTimer = c.spinDuration;
-                  c.spinningTarget = target;
-                  this.addScreenShake(18);
-                  if (onHitCallback) {
-                    onHitCallback(target, {
-                      type: 'levi_whirlwind',
-                      damage: 75,
-                      angle: Math.atan2(tdy, tdx),
-                      knockback: 200,
-                      isFirstHit: true
-                    });
-                  }
-                  break;
-                }
-              }
-            }
-          } else {
-            // Reached anchor without hitting an enemy -> zip finished
-            c.phase = 'finished';
-            c.timer = 0;
+        if (progress >= 0.06 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(26);
+          if (this.audio?.playLeviOverdriveImpact) {
+            this.audio.playLeviOverdriveImpact();
+          } else if (this.audio?.playOdmGasHiss) {
+            this.audio.playOdmGasHiss();
           }
-        } else if (c.phase === 'spinning') {
-          // Continuous 360° high-speed rotational blade whirlwind locked on the hit enemy!
-          c.spinTimer -= dt;
-          const posX = caster ? caster.x : c.x;
-          const posY = caster ? caster.y : c.y;
+        }
 
-          if (caster) {
-            caster.angle += dt * 32; // 360° spin at high angular velocity!
-          }
+        // When un-frozen in Overdrive, if airborne or moving via ODM cables, shred nearby targets!
+        if (progress >= 0.06 && !c.isRemote && onHitCallback && caster && (caster.isAirborne || (caster.activeCables && caster.activeCables.length > 0))) {
+          for (const target of targets) {
+            if (!target || target === caster) continue;
+            const dx = target.x - caster.x;
+            const dy = target.y - caster.y;
+            const dist = Math.hypot(dx, dy);
+            const hitRadius = (target.radius || 22) + (caster.radius || 22) + 55;
 
-          if (!c.isRemote && onHitCallback) {
-            for (const target of targets) {
-              if (!target || target === caster) continue;
-              const dx = target.x - posX;
-              const dy = target.y - posY;
-              const dist = Math.hypot(dx, dy);
-
-              if (dist <= 95) {
-                if (!c.hitMap) c.hitMap = new Map();
-                const lastHit = c.hitMap.get(target) || 0;
-                const now = performance.now();
-                if (now - lastHit >= 110) { // slice tick every 110ms
-                  c.hitMap.set(target, now);
-                  onHitCallback(target, {
-                    type: 'levi_whirlwind',
-                    damage: 65,
-                    angle: Math.atan2(dy, dx),
-                    knockback: 180
-                  });
-                }
+            if (dist <= hitRadius) {
+              if (!c.hitMap) c.hitMap = new Map();
+              const lastHit = c.hitMap.get(target) || 0;
+              const now = performance.now();
+              if (now - lastHit >= 85) {
+                c.hitMap.set(target, now);
+                caster.spinTimer = 0.32;
+                this.addScreenShake(12);
+                onHitCallback(target, {
+                  type: 'levi_whirlwind',
+                  damage: 155,
+                  angle: Math.atan2(dy, dx),
+                  knockback: 220
+                });
               }
             }
           }
+        }
 
-          if (c.spinTimer <= 0) {
-            c.phase = 'finished';
-            c.timer = 0;
-          }
+        if (c.timer <= 0 && caster) {
+          caster.isOdmOverdrive = false;
+          caster.odmOverdriveTimer = 0;
         }
       } else if (c.type === 'consecutive_normal_punches') {
         const caster = c.caster;
@@ -686,8 +636,8 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection (frozen in mid-air during Serious Punch or World Cutting Slash manga windup)
-    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing();
+    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, or Levi Overdrive windup)
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -1367,74 +1317,46 @@ export class CinematicManager {
 
         ctx.restore();
       } else if (c.type === 'levi_grapple_whirlwind') {
-        const posX = c.caster ? c.caster.x : c.x;
-        const posY = c.caster ? c.caster.y : c.y;
+        const caster = c.caster;
+        const posX = caster ? caster.x : c.x;
+        const posY = caster ? caster.y : c.y;
+        const isAirborneOrSpinning = caster && (caster.isAirborne || caster.spinTimer > 0 || (caster.activeCables && caster.activeCables.length > 0));
 
-        // 1. Draw Dual High-Tension Grapple Wires from hips to anchor points
         ctx.save();
-        // Left Cable
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 2;
+        ctx.translate(posX, posY);
+
+        const spinAngle = Date.now() * 0.024;
+        const outerRadius = isAirborneOrSpinning ? 88 : 52;
+        const innerRadius = isAirborneOrSpinning ? 68 : 38;
+
+        // 1. Pressurized Emerald Wind Turbine Vortex
+        ctx.strokeStyle = isAirborneOrSpinning ? 'rgba(16, 185, 129, 0.92)' : 'rgba(16, 185, 129, 0.55)';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = isAirborneOrSpinning ? 26 : 14;
+        ctx.lineWidth = isAirborneOrSpinning ? 5.5 : 3;
         ctx.beginPath();
-        ctx.moveTo(posX, posY);
-        ctx.lineTo(c.cable1.endX, c.cable1.endY);
+        ctx.arc(0, 0, outerRadius, spinAngle, spinAngle + Math.PI * 1.35);
         ctx.stroke();
 
-        // Right Cable
+        // 2. Counter-Rotating Gleaming Ultrahard Steel Blade Arc
+        ctx.strokeStyle = '#f8fafc';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = isAirborneOrSpinning ? 3.5 : 2;
         ctx.beginPath();
-        ctx.moveTo(posX, posY);
-        ctx.lineTo(c.cable2.endX, c.cable2.endY);
+        ctx.arc(0, 0, innerRadius, -spinAngle * 1.2, -spinAngle * 1.2 + Math.PI * 1.45);
         ctx.stroke();
 
-        // Taut core shine on cables
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(posX, posY);
-        ctx.lineTo(c.cable1.endX, c.cable1.endY);
-        ctx.moveTo(posX, posY);
-        ctx.lineTo(c.cable2.endX, c.cable2.endY);
-        ctx.stroke();
-
-        // Anchor piton pins in ground
-        ctx.fillStyle = '#475569';
-        ctx.fillRect(c.cable1.endX - 3, c.cable1.endY - 3, 6, 6);
-        ctx.fillRect(c.cable2.endX - 3, c.cable2.endY - 3, 6, 6);
-        ctx.restore();
-
-        // 2. When in 'spinning' phase: Draw the violent 360° blade whirlwind circle!
-        if (c.phase === 'spinning') {
-          ctx.save();
-          ctx.translate(posX, posY);
-
-          const spinProgress = 1 - c.spinTimer / c.spinDuration;
-          const spinAngle = spinProgress * Math.PI * 16; // 8 full revolutions!
-
-          // Outer Emerald Wind Vortex
-          ctx.strokeStyle = 'rgba(16, 185, 129, 0.85)';
-          ctx.shadowColor = '#10b981';
-          ctx.shadowBlur = 22;
-          ctx.lineWidth = 4.5;
-          ctx.beginPath();
-          ctx.arc(0, 0, 78, spinAngle, spinAngle + Math.PI * 1.3);
-          ctx.stroke();
-
-          // Inner Gleaming Silver Blade Whirlwind
-          ctx.strokeStyle = '#f8fafc';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, 62, -spinAngle, -spinAngle + Math.PI * 1.5);
-          ctx.stroke();
-
-          // Dual spinning blade silhouettes
-          ctx.rotate(spinAngle);
+        // 3. When airborne or spinning: Full Double-Beyblade Cyclone Silhouettes
+        if (isAirborneOrSpinning) {
+          ctx.rotate(spinAngle * 1.5);
           ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(-65, -3, 130, 6);
+          ctx.fillRect(-78, -3, 156, 6);
           ctx.fillStyle = '#10b981';
-          ctx.fillRect(-70, -2, 140, 4);
-
-          ctx.restore();
+          ctx.fillRect(-84, -2, 168, 4);
         }
+
+        ctx.restore();
       }
     }
   }
@@ -1659,14 +1581,139 @@ export class CinematicManager {
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
       } else if (c.type === 'levi_grapple_whirlwind') {
-        // Emerald Scout speedline vignette
-        const pulse = 0.25 + Math.sin(Date.now() * 0.02) * 0.12;
         ctx.save();
-        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.35, width / 2, height / 2, width * 0.75);
-        grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        grad.addColorStop(1, `rgba(16, 185, 129, ${pulse})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
+        if (progress < 0.06) {
+          // --- 1. PHASE 1: WINGS OF FREEDOM FREEZE CUT-IN (0.0s - 0.36s) ---
+          ctx.fillStyle = 'rgba(4, 18, 14, 0.85)';
+          ctx.fillRect(0, 0, width, height);
+
+          // Emerald Scout radial screentone vignette
+          const scoutGrad = ctx.createRadialGradient(width / 2, height / 2, 70, width / 2, height / 2, Math.max(width, height) * 0.72);
+          scoutGrad.addColorStop(0, 'rgba(16, 185, 129, 0.14)');
+          scoutGrad.addColorStop(0.5, 'rgba(6, 30, 22, 0.5)');
+          scoutGrad.addColorStop(1, 'rgba(2, 8, 6, 0.95)');
+          ctx.fillStyle = scoutGrad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Radial wind-tunnel speedlines converging toward center
+          const centerX = width / 2;
+          const centerY = height / 2;
+          const numLines = 32;
+          for (let i = 0; i < numLines; i++) {
+            const radAngle = (i / numLines) * Math.PI * 2;
+            const outerR = Math.hypot(width, height) * 0.55;
+            const innerR = 115 + ((i * 29) % 65);
+            ctx.strokeStyle = i % 2 === 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = i % 2 === 0 ? 3 : 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX + Math.cos(radAngle) * outerR, centerY + Math.sin(radAngle) * outerR);
+            ctx.lineTo(centerX + Math.cos(radAngle) * innerR, centerY + Math.sin(radAngle) * innerR);
+            ctx.stroke();
+          }
+
+          // Stylized Wings of Freedom (自由の翼) Emblem at Center Screen
+          ctx.save();
+          ctx.translate(centerX, centerY - 22);
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 24;
+
+          // Left Wing (Cobalt Blue Shield Wing)
+          ctx.fillStyle = '#2563eb';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(-6, 18);
+          ctx.lineTo(-72, -38);
+          ctx.lineTo(-48, -14);
+          ctx.lineTo(-82, -16);
+          ctx.lineTo(-46, 4);
+          ctx.lineTo(-68, 8);
+          ctx.lineTo(-14, 26);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Right Wing (Brilliant White Wing of Freedom)
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(6, 18);
+          ctx.lineTo(78, -42);
+          ctx.lineTo(52, -16);
+          ctx.lineTo(88, -18);
+          ctx.lineTo(50, 4);
+          ctx.lineTo(72, 10);
+          ctx.lineTo(14, 26);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Authentic Japanese Battle Cry: 「 心 臓 を 捧 げ よ 」
+          ctx.textAlign = 'center';
+          ctx.font = '900 58px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 9;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 28;
+          ctx.strokeText('「 心 臓 を 捧 げ よ 」', centerX, height * 0.25);
+          ctx.fillText('「 心 臓 を 捧 げ よ 」', centerX, height * 0.25);
+
+          // Subtitle: 【 立体機動 ・ 限界突破 】 [ODM OVERDRIVE: ∞ GAS]
+          ctx.font = '900 26px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#10b981';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 14;
+          ctx.strokeText('【 立体機動 ・ 限界突破 】 [ODM OVERDRIVE: \u221e GAS]', centerX, height * 0.72);
+          ctx.fillText('【 立体機動 ・ 限界突破 】 [ODM OVERDRIVE: \u221e GAS]', centerX, height * 0.72);
+        } else {
+          // --- 2. PHASE 2: ACTIVE 6.0s OVERDRIVE WIND-TUNNEL HUD ---
+          const activeProgress = (progress - 0.06) / 0.94;
+
+          // Initial turbine unfreeze flash
+          if (activeProgress < 0.06) {
+            const flashAlpha = ((0.06 - activeProgress) / 0.06) * 0.75;
+            ctx.fillStyle = `rgba(209, 250, 229, ${flashAlpha})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Pulsing Emerald Scout sonic wind-tunnel vignette
+          const pulse = 0.26 + Math.sin(Date.now() * 0.018) * 0.10;
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.34, width / 2, height / 2, width * 0.76);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0.7, 'rgba(6, 78, 59, 0.14)');
+          grad.addColorStop(1, `rgba(16, 185, 129, ${pulse})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // High-speed wind tunnel streaks at viewport edges
+          ctx.strokeStyle = `rgba(255, 255, 255, ${pulse * 0.65})`;
+          ctx.lineWidth = 2;
+          const streakOffset = (Date.now() * 0.8) % 120;
+          for (let s = 0; s < 8; s++) {
+            const sy = ((s * 97 + streakOffset) % height);
+            ctx.beginPath();
+            ctx.moveTo(0, sy);
+            ctx.lineTo(48, sy);
+            ctx.moveTo(width - 48, sy);
+            ctx.lineTo(width, sy);
+            ctx.stroke();
+          }
+
+          // Digital Overdrive Tactical Timer HUD at top of viewport
+          const timeRemaining = Math.max(0, c.timer).toFixed(1);
+          ctx.font = '900 18px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#10b981';
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 14;
+          ctx.fillText(`\ud83e\udd85 ODM OVERDRIVE \u2014 \u221e GAS + SUPER SLICE [${timeRemaining}s]`, width / 2, 42);
+          ctx.shadowBlur = 0;
+        }
         ctx.restore();
       } else if (c.type === 'sandevistan') {
         // David Martinez Sandevistan: Cyberpunk matrix grid overlay with scanlines & chromatic aberration

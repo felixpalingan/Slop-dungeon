@@ -4478,6 +4478,8 @@ function broadcastMyState() {
     isStunned: player.isStunned,
     isBerserk: player.isBerserk,
     isOdmMode: player.isOdmMode,
+    isOdmOverdrive: player.isOdmOverdrive,
+    odmOverdriveTimer: player.odmOverdriveTimer,
     isAirborne: player.isAirborne,
     activeCables: player.activeCables,
     spinTimer: player.spinTimer,
@@ -4708,7 +4710,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
     else if (msg.ultimateType === 'spartan_kick') audio.playSpartanKick();
     else if (msg.ultimateType === 'dismantle') audio.playDismantleCuts();
     else if (msg.ultimateType === 'cannon_arm') audio.playExplosion();
-    else if (msg.ultimateType === 'levi_grapple_whirlwind') audio.playGrappleWireLaunch();
+    else if (msg.ultimateType === 'levi_grapple_whirlwind') {
+      if (audio.playLeviOverdriveWindup) audio.playLeviOverdriveWindup();
+      else audio.playGrappleWireLaunch();
+    }
     else if (msg.ultimateType === 'odm_gas_boost') audio.playOdmGasHiss();
     else if (msg.ultimateType === 'sandevistan') {
       if (audio.playSandevistanBoot) audio.playSandevistanBoot();
@@ -5523,11 +5528,12 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
-  // If Serious Punch (0.45s) or World Cutting Slash (0.36s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
+  // If Serious Punch (0.45s), World Cutting Slash (0.36s), or Levi Overdrive (0.36s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
   // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
   const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
   const isWorldCuttingSlashFreeze = cinematics.isWorldCuttingSlashFreezing?.() || false;
-  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze;
+  const isLeviOverdriveFreeze = cinematics.isLeviOverdriveFreezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze;
   const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 
@@ -5732,60 +5738,72 @@ function gameLoop(now) {
     loot.update(worldDt);
   }
 
-  // Check Set Bonus & Levi Gear
+  // Check Set Bonus & Levi Gear (ODM Mode is ALWAYS active when wearing Levi blades, ODM harness, or Full Set!)
   const activeSet = checkSetBonus(player.equipment);
   const isLeviGearEquipped = (activeSet && activeSet.setKey === 'levi') ||
     (player.equipment?.weapon?.visual === 'dual_snap_blades') ||
-    (player.equipment?.chest?.visual === 'odm_harness') ||
-    (player.equipment?.helmet?.visual === 'scout_hood') ||
-    (player.equipment?.pants?.visual === 'scout_trousers') ||
-    (player.equipment?.boots?.visual === 'scout_boots');
+    (player.equipment?.chest?.visual === 'odm_harness');
 
-  if (!isLeviGearEquipped) {
+  if (isLeviGearEquipped) {
+    player.isOdmMode = true;
+  } else {
     if (player.isOdmMode) {
       player.isOdmMode = false;
       player.activeCables = [];
       player.isAirborne = false;
+    }
+    if (player.isOdmOverdrive) {
+      player.isOdmOverdrive = false;
+      player.odmOverdriveTimer = 0;
     }
   }
 
   // --- LEVI ODM AIRBORNE PASS-THROUGH SLICING (HE ONLY SPINS ONCE HE HITS AN ENEMY!) ---
   if (player.isAirborne && (player.activeCables.length > 0 || Math.hypot(player.vx, player.vy) > 180)) {
     const nowTime = performance.now();
+    const isOverdrive = !!player.isOdmOverdrive;
+    const sliceCooldown = isOverdrive ? 85 : 160;
+    const extraReach = isOverdrive ? 55 : 20;
+
     const sliceTargets = currentFloor === 0
       ? [dummy, ...network.remotePlayers.values()]
-      : [...monsterManager.getNearbyMonsters(player.x, player.y, 250), ...network.remotePlayers.values()];
+      : [...monsterManager.getNearbyMonsters(player.x, player.y, 280), ...network.remotePlayers.values()];
     for (const target of sliceTargets) {
       if (!target) continue;
       const dist = Math.hypot(target.x - player.x, target.y - player.y);
-      const hitRadius = (target.radius || 22) + player.radius + 20; // ~64px reach
+      const hitRadius = (target.radius || 22) + player.radius + extraReach;
       if (dist <= hitRadius) {
         const lastSlice = player.lastSliceMap.get(target) || 0;
-        if (nowTime - lastSlice >= 160) {
+        if (nowTime - lastSlice >= sliceCooldown) {
           player.lastSliceMap.set(target, nowTime);
 
           // Levi only spins once he hits an enemy!
-          player.spinTimer = 0.22;
+          player.spinTimer = isOverdrive ? 0.32 : 0.22;
           audio.playSnapBladesSlash();
-          cinematics.addScreenShake(8);
+          cinematics.addScreenShake(isOverdrive ? 14 : 8);
           particles.spawnBladeWhirlwind(target.x, target.y, '#10b981');
           particles.spawnDashBurst(target.x, target.y, player.angle, '#10b981');
 
-          // Damage calculation (Levi snap blades high-velocity pass-through slice)
+          // Damage calculation (Supercharged during ODM Overdrive!)
           const isCrit = Math.random() < (player.equipment?.weapon?.critChance || 0.25);
-          let sliceDamage = 62 + Math.floor(Math.random() * 8);
+          let sliceDamage = isOverdrive
+            ? (155 + Math.floor(Math.random() * 12))
+            : (62 + Math.floor(Math.random() * 8));
           if (isCrit) sliceDamage = Math.round(sliceDamage * 1.6);
+
+          const labelPrefix = isOverdrive ? (isCrit ? 'CRIT OVERDRIVE!' : 'OVERDRIVE SLICE!') : (isCrit ? 'CRIT SLICE!' : 'BLADE SLICE!');
+          const labelIcon = isOverdrive ? '🦅' : '🌀';
 
           if (target === dummy) {
             dummy.takeHit(sliceDamage, player.angle, 0);
-            const sliceMsg = isCrit ? `CRIT SLICE! -${sliceDamage} 🌀` : `BLADE SLICE! -${sliceDamage} 🌀`;
+            const sliceMsg = `${labelPrefix} -${sliceDamage} ${labelIcon}`;
             particles.spawnComicText(dummy.x, dummy.y - 30, sliceMsg, isCrit ? '#ff0055' : '#10b981');
             const hitMsg = { type: 'DUMMY_HIT', damage: sliceDamage, angle: player.angle, isCrit };
             if (network.isHost) network.broadcast(hitMsg);
             else network.sendToHost(hitMsg);
           } else if (target instanceof Monster) {
             target.takeHit(sliceDamage, player.angle, 0, isCrit, player);
-            const sliceMsg = isCrit ? `CRIT SLICE! -${sliceDamage} 🌀` : `BLADE SLICE! -${sliceDamage} 🌀`;
+            const sliceMsg = `${labelPrefix} -${sliceDamage} ${labelIcon}`;
             particles.spawnComicText(target.x, target.y - 30, sliceMsg, isCrit ? '#ff0055' : '#10b981');
             const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: sliceDamage, angle: player.angle, knockback: 0, isCrit };
             if (network.isHost) network.broadcast(hitMsg);
@@ -5793,7 +5811,7 @@ function gameLoop(now) {
           } else {
             for (const [peerId, remote] of network.remotePlayers.entries()) {
               if (remote === target) {
-                const sliceMsg = isCrit ? `CRIT SLICE! -${sliceDamage} 🌀` : `BLADE SLICE! -${sliceDamage} 🌀`;
+                const sliceMsg = `${labelPrefix} -${sliceDamage} ${labelIcon}`;
                 particles.spawnComicText(remote.x, remote.y - 30, sliceMsg, isCrit ? '#ff0055' : '#10b981');
                 const slapMsg = { type: 'SLAP_KNOCKBACK', targetPeerId: peerId, kx: 0, ky: 0 };
                 if (network.isHost) network.broadcast(slapMsg);

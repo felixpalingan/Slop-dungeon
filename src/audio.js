@@ -1387,6 +1387,85 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Levi ODM Overdrive Windup: Deep turbine pressure build + dual ultrahard steel unsheathe ring
+   */
+  playLeviOverdriveWindup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Sub-bass pressure compression
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(130, now);
+      sub.frequency.exponentialRampToValueAtTime(36, now + 0.35);
+
+      subGain.gain.setValueAtTime(0.15, now);
+      subGain.gain.linearRampToValueAtTime(0.45, now + 0.28);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.36);
+
+      // 2. Dual Ultrahard Steel Snap-Blade Metallic Ring (Shing!)
+      const ring = this.ctx.createOscillator();
+      const ringGain = this.ctx.createGain();
+      ring.type = 'triangle';
+      ring.frequency.setValueAtTime(1600, now);
+      ring.frequency.exponentialRampToValueAtTime(3100, now + 0.32);
+
+      ringGain.gain.setValueAtTime(0.28, now);
+      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      ring.connect(ringGain);
+      ringGain.connect(this.ctx.destination);
+      ring.start(now);
+      ring.stop(now + 0.35);
+    } catch (e) {
+      console.warn('Audio error in Levi Overdrive Windup:', e);
+    }
+  }
+
+  /**
+   * Levi ODM Overdrive Impact: Explosive twin-turbine steam eruption & sonic boom
+   */
+  playLeviOverdriveImpact() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Sonic boom bass thump
+      const boom = this.ctx.createOscillator();
+      const boomGain = this.ctx.createGain();
+      boom.type = 'sawtooth';
+      boom.frequency.setValueAtTime(380, now);
+      boom.frequency.exponentialRampToValueAtTime(34, now + 0.75);
+
+      boomGain.gain.setValueAtTime(0.65, now);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+      boom.connect(boomGain);
+      boomGain.connect(this.ctx.destination);
+      boom.start(now);
+      boom.stop(now + 0.8);
+
+      // 2. High-pressure turbine steam roar
+      this.playOdmGasHiss();
+    } catch (e) {
+      console.warn('Audio error in Levi Overdrive Impact:', e);
+    }
+  }
+
   // --- DAVID MARTINEZ (CYBERPUNK: EDGERUNNERS) AUDIO ---
 
   /**

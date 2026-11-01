@@ -120,6 +120,8 @@ export class Player {
 
     // Levi Ackerman ODM Gear State (Fanny MLBB Mechanics)
     this.isOdmMode = false;
+    this.isOdmOverdrive = false;
+    this.odmOverdriveTimer = 0;
     this.odmGas = 100;
     this.maxOdmGas = 100;
     this.activeCables = [];
@@ -258,8 +260,13 @@ export class Player {
    * Fires a single ODM high-tension cable towards wall anchor (Fanny MLBB mechanic)
    */
   fireOdmCable(targetX, targetY, audio = null, particles = null, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }) {
-    if (this.isDowned || this.isDead || this.odmGas < 10) return false;
-    this.odmGas = Math.max(0, this.odmGas - 10);
+    if (this.isDowned || this.isDead) return false;
+    if (this.isOdmOverdrive) {
+      this.odmGas = this.maxOdmGas; // Unlimited gas during Overdrive!
+    } else {
+      if (this.odmGas < 10) return false;
+      this.odmGas = Math.max(0, this.odmGas - 10);
+    }
 
     // Calculate wall collision point along the aim ray (unlimited reach to wall)
     const anchor = projectRayToDungeonWall(this.x, this.y, targetX - this.x, targetY - this.y, bounds);
@@ -498,6 +505,8 @@ export class Player {
       this.isBlocking = false;
       this.isAirborne = false;
       this.activeCables = [];
+      this.isOdmOverdrive = false;
+      this.odmOverdriveTimer = 0;
       this.isBerserk = false;
       this.isSandevistan = false;
       this.isOvercharged = false;
@@ -835,6 +844,16 @@ export class Player {
       this.spinTimer -= dt;
     }
 
+    // Update ODM Overdrive Ultimate state (6.0s Unlimited Gas + Supercharged Speed/Slice)
+    if (this.isOdmOverdrive) {
+      this.odmOverdriveTimer -= dt;
+      this.odmGas = this.maxOdmGas; // Keep gas locked at 100% during Overdrive!
+      if (this.odmOverdriveTimer <= 0) {
+        this.isOdmOverdrive = false;
+        this.odmOverdriveTimer = 0;
+      }
+    }
+
     // --- ODM CABLE & AIRBORNE PHYSICS (AUTHENTIC FANNY MLBB MECHANICS) ---
     if (this.isAirborne && this.activeCables.length > 0) {
       // Decrement lifetimes
@@ -896,6 +915,11 @@ export class Player {
           speed = 740; // Dual cable slingshot velocity boost
         }
 
+        // Overdrive speed boost (+45% cable pull velocity!)
+        if (this.isOdmOverdrive) {
+          speed = Math.round(speed * 1.45);
+        }
+
         this.vx = moveDirX * speed;
         this.vy = moveDirY * speed;
         this.angle = Math.atan2(moveDirY, moveDirX);
@@ -926,14 +950,14 @@ export class Player {
         this.activeCables = survivingCables;
       }
 
-      // Emerald & white steam after-images
-      if (Math.random() < 0.55) {
+      // Emerald & white steam after-images (denser during Overdrive)
+      if (Math.random() < (this.isOdmOverdrive ? 0.92 : 0.55)) {
         this.afterImages.push({
           x: this.x,
           y: this.y,
           angle: this.angle,
           color: '#10b981',
-          alpha: 0.5
+          alpha: this.isOdmOverdrive ? 0.72 : 0.5
         });
       }
     } else if (this.activeCables.length === 0) {
@@ -1171,7 +1195,9 @@ export class Player {
           odmHud.classList.toggle('low-gas', isLow);
 
           if (bigText) {
-            bigText.textContent = `GAS CHARGES: ${charges} / 10`;
+            bigText.textContent = this.isOdmOverdrive
+              ? `⚡ OVERDRIVE: ∞ GAS [${this.odmOverdriveTimer.toFixed(1)}s]`
+              : `GAS CHARGES: ${charges} / 10`;
           }
         } else {
           odmHud.classList.add('hidden');

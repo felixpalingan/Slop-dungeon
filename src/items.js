@@ -64,7 +64,7 @@ export const SET_DEFINITIONS = {
     requiredItems: ['scout_hood', 'odm_harness', 'scout_trousers', 'scout_boots', 'dual_snap_blades'],
     ultimateQ: 'levi_grapple_whirlwind',
     ultimateTitle: 'ODM GRAPPLE WHIRLWIND',
-    desc: '[Q] Toggles ODM Mode: Left Click shoots maneuvering cables (max 2) with unlimited reach. Pass through enemies with zero collision, slicing and spinning on hit! Gas recharges on landing.'
+    desc: 'ODM Cables are always active on Left/Right Click! [Q] Unleashes ODM Overdrive for 6s: freezes reality with the Wings of Freedom cut-in, granting Unlimited Gas (∞), +45% cable speed, and 155+ supercharged pass-through slice damage!'
   },
   'david': {
     name: 'Night City Legend',

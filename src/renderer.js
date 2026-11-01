@@ -2084,13 +2084,16 @@ export class Renderer {
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(-barWidth / 2, barHeight + 2, barWidth, 3);
-      ctx.fillStyle = entity.isOdmMode ? '#10b981' : '#34d399';
-      ctx.fillRect(-barWidth / 2, barHeight + 2, barWidth * gasPct, 3);
+      ctx.fillStyle = entity.isOdmOverdrive ? '#fbbf24' : (entity.isOdmMode ? '#10b981' : '#34d399');
+      ctx.fillRect(-barWidth / 2, barHeight + 2, barWidth * (entity.isOdmOverdrive ? 1 : gasPct), 3);
 
       // Small ODM indicator text
       ctx.font = '800 7px "JetBrains Mono", monospace';
-      ctx.fillStyle = entity.isOdmMode ? '#10b981' : '#94a3b8';
-      ctx.fillText(entity.isOdmMode ? `ODM ${Math.round(gas)}% (${charges}/10)` : `GAS ${Math.round(gas)}%`, 0, barHeight + 11);
+      ctx.fillStyle = entity.isOdmOverdrive ? '#fbbf24' : (entity.isOdmMode ? '#10b981' : '#94a3b8');
+      const odmLabel = entity.isOdmOverdrive
+        ? `⚡ OVERDRIVE \u221e GAS`
+        : (entity.isOdmMode ? `ODM ${Math.round(gas)}% (${charges}/10)` : `GAS ${Math.round(gas)}%`);
+      ctx.fillText(odmLabel, 0, barHeight + 11);
     }
 
     // In-world Mini Shotgun Ammo Bar (for David Martinez Carnage Shotgun)
