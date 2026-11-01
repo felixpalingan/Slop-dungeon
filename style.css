@@ -1156,11 +1156,11 @@ kbd {
    SLOP MERCHANT MODAL - CLEAN UNIFORM GRID DESIGN
    ======================================================== */
 .merchant-card {
-  width: 920px;
-  max-width: 95vw;
-  height: 88vh;
-  max-height: 860px;
-  min-height: 620px;
+  width: 960px;
+  max-width: 96vw;
+  height: 90vh;
+  max-height: 890px;
+  min-height: 640px;
   display: flex;
   flex-direction: column;
   background: rgba(13, 17, 23, 0.96);
@@ -1168,7 +1168,7 @@ kbd {
   border-radius: 16px;
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(245, 158, 11, 0.15);
   overflow: hidden; /* Individual tab panes scroll cleanly without parent conflict */
-  padding: 20px 24px;
+  padding: 18px 24px;
   box-sizing: border-box;
 }
 
@@ -1461,10 +1461,10 @@ kbd {
   border-radius: 14px;
   border: 1px solid rgba(245, 158, 11, 0.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.45);
-  padding: 14px 18px;
+  padding: 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -1481,7 +1481,7 @@ kbd {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   flex: 1;
   max-width: 145px;
   min-width: 120px;
@@ -1493,7 +1493,7 @@ kbd {
 }
 
 .forge-slot-sub {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   color: #94a3b8;
   text-transform: uppercase;
@@ -1502,7 +1502,7 @@ kbd {
 
 .forge-slot {
   width: 100%;
-  height: 105px;
+  height: 88px;
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.75);
   border: 2px dashed rgba(255, 255, 255, 0.18);
@@ -1511,7 +1511,7 @@ kbd {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 8px 10px;
+  padding: 6px 10px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
@@ -1680,73 +1680,130 @@ kbd {
 
 /* Backpack Inventory Picker */
 .forge-inventory-picker, .wheel-inventory-picker {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 275px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.75);
   border-radius: 12px;
   padding: 12px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .picker-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.picker-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .picker-title {
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 800;
-  color: #cbd5e1;
+  color: #f1f5f9;
   letter-spacing: 0.5px;
 }
 
 .picker-count-badge {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: #94a3b8;
-  background: rgba(30, 41, 59, 0.8);
-  padding: 2px 8px;
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.9);
+  padding: 2px 10px;
   border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.forge-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forge-filter-chip {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #94a3b8;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.forge-filter-chip:hover {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.forge-filter-chip.active {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
 }
 
 .mini-grid {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
-  grid-auto-rows: 68px;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  grid-auto-rows: 84px;
+  gap: 12px;
   overflow-y: auto;
-  padding-right: 6px;
+  padding-right: 8px;
   align-content: start;
 }
 
 .backpack-item-card.mini-card {
-  height: 68px;
-  max-height: 68px;
-  padding: 8px 12px;
+  height: 84px;
+  min-height: 84px;
+  max-height: 84px;
+  padding: 10px 14px;
   box-sizing: border-box;
-  background: rgba(22, 27, 34, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  background: rgba(22, 27, 34, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  transition: all 0.15s ease;
+  gap: 12px;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .backpack-item-card.mini-card:hover {
-  border-color: rgba(245, 158, 11, 0.6);
-  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(245, 158, 11, 0.7);
+  background: rgba(30, 41, 59, 0.98);
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(245, 158, 11, 0.15);
+}
+
+.backpack-item-card.mini-card.matches-forge-rarity {
+  border-color: rgba(245, 158, 11, 0.85);
+  background: linear-gradient(135deg, rgba(22, 27, 34, 0.95), rgba(45, 30, 10, 0.55));
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+}
+
+.backpack-item-card.mini-card.forge-mismatch {
+  opacity: 0.65;
+}
+
+.backpack-item-card.mini-card.forge-mismatch:hover {
+  opacity: 1;
 }
 
 .backpack-item-card.mini-card.selected {
@@ -1758,78 +1815,101 @@ kbd {
 .mini-card-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
 
 .mini-card-icon-badge {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   flex-shrink: 0;
 }
 
 .mini-card-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
 .mini-card-name {
-  font-size: 0.84rem;
+  font-size: 0.95rem;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
 }
 
 .mini-card-tags {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.65rem;
+  gap: 8px;
+  font-size: 0.72rem;
   font-weight: 700;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .mini-rarity-pill {
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
   border: 1px solid;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
+  font-size: 0.7rem;
+  font-weight: 800;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .mini-slot-label {
   color: #94a3b8;
   text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mini-card-stats {
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  background: rgba(30, 41, 59, 0.75);
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mini-action-btn {
-  height: 32px;
-  padding: 0 12px;
+  height: 36px;
+  padding: 0 14px;
   flex-shrink: 0;
   border-radius: 8px;
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 0.74rem;
-  letter-spacing: 0.3px;
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.5);
   color: #fbbf24;
   transition: all 0.15s ease;
 }
@@ -1837,7 +1917,7 @@ kbd {
 .mini-action-btn:hover {
   background: #f59e0b;
   color: #170f03;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
   transform: translateY(-1px);
 }
 

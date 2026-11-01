@@ -13,6 +13,19 @@ function getItemSlotIcon(slot) {
   }
 }
 
+function getItemStatSnippet(item) {
+  if (!item) return '';
+  const parts = [];
+  if (item.damage) parts.push(`⚔️ ${item.damage} DMG`);
+  if (item.armor) parts.push(`🛡️ +${item.armor}`);
+  if (item.hp) parts.push(`❤️ +${item.hp}`);
+  if (item.critChance) parts.push(`🎯 +${Math.round(item.critChance * 100)}%`);
+  if (item.speedBonus) parts.push(`⚡ +${item.speedBonus}`);
+  if (parts.length > 0) return parts.slice(0, 2).join(' · ');
+  if (item.desc) return item.desc.length > 32 ? item.desc.slice(0, 30) + '...' : item.desc;
+  return '';
+}
+
 /**
  * StationController
  * Manages in-world stations:
@@ -346,25 +359,33 @@ export class StationController {
       return;
     }
 
+    const firstFilledItem = this.forgeSlots.find(sl => sl !== null);
+    const currentForgeRarity = firstFilledItem ? firstFilledItem.rarity : null;
+
     (this.player.inventory || []).forEach((item, idx) => {
       if (placedIndices.has(idx) || item.slot === 'consumable') return;
       const rarity = ItemRarity[item.rarity] || ItemRarity.COMMON;
+      const isMatching = currentForgeRarity && item.rarity === currentForgeRarity;
+      const isMismatch = currentForgeRarity && item.rarity !== currentForgeRarity;
+      const statSnippet = getItemStatSnippet(item);
+
       const card = document.createElement('div');
-      card.className = 'backpack-item-card mini-card forge-pick-card';
+      card.className = `backpack-item-card mini-card forge-pick-card ${isMatching ? 'matches-forge-rarity' : ''} ${isMismatch ? 'forge-mismatch' : ''}`;
       card.style.cursor = 'pointer';
-      card.style.borderLeft = `3px solid ${rarity.color}`;
+      card.style.borderLeft = `4px solid ${rarity.color}`;
       card.innerHTML = `
         <div class="mini-card-left">
           <div class="mini-card-icon-badge">${getItemSlotIcon(item.slot)}</div>
           <div class="mini-card-info">
             <strong class="mini-card-name" style="color:${rarity.color}" title="${item.name}">${item.name}</strong>
             <div class="mini-card-tags">
-              <span class="mini-rarity-pill" style="color:${rarity.color}; border-color:${rarity.color}50; background:${rarity.color}15;">${item.rarity}</span>
+              <span class="mini-rarity-pill" style="color:${rarity.color}; border-color:${rarity.color}60; background:${rarity.color}20;">${item.rarity}</span>
               <span class="mini-slot-label">${item.slot.toUpperCase()}</span>
+              ${statSnippet ? `<span class="mini-card-stats">${statSnippet}</span>` : ''}
             </div>
           </div>
         </div>
-        <button class="mini-action-btn forge-insert-action">INSERT ➕</button>
+        <button class="mini-action-btn forge-insert-action">${isMatching ? 'MATCH ➕' : 'INSERT ➕'}</button>
       `;
       card.addEventListener('click', () => {
         const emptyIdx = this.forgeSlots.findIndex(sl => sl === null);

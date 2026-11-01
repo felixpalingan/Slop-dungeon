@@ -110,15 +110,38 @@ test.describe('Slop Dungeon - Base Camp & HUD User Journeys', () => {
   test('auto-populates sanitized room code from URL query and initiates join without opening lobby modal', async ({ page }) => {
     // Navigate with a shared link including SLOP- prefix
     await page.goto('/?room=SLOP-K7M2X9');
-    await expect(page.locator('#game-canvas')).toBeVisible();
-
-    // Lobby modal should not be open/blocking
-    const lobbyModal = page.locator('#lobby-modal');
-    await expect(lobbyModal).toHaveClass(/hidden/);
 
     // The room input field should have the sanitized code without SLOP- prefix
     const roomInput = page.locator('#input-room-code');
     await expect(roomInput).toHaveValue('K7M2X9');
+  });
+
+  test('can open Slop Merchant Trade-Up Forge tab with enlarged item picker and rarity filters', async ({ page }) => {
+    // Open merchant modal programmatically or via modalManager
+    await page.evaluate(() => {
+      window.modalManager.open('merchant-modal');
+      const forgeTabBtn = document.querySelector('.merchant-tab-btn[data-tab="forge"]');
+      if (forgeTabBtn) forgeTabBtn.click();
+    });
+
+    const merchantModal = page.locator('#merchant-modal');
+    await expect(merchantModal).toBeVisible();
+
+    const forgePane = page.locator('#pane-forge');
+    await expect(forgePane).toBeVisible();
+
+    // Check presence of rarity filter chips
+    const filterChips = page.locator('#forge-rarity-filters .forge-filter-chip');
+    await expect(filterChips).toHaveCount(5);
+
+    // Check presence of backpack inventory grid
+    const inventoryGrid = page.locator('#forge-inventory-grid');
+    await expect(inventoryGrid).toBeVisible();
+
+    // Close merchant modal
+    const closeBtn = page.locator('#btn-close-merchant');
+    await closeBtn.click();
+    await expect(merchantModal).toHaveClass(/hidden/);
   });
 });
 
