@@ -34,7 +34,7 @@ export const SET_DEFINITIONS = {
     requiredWeaponOneOf: ['sukuna_kamutoke', 'sukuna_cleaver'],
     ultimateQ: 'world_cutting_slash',
     ultimateTitle: 'WORLD CUTTING SLASH',
-    desc: 'Bisects reality with the unblockable World Cutting Slash!'
+    desc: '[Q] Unleashes the World Cutting Slash: freezes reality in dark cursed ink with the three sacred chants, before unleashing a colossal reality-bisecting spatial severance cone!'
   },
   'toji': {
     name: 'The Sorcerer Killer',

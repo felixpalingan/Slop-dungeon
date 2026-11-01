@@ -1071,33 +1071,101 @@ export class AudioManager {
   }
 
   /**
-   * World Cutting Slash: Sudden dead silence followed by razor sharp dimensional rip snap
+   * World Cutting Slash Windup: Ominous cursed frequency dive with dead silence vacuum
    */
-  playWorldCuttingSlash() {
+  playWorldCuttingSlashWindup() {
     if (this.isMuted) return;
     this.ensureContext();
     if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
+      // 1. Cursed sub-bass vacuum dive
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sawtooth';
+      sub.frequency.setValueAtTime(140, now);
+      sub.frequency.exponentialRampToValueAtTime(32, now + 0.38);
 
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1400, now);
-      osc.frequency.exponentialRampToValueAtTime(60, now + 0.6);
+      subGain.gain.setValueAtTime(0.12, now);
+      subGain.gain.linearRampToValueAtTime(0.45, now + 0.28);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
 
-      gain.gain.setValueAtTime(0.65, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.38);
 
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      // 2. High-pitch dimensional tension ring (incantation chant resonance)
+      const ring = this.ctx.createOscillator();
+      const ringGain = this.ctx.createGain();
+      ring.type = 'sine';
+      ring.frequency.setValueAtTime(1800, now);
+      ring.frequency.exponentialRampToValueAtTime(2600, now + 0.35);
 
-      osc.start(now);
-      osc.stop(now + 0.65);
+      ringGain.gain.setValueAtTime(0.08, now);
+      ringGain.gain.linearRampToValueAtTime(0.22, now + 0.28);
+      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      ring.connect(ringGain);
+      ringGain.connect(this.ctx.destination);
+      ring.start(now);
+      ring.stop(now + 0.38);
     } catch (e) {
-      console.warn('Audio error in World Cutting Slash:', e);
+      console.warn('Audio error in World Cutting Slash Windup:', e);
     }
+  }
+
+  /**
+   * World Cutting Slash Impact: Razor sharp dimensional rip snap followed by seismic reality severance
+   */
+  playWorldCuttingSlashImpact() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Razor-sharp spatial cut snap
+      const snap = this.ctx.createOscillator();
+      const snapGain = this.ctx.createGain();
+      snap.type = 'sawtooth';
+      snap.frequency.setValueAtTime(2200, now);
+      snap.frequency.exponentialRampToValueAtTime(70, now + 0.45);
+
+      snapGain.gain.setValueAtTime(0.75, now);
+      snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      snap.connect(snapGain);
+      snapGain.connect(this.ctx.destination);
+      snap.start(now);
+      snap.stop(now + 0.5);
+
+      // 2. Deep seismic spatial rupture rumble
+      const boom = this.ctx.createOscillator();
+      const boomGain = this.ctx.createGain();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(420, now);
+      boom.frequency.exponentialRampToValueAtTime(28, now + 1.1);
+
+      boomGain.gain.setValueAtTime(0.8, now);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+      boom.connect(boomGain);
+      boomGain.connect(this.ctx.destination);
+      boom.start(now);
+      boom.stop(now + 1.2);
+    } catch (e) {
+      console.warn('Audio error in World Cutting Slash Impact:', e);
+    }
+  }
+
+  /**
+   * World Cutting Slash: Sudden dead silence followed by razor sharp dimensional rip snap
+   */
+  playWorldCuttingSlash() {
+    this.playWorldCuttingSlashImpact();
   }
 
   /**

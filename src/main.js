@@ -5523,15 +5523,17 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
-  // If Serious Punch is in its monochrome windup freeze (0.45s), world physics/monsters freeze completely (0.0)!
+  // If Serious Punch (0.45s) or World Cutting Slash (0.36s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
   // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
   const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
-  const worldTimeScale = isSeriousPunchFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
+  const isWorldCuttingSlashFreeze = cinematics.isWorldCuttingSlashFreezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze;
+  const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 
   // 1. Update entities
   // David (the caster) moves at normal/boosted dt; all others update at worldDt!
-  const playerDt = isSeriousPunchFreeze ? 0.0 : (player.isSandevistan ? dt : worldDt);
+  const playerDt = isAnyUltimateFreeze ? 0.0 : (player.isSandevistan ? dt : worldDt);
   const activeBounds = (currentFloor >= 1 && currentDungeon) ? currentDungeon : dungeonBounds;
   player.update(playerDt, input, activeBounds);
 

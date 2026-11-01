@@ -249,9 +249,9 @@ export class SlopMerchant {
 
     // General high-tier dungeon equipment
     const generalPool = [
-      'titan_greatsword', 'thunder_warhammer', 'arcane_tome', 'knight_shield',
-      'iron_tower_shield', 'horned_barbarian_helm', 'spiked_cuirass', 'winged_boots',
-      'shadow_hood', 'crystal_blade'
+      'titan_greatsword', 'thunder_warhammer', 'arcane_tome', 'wooden_buckler',
+      'iron_tower_shield', 'horned_barbarian_helm', 'spiked_cuirass', 'wind_striders',
+      'shadow_hood', 'crystal_blade', 'iron_visor'
     ];
 
     const rarityPriceMap = {

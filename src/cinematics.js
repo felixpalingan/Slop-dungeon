@@ -18,6 +18,10 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'serious_punch' && (1 - (c.timer / c.duration)) < 0.30);
   }
 
+  isWorldCuttingSlashFreezing() {
+    return this.activeCinematics.some(c => c.type === 'world_cutting_slash' && (1 - (c.timer / c.duration)) < 0.28);
+  }
+
   spawnProjectile(proj) {
     if (!proj) return;
     this.projectiles.push({
@@ -75,36 +79,23 @@ export class CinematicManager {
         glow: '#a855f7'
       });
     } else if (type === 'world_cutting_slash') {
-      // Sukuna's World Cutting Slash: Reality freezes in monochrome gray for 0.35s,
-      // followed by a violent diagonal crimson dimensional rip bisecting the whole viewport
+      // Sukuna's World Cutting Slash (世界を断つ斬撃):
+      // Phase 1 (0.0s - 0.36s): Reality freezes in dark crimson/abyssal void ink.
+      //   Incantation chant 「龍鱗・反発・番の流星」, 4 glowing demonic eyes & Dismantle grid.
+      // Phase 2 (0.36s - 1.3s): Cataclysmic Colossal Dimensional Fissure CONE (94° angle,
+      //   expanding multi-arc spatial rips, pierces all obstacles, 380 True Damage)!
       this.activeCinematics.push({
         type: 'world_cutting_slash',
-        timer: 1.2,
-        duration: 1.2,
+        timer: 1.3,
+        duration: 1.3,
         caster: player,
         isRemote: !!isRemote,
         x: player.x,
         y: player.y,
-        angle: player.angle
+        angle: player.angle,
+        hasFired: false
       });
-      this.addScreenShake(26);
-
-      // Spawn expanding dimensional cut wave
-      const speed = 820;
-      this.projectiles.push({
-        type: 'world_cutting_slash',
-        caster: player,
-        isRemote: !!isRemote,
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(player.angle) * speed,
-        vy: Math.sin(player.angle) * speed,
-        width: 220,
-        radius: 110, // Full width collision coverage
-        damage: 350,
-        life: 1.0,
-        angle: player.angle
-      });
+      this.addScreenShake(18);
     } else if (type === 'inverted_chain_rampage') {
       // Toji's Thousand-Mile Chain Whirlwind: 360-degree high-velocity iron chain storm
       this.activeCinematics.push({
@@ -327,7 +318,7 @@ export class CinematicManager {
       color: proj.color || '#a855f7',
       radius: proj.radius || 10,
       width: proj.width || (proj.radius ? proj.radius * 2 : 20),
-      piercesObstacles: !!proj.piercesObstacles || proj.type === 'hollow_purple' || proj.type === 'serious_punch_beam',
+      piercesObstacles: !!proj.piercesObstacles || proj.type === 'hollow_purple' || proj.type === 'serious_punch_beam' || proj.type === 'world_cutting_slash',
       knockback: proj.knockback || 0,
       life: life,
       maxLife: life,
@@ -654,6 +645,40 @@ export class CinematicManager {
             angle: c.angle
           });
         }
+      } else if (c.type === 'world_cutting_slash') {
+        const progress = 1 - (c.timer / c.duration);
+        if (progress >= 0.28 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(36);
+          if (this.audio?.playWorldCuttingSlashImpact) {
+            this.audio.playWorldCuttingSlashImpact();
+          } else if (this.audio?.playWorldCuttingSlash) {
+            this.audio.playWorldCuttingSlash();
+          }
+
+          const speed = 960;
+          const caster = c.caster;
+          this.projectiles.push({
+            type: 'world_cutting_slash',
+            caster: caster,
+            isRemote: c.isRemote,
+            x: caster ? caster.x : c.x,
+            y: caster ? caster.y : c.y,
+            vx: Math.cos(c.angle) * speed,
+            vy: Math.sin(c.angle) * speed,
+            coneAngle: Math.PI * 0.26, // ~47° half-angle -> ~94° total expanding cone!
+            radius: 160,
+            maxRadius: 360,
+            width: 280,
+            maxWidth: 640,
+            damage: 380,
+            knockback: 650,
+            piercesObstacles: true, // Slices through the fabric of space itself!
+            life: 0.65,
+            maxLife: 0.65,
+            angle: c.angle
+          });
+        }
       }
 
       if (c.timer <= 0 || c.phase === 'finished') {
@@ -661,8 +686,8 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection (frozen in mid-air during Serious Punch manga windup)
-    const isFrozen = this.isSeriousPunchFreezing();
+    // Update projectiles & hit detection (frozen in mid-air during Serious Punch or World Cutting Slash manga windup)
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -673,13 +698,18 @@ export class CinematicManager {
         proj.y += proj.vy * projDt;
         proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - projDt : -1;
 
-        // Expand projectile radius if applicable (Hollow Purple)
+        // Expand projectile radius & width if applicable (Hollow Purple or World Cutting Slash Cone)
         if (proj.radius && proj.maxRadius) {
-          proj.radius = Math.min(proj.maxRadius, proj.radius + 45 * projDt);
+          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : 45;
+          proj.radius = Math.min(proj.maxRadius, proj.radius + expansionRate * projDt);
+        }
+        if (proj.width && proj.maxWidth) {
+          const widthRate = proj.type === 'world_cutting_slash' ? 560 : 60;
+          proj.width = Math.min(proj.maxWidth, proj.width + widthRate * projDt);
         }
 
         // Check obstacle collision (tactical cover: pillars block all projectiles except piercing ultimates)
-        if (obstacles && obstacles.length > 0 && !proj.piercesObstacles && proj.type !== 'hollow_purple' && proj.type !== 'serious_punch_beam') {
+        if (obstacles && obstacles.length > 0 && !proj.piercesObstacles && proj.type !== 'hollow_purple' && proj.type !== 'serious_punch_beam' && proj.type !== 'world_cutting_slash') {
           let hitObs = null;
           const projRad = proj.radius || (proj.width ? proj.width * 0.5 : 12);
           for (const obs of obstacles) {
@@ -724,7 +754,21 @@ export class CinematicManager {
             const dist = Math.hypot(dx, dy);
             const hitRadius = (proj.radius || (proj.width ? proj.width * 0.5 : 40)) + (target.radius || 24);
 
-            if (dist <= hitRadius) {
+            let isHit = false;
+            if (proj.type === 'world_cutting_slash') {
+              if (dist <= hitRadius) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(targetAngle - proj.angle);
+                while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
+                if (angleDiff <= (proj.coneAngle || 0.82) || dist <= (proj.radius * 0.75)) {
+                  isHit = true;
+                }
+              }
+            } else {
+              isHit = dist <= hitRadius;
+            }
+
+            if (isHit) {
               proj.hitTargets.add(target);
               if (targetKey) proj.hitTargets.add(targetKey);
               proj.hasHit = true;
@@ -797,23 +841,85 @@ export class CinematicManager {
         ctx.arc(0, 0, r * 0.85, -Date.now() * 0.015, -Date.now() * 0.015 + Math.PI);
         ctx.stroke();
       } else if (proj.type === 'world_cutting_slash') {
-        // Razor sharp dimensional rip blade
+        // Sukuna's World Cutting Slash: Colossal Reality-Bisecting Dimensional Cone
         ctx.rotate(proj.angle);
-        ctx.strokeStyle = '#ff2a5f';
-        ctx.shadowColor = '#ff2a5f';
-        ctx.shadowBlur = 28;
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(-110, 0);
-        ctx.lineTo(110, 0);
-        ctx.stroke();
+        const coneHalf = proj.coneAngle || 0.82;
+        const pulse = 1 + Math.sin(Date.now() * 0.04) * 0.12;
 
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
+        const curRadius = proj.radius || 180;
+        const curWidth = proj.width || 320;
+
+        // 1. Dimensional Void Cone Fill (Sheared Reality Rift)
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 20, 70, 0.18)';
+        ctx.shadowColor = '#ff2a5f';
+        ctx.shadowBlur = 32;
         ctx.beginPath();
-        ctx.moveTo(-90, 0);
-        ctx.lineTo(90, 0);
-        ctx.stroke();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, curRadius * 1.05, -coneHalf, coneHalf);
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Cascading Dimensional Cutting Arcs (Layered Crimson & Pure White Razor Edges)
+        for (let arcIdx = 0; arcIdx < 4; arcIdx++) {
+          const arcR = curRadius * (0.42 + arcIdx * 0.20) * pulse;
+          const arcSpread = coneHalf * (0.85 + arcIdx * 0.05);
+          const arcAlpha = Math.max(0.2, 1 - (arcIdx * 0.18));
+
+          // Outer Crimson Aura
+          ctx.strokeStyle = `rgba(255, 42, 95, ${arcAlpha})`;
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 24 - arcIdx * 4;
+          ctx.lineWidth = 10 - arcIdx * 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, arcR, -arcSpread, arcSpread);
+          ctx.stroke();
+
+          // Pure White Razor Core (Infinite Sharpness)
+          ctx.strokeStyle = `rgba(255, 255, 255, ${arcAlpha * 1.1})`;
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 12;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, arcR, -arcSpread * 0.95, arcSpread * 0.95);
+          ctx.stroke();
+        }
+
+        // 3. Dismantle Lattice Grid Cuts (Radial Cleaves Across Cone)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#ff2a5f';
+        ctx.shadowBlur = 16;
+        const gridLines = [-0.65, -0.32, 0, 0.32, 0.65];
+        for (const g of gridLines) {
+          const lineAngle = g * coneHalf;
+          const endDist = curRadius * (0.92 + Math.cos(g * 2) * 0.12);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(lineAngle) * endDist, Math.sin(lineAngle) * endDist);
+          ctx.stroke();
+        }
+
+        // 4. Cross-cleave bisecting slashes across the fan
+        for (let cross = -2; cross <= 2; cross++) {
+          const cy = cross * (curWidth * 0.16);
+          const cx = curRadius * (0.52 + Math.abs(cross) * 0.12);
+          ctx.strokeStyle = 'rgba(255, 42, 95, 0.88)';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(cx - 32, cy - 32);
+          ctx.lineTo(cx + 32, cy + 32);
+          ctx.stroke();
+        }
+
+        // 5. Crackling Spatial Fracture Sparks & Red Lightning
+        ctx.fillStyle = '#ffffff';
+        for (let sp = 0; sp < 6; sp++) {
+          const spAngle = (Math.sin(Date.now() * 0.01 + sp) * 0.5) * 2 * coneHalf;
+          const spDist = (0.2 + (sp * 0.14)) * curRadius;
+          ctx.fillRect(Math.cos(spAngle) * spDist - 2, Math.sin(spAngle) * spDist - 2, 4, 4);
+        }
+        ctx.restore();
       } else if (proj.type === 'dismantle') {
         // Red curved wind blade
         ctx.rotate(proj.angle);
@@ -1359,37 +1465,187 @@ export class CinematicManager {
         }
         ctx.restore();
       } else if (c.type === 'world_cutting_slash') {
-        // 1. Reality freeze: Desaturate / darken screen
         ctx.save();
-        if (progress < 0.35) {
-          ctx.fillStyle = 'rgba(15, 15, 25, 0.45)';
+        if (progress < 0.28) {
+          // --- 1. PHASE 1: REALITY FREEZE & SACRED INCANTATION (0.0s - 0.36s) ---
+          // Deep cursed ink wash
+          ctx.fillStyle = 'rgba(8, 2, 6, 0.82)';
           ctx.fillRect(0, 0, width, height);
-        } else {
-          // 2. Full-screen diagonal dimensional slash bisecting the screen!
-          const slashProgress = (progress - 0.35) / 0.65;
-          const slashAlpha = Math.max(0, 1 - slashProgress);
 
-          ctx.strokeStyle = `rgba(255, 42, 95, ${slashAlpha})`;
-          ctx.lineWidth = 14;
+          // Cursed radial vignette
+          const cursedGrad = ctx.createRadialGradient(width / 2, height / 2, 60, width / 2, height / 2, Math.max(width, height) * 0.72);
+          cursedGrad.addColorStop(0, 'rgba(255, 42, 95, 0.08)');
+          cursedGrad.addColorStop(0.45, 'rgba(30, 5, 15, 0.45)');
+          cursedGrad.addColorStop(1, 'rgba(5, 0, 4, 0.95)');
+          ctx.fillStyle = cursedGrad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Dismantle Reality Fracture Grid (Geometric spatial lines previewing the cuts)
+          ctx.strokeStyle = 'rgba(255, 42, 95, 0.45)';
+          ctx.lineWidth = 1.5;
           ctx.shadowColor = '#ff2a5f';
-          ctx.shadowBlur = 32;
+          ctx.shadowBlur = 8;
+          const numGrid = 7;
+          for (let g = 0; g < numGrid; g++) {
+            const gy = (height / numGrid) * (g + 0.5);
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(width, gy);
+            ctx.stroke();
 
-          ctx.beginPath();
-          ctx.moveTo(0, height * 0.15);
-          ctx.lineTo(width, height * 0.85);
-          ctx.stroke();
+            const gx = (width / numGrid) * (g + 0.5);
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx, height);
+            ctx.stroke();
+          }
 
-          // White core cut line
-          ctx.strokeStyle = `rgba(255, 255, 255, ${slashAlpha * 1.2})`;
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(0, height * 0.15);
-          ctx.lineTo(width, height * 0.85);
-          ctx.stroke();
+          // Sukuna's 4 Glowing Scarlet Demonic Eyes
+          const eyeCenterX = width / 2;
+          const eyeCenterY = height / 2 - 25;
+          const eyePairs = [
+            // Upper eye pair
+            { x: eyeCenterX - 75, y: eyeCenterY - 18, rx: 16, ry: 7, rot: -0.15 },
+            { x: eyeCenterX + 75, y: eyeCenterY - 18, rx: 16, ry: 7, rot: 0.15 },
+            // Lower eye pair
+            { x: eyeCenterX - 72, y: eyeCenterY + 18, rx: 15, ry: 6.5, rot: 0.12 },
+            { x: eyeCenterX + 72, y: eyeCenterY + 18, rx: 15, ry: 6.5, rot: -0.12 }
+          ];
 
-          // Shift canvas halves slightly along the cut
-          ctx.fillStyle = `rgba(255, 0, 80, ${slashAlpha * 0.15})`;
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 24;
+          for (const eye of eyePairs) {
+            ctx.save();
+            ctx.translate(eye.x, eye.y);
+            ctx.rotate(eye.rot);
+
+            // Sclera/aura
+            ctx.fillStyle = 'rgba(255, 42, 95, 0.95)';
+            ctx.beginPath();
+            if (typeof ctx.ellipse === 'function') {
+              ctx.ellipse(0, 0, eye.rx, eye.ry, 0, 0, Math.PI * 2);
+            } else {
+              ctx.arc(0, 0, eye.rx, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            // Slit pupil
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            if (typeof ctx.ellipse === 'function') {
+              ctx.ellipse(0, 0, eye.rx * 0.35, eye.ry * 0.8, 0, 0, Math.PI * 2);
+            } else {
+              ctx.arc(0, 0, eye.rx * 0.4, 0, Math.PI * 2);
+            }
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Authentic Japanese Incantation Chants: 「龍鱗・反発・番の流星」
+          ctx.textAlign = 'center';
+          ctx.font = '900 28px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ff2a5f';
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 18;
+          ctx.strokeText('「 龍 鱗 ・ 反 発 ・ 番 の 流 星 」', width / 2, height * 0.24);
+          ctx.fillText('「 龍 鱗 ・ 反 発 ・ 番 の 流 星 」', width / 2, height * 0.24);
+
+          // Subtitle chant translation
+          ctx.font = '700 15px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#f87171';
+          ctx.shadowBlur = 6;
+          ctx.fillText('SCALE OF THE DRAGON \u2022 RECOIL \u2022 TWIN METEORS', width / 2, height * 0.29);
+
+          // Center Japanese Kanji
+          ctx.font = '900 46px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 24;
+          ctx.strokeText('世界を断つ斬撃', width / 2, height * 0.68);
+          ctx.fillText('世界を断つ斬撃', width / 2, height * 0.68);
+        } else {
+          // --- 2. PHASE 2: REALITY SEVERANCE & CATACLYSMIC IMPACT (0.36s - 1.3s) ---
+          const strikeProgress = (progress - 0.28) / 0.72; // 0 to 1
+          const slashAlpha = Math.max(0, 1 - strikeProgress);
+
+          // Initial blinding spatial severance flash (first 140ms of strike)
+          if (strikeProgress < 0.22) {
+            const flashAlpha = (0.22 - strikeProgress) / 0.22;
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.95})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Crimson spatial rupture vignette
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.15, width / 2, height / 2, width * 0.75);
+          const vigAlpha = Math.max(0, (1 - strikeProgress) * 0.65);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0.65, `rgba(255, 42, 95, ${vigAlpha * 0.45})`);
+          grad.addColorStop(1, `rgba(180, 10, 30, ${vigAlpha * 0.85})`);
+          ctx.fillStyle = grad;
           ctx.fillRect(0, 0, width, height);
+
+          // Full-screen Multi-Fracture Reality Cuts Bisecting Viewport
+          const cuts = [
+            { x1: 0, y1: height * 0.22, x2: width, y2: height * 0.78, w: 16 },
+            { x1: 0, y1: height * 0.52, x2: width, y2: height * 0.62, w: 10 },
+            { x1: width * 0.25, y1: 0, x2: width * 0.82, y2: height, w: 12 }
+          ];
+
+          for (const cut of cuts) {
+            // Crimson spatial tearing glow
+            ctx.strokeStyle = `rgba(255, 42, 95, ${slashAlpha * 0.95})`;
+            ctx.lineWidth = cut.w;
+            ctx.shadowColor = '#ff2a5f';
+            ctx.shadowBlur = 34;
+            ctx.beginPath();
+            ctx.moveTo(cut.x1, cut.y1);
+            ctx.lineTo(cut.x2, cut.y2);
+            ctx.stroke();
+
+            // Pure white core razor cut line (Infinite dimensional edge)
+            ctx.strokeStyle = `rgba(255, 255, 255, ${slashAlpha * 1.2})`;
+            ctx.lineWidth = cut.w * 0.32;
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.moveTo(cut.x1, cut.y1);
+            ctx.lineTo(cut.x2, cut.y2);
+            ctx.stroke();
+          }
+
+          // Canvas displacement / shear tint along the cuts
+          ctx.fillStyle = `rgba(255, 0, 70, ${slashAlpha * 0.18})`;
+          ctx.fillRect(0, 0, width, height);
+
+          // Colossal Anime Impact Typography: 世界を断つ斬撃 + 【 空間切断 ・ 捌 】
+          if (strikeProgress < 0.68) {
+            const textAlpha = Math.max(0, 1 - (strikeProgress / 0.68));
+            ctx.textAlign = 'center';
+
+            // Colossal header
+            ctx.font = '900 76px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${textAlpha})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${textAlpha})`;
+            ctx.shadowColor = '#ff2a5f';
+            ctx.shadowBlur = 36;
+            ctx.strokeText('世界を断つ斬撃', width / 2, height / 2 - 20);
+            ctx.fillText('世界を断つ斬撃', width / 2, height / 2 - 20);
+
+            // Subtext: 【 空間切断 ・ 捌 】 [SPATIAL CLEAVE: SEVERANCE]
+            ctx.font = '900 28px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${textAlpha})`;
+            ctx.fillStyle = `rgba(255, 215, 0, ${textAlpha})`;
+            ctx.shadowColor = '#ff2a5f';
+            ctx.shadowBlur = 18;
+            ctx.strokeText('【 空間切断 ・ 捌 】 [WORLD CUTTING SLASH]', width / 2, height / 2 + 35);
+            ctx.fillText('【 空間切断 ・ 捌 】 [WORLD CUTTING SLASH]', width / 2, height / 2 + 35);
+          }
         }
         ctx.restore();
       } else if (c.type === 'berserker_rage') {

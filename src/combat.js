@@ -373,8 +373,12 @@ export class CombatSystem {
         return true;
       } else if (setBonus.ultimateQ === 'world_cutting_slash') {
         // Sukuna: World Cutting Slash!
-        this.audio?.playWorldCuttingSlash?.();
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'WORLD CUTTING SLASH!', '#ff2a5f');
+        if (this.audio?.playWorldCuttingSlashWindup) {
+          this.audio.playWorldCuttingSlashWindup();
+        } else if (this.audio?.playWorldCuttingSlash) {
+          this.audio.playWorldCuttingSlash();
+        }
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'WORLD CUTTING SLASH! 🗡️ 空間切断', '#ff2a5f');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('world_cutting_slash', player);
         }
