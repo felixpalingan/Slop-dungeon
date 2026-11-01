@@ -4709,7 +4709,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
     }
     else if (msg.ultimateType === 'world_cutting_slash') audio.playWorldCuttingSlash();
     else if (msg.ultimateType === 'inverted_chain_rampage') audio.playChainRampage();
-    else if (msg.ultimateType === 'berserker_rage') { audio.playBerserkRoar(); audio.playClang(); }
+    else if (msg.ultimateType === 'berserker_rage') {
+      if (audio.playBerserkWindup) audio.playBerserkWindup();
+      else { audio.playBerserkRoar(); audio.playClang(); }
+    }
     else if (msg.ultimateType === 'spartan_kick') audio.playSpartanKick();
     else if (msg.ultimateType === 'dismantle') audio.playDismantleCuts();
     else if (msg.ultimateType === 'cannon_arm') audio.playExplosion();
@@ -5531,13 +5534,14 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
-  // If Serious Punch (0.45s), World Cutting Slash (0.36s), Levi Overdrive (0.36s), or Hollow Purple (0.45s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
+  // If Serious Punch (0.45s), World Cutting Slash (0.36s), Levi Overdrive (0.36s), Hollow Purple (0.45s), or Berserker Rage (0.42s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
   // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
   const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
   const isWorldCuttingSlashFreeze = cinematics.isWorldCuttingSlashFreezing?.() || false;
   const isLeviOverdriveFreeze = cinematics.isLeviOverdriveFreezing?.() || false;
   const isHollowPurpleFreeze = cinematics.isHollowPurpleFreezing?.() || false;
-  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze;
+  const isBerserkerRageFreeze = cinematics.isBerserkerRageFreezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze || isBerserkerRageFreeze;
   const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 
@@ -6407,6 +6411,10 @@ function gameLoop(now) {
       } else {
         if (isDualBlades) {
           cinematics.addScreenShake(5);
+        }
+        if (player.isBerserk && cinematics.spawnBerserkCleave) {
+          cinematics.spawnBerserkCleave(player, false);
+          cinematics.addScreenShake(12);
         }
         handleAttacks();
       }

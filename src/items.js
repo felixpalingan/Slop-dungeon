@@ -54,7 +54,7 @@ export const SET_DEFINITIONS = {
     requiredItems: ['guts_beast_helm', 'guts_berserker_plate', 'guts_greaves', 'guts_sollerets', 'dragon_slayer'],
     ultimateQ: 'berserker_rage',
     ultimateTitle: 'BERSERKER RAGE',
-    desc: 'Unleashes the Berserker Beast Armor: +85% attack speed, immune to stun & knockback, +35% damage reduction, and 35% life steal!'
+    desc: '[Q] Awakens the Beast of Darkness (狂戦士の甲冑): freezes reality in Miura manga cross-hatching before unleashing 6s of Unstoppable Rage (+85% attack speed, +120% damage, 35% life steal, and 180° ground-shattering Dragon Slayer shockwaves)!'
   },
   'levi': {
     name: 'Humanity’s Strongest Soldier',

@@ -372,9 +372,13 @@ export class CombatSystem {
         player.berserkTimer = 6.0;
         player.isInvulnerable = false; // Damageable with high mitigation so Life Steal can restore HP!
         player.currentSpeed = player.baseSpeed * 1.55;
-        this.audio?.playBerserkRoar?.();
-        this.audio?.playClang?.();
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'BERSERKER RAGE! 🩸 LIFE STEAL + UNSTOPPABLE', '#ef4444');
+        if (this.audio?.playBerserkWindup) {
+          this.audio.playBerserkWindup();
+        } else {
+          this.audio?.playBerserkRoar?.();
+          this.audio?.playClang?.();
+        }
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'BERSERKER RAGE! 🩸 狂戦士の甲冑', '#ef4444');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('berserker_rage', player);
         }

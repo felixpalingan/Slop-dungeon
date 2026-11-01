@@ -30,6 +30,57 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'hollow_purple' && (1 - (c.timer / c.duration)) < 0.30);
   }
 
+  isBerserkerRageFreezing() {
+    return this.activeCinematics.some(c => c.type === 'berserker_rage' && (1 - (c.timer / c.duration)) < 0.07);
+  }
+
+  /**
+   * Spawns a colossal 180-degree crimson Dragon Slayer cleave wave during Berserker Rage
+   * that cracks the dungeon floor into stone rubble!
+   */
+  spawnBerserkCleave(player, isRemote = false) {
+    if (!player) return null;
+    const angle = player.angle || 0;
+    const speed = 680;
+    const startX = player.x + Math.cos(angle) * 38;
+    const startY = player.y + Math.sin(angle) * 38;
+
+    // Record a stone rubble crater at the swing origin on active berserker_rage cinematic
+    const berserkCinematic = this.activeCinematics.find(c => c.type === 'berserker_rage' && (c.caster === player || c.player === player));
+    if (berserkCinematic) {
+      if (!berserkCinematic.rubbleCracks) berserkCinematic.rubbleCracks = [];
+      berserkCinematic.rubbleCracks.push({
+        x: startX,
+        y: startY,
+        angle,
+        radius: 52,
+        alpha: 1.0
+      });
+      if (berserkCinematic.rubbleCracks.length > 28) {
+        berserkCinematic.rubbleCracks.shift();
+      }
+    }
+
+    const cleaveProj = {
+      type: 'berserk_cleave',
+      caster: player,
+      isRemote: !!isRemote,
+      x: startX,
+      y: startY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 82,
+      maxRadius: 135,
+      damage: 115,
+      knockback: 640,
+      life: 0.34,
+      maxLife: 0.34,
+      angle
+    };
+    this.projectiles.push(cleaveProj);
+    return cleaveProj;
+  }
+
   spawnProjectile(proj) {
     if (!proj) return;
     this.projectiles.push({
@@ -104,27 +155,41 @@ export class CinematicManager {
       });
       this.addScreenShake(14);
     } else if (type === 'berserker_rage') {
-      // Guts' Berserker Beast Armor: Blood-red pulsing vignette, high mitigation,
-      // unstoppable immunity to stun/knockback, life steal, and colossal CLANG ground ruptures
-      player.isInvulnerable = false; // Damageable so Life Steal can restore lost HP!
-      player.isBerserk = true;
-      player.berserkTimer = 6.0;
-      player.currentSpeed = player.baseSpeed * 1.55;
+      // Guts' Berserker Beast Armor (狂戦士の甲冑):
+      // Phase 1 (0.0s - 0.42s): Miura-style manga cross-hatching reality freeze, Beast of Darkness
+      //   silhouette with crimson eye trails, Brand of Sacrifice, and colossal CLANG ground slam!
+      // Phase 2 (0.42s - 6.0s): Heartbeat-pulsing blood vignette, unstoppable immunity, life steal,
+      //   and 180° Dragon Slayer crimson cleaves that fracture the floor into stone rubble!
+      if (player) {
+        player.isInvulnerable = false; // Damageable so Life Steal can restore lost HP!
+        player.isBerserk = true;
+        player.berserkTimer = 6.0;
+        if (player.baseSpeed) {
+          player.currentSpeed = player.baseSpeed * 1.55;
+        }
+      }
       this.activeCinematics.push({
         type: 'berserker_rage',
         timer: 6.0,
         duration: 6.0,
         caster: player,
         isRemote: !!isRemote,
-        player
+        player,
+        x: player ? player.x : 0,
+        y: player ? player.y : 0,
+        angle: player ? player.angle : 0,
+        hasFired: false,
+        rubbleCracks: []
       });
-      this.addScreenShake(22);
+      this.addScreenShake(24);
 
       setTimeout(() => {
         if (player) {
           player.isInvulnerable = false;
           player.isBerserk = false;
-          player.currentSpeed = player.baseSpeed;
+          if (player.baseSpeed) {
+            player.currentSpeed = player.baseSpeed;
+          }
         }
       }, 6000);
     } else if (type === 'spartan_kick') {
@@ -665,6 +730,65 @@ export class CinematicManager {
             trail: [{ x: startX, y: startY, r: 65 }]
           });
         }
+      } else if (c.type === 'berserker_rage') {
+        const caster = c.caster || c.player;
+        const progress = 1 - (c.timer / c.duration);
+        if (caster) {
+          c.x = caster.x;
+          c.y = caster.y;
+          c.angle = caster.angle;
+          caster.isBerserk = true;
+          caster.berserkTimer = Math.max(0, c.timer);
+        }
+
+        // Phase 2 transition (progress >= 0.07, i.e. 0.42s): Beast Armor jaws snap shut with a seismic CLANG!
+        if (progress >= 0.07 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(32);
+          if (this.audio) {
+            if (typeof this.audio.playBerserkArmorSnap === 'function') {
+              this.audio.playBerserkArmorSnap();
+            } else if (typeof this.audio.playClang === 'function') {
+              this.audio.playClang();
+            }
+          }
+
+          if (!c.rubbleCracks) c.rubbleCracks = [];
+          c.rubbleCracks.push({
+            x: c.x,
+            y: c.y,
+            angle: c.angle || 0,
+            radius: 76,
+            alpha: 1.0
+          });
+
+          // Initial Berserker Awakening Ground-Rupture Shockwave (165px AoE)
+          if (!c.isRemote && onHitCallback && targets && targets.length > 0) {
+            for (const target of targets) {
+              if (!target || target === caster) continue;
+              const dx = target.x - c.x;
+              const dy = target.y - c.y;
+              const dist = Math.hypot(dx, dy);
+              if (dist <= 165 + (target.radius || 22)) {
+                onHitCallback(target, {
+                  type: 'berserk_awakening_slam',
+                  caster,
+                  damage: 140,
+                  angle: Math.atan2(dy, dx),
+                  knockback: 580
+                });
+              }
+            }
+          }
+        }
+
+        if (c.timer <= 0 && caster) {
+          caster.isBerserk = false;
+          caster.berserkTimer = 0;
+          if (caster.baseSpeed) {
+            caster.currentSpeed = caster.baseSpeed;
+          }
+        }
       }
 
       if (c.timer <= 0 || c.phase === 'finished') {
@@ -672,8 +796,8 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, Levi Overdrive, or Hollow Purple windup)
-    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing();
+    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, Levi Overdrive, Hollow Purple, or Berserker Rage windup)
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing() || this.isBerserkerRageFreezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -684,14 +808,35 @@ export class CinematicManager {
         proj.y += proj.vy * projDt;
         proj.life = (proj.life !== undefined && !isNaN(proj.life)) ? proj.life - projDt : -1;
 
-        // Expand projectile radius & width if applicable (Hollow Purple or World Cutting Slash Cone)
+        // Expand projectile radius & width if applicable (Hollow Purple, Berserk Cleave, or World Cutting Slash Cone)
         if (proj.radius && proj.maxRadius) {
-          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : (proj.type === 'hollow_purple' ? 85 : 45);
+          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : (proj.type === 'berserk_cleave' ? 160 : (proj.type === 'hollow_purple' ? 85 : 45));
           proj.radius = Math.min(proj.maxRadius, proj.radius + expansionRate * projDt);
         }
         if (proj.width && proj.maxWidth) {
           const widthRate = proj.type === 'world_cutting_slash' ? 560 : 60;
           proj.width = Math.min(proj.maxWidth, proj.width + widthRate * projDt);
+        }
+
+        // Record stone rubble cracks along Dragon Slayer Berserk Cleave path
+        if (proj.type === 'berserk_cleave') {
+          const berserkCinematic = this.activeCinematics.find(c => c.type === 'berserker_rage');
+          if (berserkCinematic) {
+            if (!berserkCinematic.rubbleCracks) berserkCinematic.rubbleCracks = [];
+            const lastCrack = berserkCinematic.rubbleCracks[berserkCinematic.rubbleCracks.length - 1];
+            if (!lastCrack || Math.hypot(proj.x - lastCrack.x, proj.y - lastCrack.y) >= 42) {
+              berserkCinematic.rubbleCracks.push({
+                x: proj.x,
+                y: proj.y,
+                angle: proj.angle || 0,
+                radius: (proj.radius || 82) * 0.65,
+                alpha: 0.95
+              });
+              if (berserkCinematic.rubbleCracks.length > 28) {
+                berserkCinematic.rubbleCracks.shift();
+              }
+            }
+          }
         }
 
         // Record cosmic void trench trail for Hollow Purple
@@ -1349,6 +1494,47 @@ export class CinematicManager {
           ctx.lineTo(120 - Math.abs(s) * 20, ly * 1.3);
           ctx.stroke();
         }
+      } else if (proj.type === 'berserk_cleave') {
+        // Guts' Dragon Slayer 180° Crimson Cleaving Shockwave Arc
+        ctx.rotate(proj.angle || 0);
+        const r = proj.radius || 90;
+
+        // 1. Abyssal Black-Iron Outer Crescent Wave
+        ctx.strokeStyle = 'rgba(15, 4, 8, 0.92)';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 24;
+        ctx.lineWidth = 16;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, -Math.PI * 0.48, Math.PI * 0.48);
+        ctx.stroke();
+
+        // 2. Blazing Blood-Crimson Od Inner Arc
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.94, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.stroke();
+
+        // 3. White-Hot Tempered Steel Edge
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.02, -Math.PI * 0.42, Math.PI * 0.42);
+        ctx.stroke();
+
+        // 4. Flying Stone Rubble Shards
+        ctx.fillStyle = '#57534e';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        for (let s = -2; s <= 2; s++) {
+          const sa = s * 0.34;
+          const sx = Math.cos(sa) * (r * 0.85);
+          const sy = Math.sin(sa) * (r * 0.85);
+          ctx.beginPath();
+          ctx.rect(sx - 5, sy - 5, 10, 8);
+          ctx.fill();
+          ctx.stroke();
+        }
       }
 
       ctx.restore();
@@ -1466,6 +1652,72 @@ export class CinematicManager {
           ctx.fillRect(-84, -2, 168, 4);
         }
 
+        ctx.restore();
+      } else if (c.type === 'berserker_rage') {
+        const caster = c.caster || c.player;
+        const posX = caster ? caster.x : c.x;
+        const posY = caster ? caster.y : c.y;
+
+        // 1. Draw fractured floor stone rubble craters left by Dragon Slayer slams!
+        if (c.rubbleCracks && c.rubbleCracks.length > 0) {
+          ctx.save();
+          for (const crack of c.rubbleCracks) {
+            ctx.save();
+            ctx.translate(crack.x, crack.y);
+            ctx.rotate(crack.angle || 0);
+            const cr = crack.radius || 56;
+
+            // Scorched stone crater base
+            ctx.fillStyle = 'rgba(15, 6, 10, 0.55)';
+            ctx.beginPath();
+            ctx.arc(0, 0, cr * 0.72, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Radial seismic fissure lines
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+            ctx.lineWidth = 2.2;
+            for (let rIdx = 0; rIdx < 6; rIdx++) {
+              const fa = (rIdx / 6) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(Math.cos(fa) * cr * 0.5, Math.sin(fa) * cr * 0.5 + (rIdx % 2 === 0 ? 5 : -5));
+              ctx.lineTo(Math.cos(fa) * cr, Math.sin(fa) * cr);
+              ctx.stroke();
+            }
+
+            // Jagged stone rubble chunks around rim
+            ctx.fillStyle = '#44403c';
+            for (let b = 0; b < 5; b++) {
+              const ba = (b / 5) * Math.PI * 2 + 0.3;
+              const bx = Math.cos(ba) * (cr * 0.68);
+              const by = Math.sin(ba) * (cr * 0.68);
+              ctx.fillRect(bx - 4, by - 4, 8, 6);
+            }
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
+        // 2. Draw Beast of Darkness Dark-Od Aura & Crimson Eye Trail around Guts
+        ctx.save();
+        ctx.translate(posX, posY);
+        const pulse = 1 + Math.sin(Date.now() * 0.025) * 0.14;
+        const auraR = 48 * pulse;
+
+        // Swirling black-crimson Od flame ring
+        ctx.strokeStyle = 'rgba(220, 38, 38, 0.85)';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 22;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraR, Date.now() * 0.015, Date.now() * 0.015 + Math.PI * 1.4);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(15, 5, 10, 0.9)';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraR * 0.82, -Date.now() * 0.018, -Date.now() * 0.018 + Math.PI * 1.3);
+        ctx.stroke();
         ctx.restore();
       }
     }
@@ -1821,14 +2073,179 @@ export class CinematicManager {
         }
         ctx.restore();
       } else if (c.type === 'berserker_rage') {
-        // Pulsing blood-red vignette around screen edges
-        const pulse = 0.35 + Math.sin(Date.now() * 0.008) * 0.2;
         ctx.save();
-        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.3, width / 2, height / 2, width * 0.75);
-        grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        grad.addColorStop(1, `rgba(220, 20, 20, ${pulse})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
+        if (progress < 0.07) {
+          // --- 1. PHASE 1: MIURA MANGA CROSS-HATCHING & BEAST OF DARKNESS CUT-IN (0.0s - 0.42s) ---
+          const windupRatio = Math.min(1, progress / 0.07);
+          const centerX = width / 2;
+          const centerY = height / 2;
+
+          // Deep abyssal black-and-white manga ink wash
+          ctx.fillStyle = 'rgba(5, 2, 4, 0.90)';
+          ctx.fillRect(0, 0, width, height);
+
+          // Intense Miura-style diagonal cross-hatching lines around the viewport edges
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+          ctx.lineWidth = 1.5;
+          const hatchStep = 28;
+          for (let h = -height; h < width + height; h += hatchStep) {
+            ctx.beginPath();
+            ctx.moveTo(h, 0);
+            ctx.lineTo(h + height * 0.35, height);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = 'rgba(220, 38, 38, 0.22)';
+          for (let h = -height; h < width + height; h += hatchStep * 1.5) {
+            ctx.beginPath();
+            ctx.moveTo(h + height * 0.35, 0);
+            ctx.lineTo(h, height);
+            ctx.stroke();
+          }
+
+          // Beast of Darkness Armored Hellhound Silhouette at Center
+          ctx.save();
+          ctx.translate(centerX, centerY + 10);
+          ctx.fillStyle = '#090306';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 26;
+
+          // Jagged wolf-helm ears & snout silhouette
+          ctx.beginPath();
+          ctx.moveTo(0, 68);
+          ctx.lineTo(-65, 28);
+          ctx.lineTo(-92, -85); // Left pointed beast ear
+          ctx.lineTo(-36, -32);
+          ctx.lineTo(0, -44);
+          ctx.lineTo(36, -32);
+          ctx.lineTo(92, -85);  // Right pointed beast ear
+          ctx.lineTo(65, 28);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Blazing Scarlet Beast Eyes with jagged lightning eye-trails!
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#ff0033';
+          ctx.shadowBlur = 32;
+          for (const dir of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(dir * 16, 4);
+            ctx.lineTo(dir * 54, -18);
+            ctx.lineTo(dir * 38, 12);
+            ctx.closePath();
+            ctx.fill();
+
+            // Sweeping crimson eye trail
+            ctx.strokeStyle = '#ff1e42';
+            ctx.lineWidth = 4.5;
+            ctx.beginPath();
+            ctx.moveTo(dir * 46, -12);
+            ctx.lineTo(dir * (95 + windupRatio * 65), -42 - windupRatio * 24);
+            ctx.lineTo(dir * (145 + windupRatio * 95), -18 - windupRatio * 40);
+            ctx.stroke();
+          }
+
+          // Glowing Brand of Sacrifice (烙印) above the Beast's brow
+          ctx.save();
+          ctx.translate(0, -88);
+          ctx.strokeStyle = '#ef4444';
+          ctx.shadowColor = '#ff0033';
+          ctx.shadowBlur = 24;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          // Central vertical spine + trident prongs
+          ctx.moveTo(0, -26);
+          ctx.lineTo(0, 26);
+          ctx.moveTo(-16, -6);
+          ctx.lineTo(0, -22);
+          ctx.lineTo(16, -6);
+          ctx.moveTo(-16, -6);
+          ctx.lineTo(0, 12);
+          ctx.lineTo(16, -6);
+          ctx.stroke();
+          ctx.restore();
+          ctx.restore();
+
+          // Authentic Japanese Manga Typography: 狂戦士の甲冑 (Berserker Armor)
+          ctx.textAlign = 'center';
+          ctx.font = '900 26px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#f87171';
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 16;
+          ctx.strokeText('「 憎 悪 ・ 怨 念 ・ 狂 戦 士 の 甲 冑 」', centerX, height * 0.20);
+          ctx.fillText('「 憎 悪 ・ 怨 念 ・ 狂 戦 士 の 甲 冑 」', centerX, height * 0.20);
+
+          ctx.font = '900 62px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 10;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 32;
+          ctx.strokeText('狂 戦 士 の 甲 冑', centerX, height * 0.76);
+          ctx.fillText('狂 戦 士 の 甲 冑', centerX, height * 0.76);
+
+          ctx.font = '900 22px "JetBrains Mono", monospace';
+          ctx.lineWidth = 5;
+          ctx.fillStyle = '#ef4444';
+          ctx.strokeText('【 闇 の 獣 ・ 覚 醒 】 [BEAST OF DARKNESS: UNLEASHED]', centerX, height * 0.83);
+          ctx.fillText('【 闇 の 獣 ・ 覚 醒 】 [BEAST OF DARKNESS: UNLEASHED]', centerX, height * 0.83);
+        } else {
+          // --- 2. PHASE 2: CONTINUOUS 6.0s BERSERKER STATE (HEARTBEAT BLOOD VIGNETTE & MANGA INK BORDERS) ---
+          const activeProgress = (progress - 0.07) / 0.93;
+
+          // Crimson flash when armor jaws first slam shut
+          if (activeProgress < 0.06) {
+            const flashAlpha = ((0.06 - activeProgress) / 0.06) * 0.78;
+            ctx.fillStyle = `rgba(239, 68, 68, ${flashAlpha})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Double-thump heartbeat pulse
+          const beatPhase = (Date.now() * 0.009) % (Math.PI * 2);
+          const heartBeat = Math.pow(Math.max(0, Math.sin(beatPhase)), 4) + 0.45 * Math.pow(Math.max(0, Math.sin(beatPhase * 2 + 0.6)), 6);
+          const pulse = 0.28 + heartBeat * 0.28;
+
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.28, width / 2, height / 2, width * 0.76);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0.68, `rgba(60, 5, 10, ${pulse * 0.45})`);
+          grad.addColorStop(1, `rgba(220, 20, 20, ${pulse})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Jagged Miura black-ink spikes along left/right borders
+          ctx.fillStyle = `rgba(10, 2, 5, ${0.55 + heartBeat * 0.25})`;
+          const numSpikes = 14;
+          const spikeH = height / numSpikes;
+          for (let s = 0; s < numSpikes; s++) {
+            const sy = s * spikeH;
+            const spikeLen = 22 + ((s * 19) % 28) + heartBeat * 18;
+            ctx.beginPath();
+            ctx.moveTo(0, sy);
+            ctx.lineTo(spikeLen, sy + spikeH * 0.5);
+            ctx.lineTo(0, sy + spikeH);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(width, sy);
+            ctx.lineTo(width - spikeLen, sy + spikeH * 0.5);
+            ctx.lineTo(width, sy + spikeH);
+            ctx.fill();
+          }
+
+          // Top Berserker Status Banner
+          const timeRemaining = Math.max(0, c.timer).toFixed(1);
+          ctx.font = '900 18px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 14;
+          ctx.fillText(`\ud83e\ude78 BERSERKER ARMOR \u2014 UNSTOPPABLE + 35% LIFESTEAL [${timeRemaining}s]`, width / 2, 42);
+          ctx.shadowBlur = 0;
+        }
         ctx.restore();
       } else if (c.type === 'levi_grapple_whirlwind') {
         ctx.save();

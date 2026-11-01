@@ -1282,6 +1282,79 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Berserker Armor Windup (Phase 4): Bone-piercing armor spines locking + abyssal Beast growl
+   */
+  playBerserkWindup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Abyssal Beast of Darkness growl (sawtooth sub-growl)
+      const growl = this.ctx.createOscillator();
+      const growlGain = this.ctx.createGain();
+      growl.type = 'sawtooth';
+      growl.frequency.setValueAtTime(95, now);
+      growl.frequency.linearRampToValueAtTime(145, now + 0.22);
+      growl.frequency.exponentialRampToValueAtTime(38, now + 0.45);
+      growlGain.gain.setValueAtTime(0.48, now);
+      growlGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      growl.connect(growlGain);
+      growlGain.connect(this.ctx.destination);
+      growl.start(now);
+      growl.stop(now + 0.45);
+
+      // 2. Metallic armor plates snapping shut (3 rapid iron clicks)
+      for (let i = 0; i < 3; i++) {
+        const t = now + i * 0.11;
+        const click = this.ctx.createOscillator();
+        const clickGain = this.ctx.createGain();
+        click.type = 'triangle';
+        click.frequency.setValueAtTime(520 + i * 240, t);
+        click.frequency.exponentialRampToValueAtTime(140, t + 0.09);
+        clickGain.gain.setValueAtTime(0.32, t);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        click.connect(clickGain);
+        clickGain.connect(this.ctx.destination);
+        click.start(t);
+        click.stop(t + 0.09);
+      }
+    } catch (e) {
+      console.warn('Audio error in Berserk Windup:', e);
+    }
+  }
+
+  /**
+   * Berserker Armor Snap Impact: Colossal Dragon Slayer Anvil CLANG + Seismic Sub-Bass Rupture
+   */
+  playBerserkArmorSnap() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      this.playClang();
+
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(110, now);
+      sub.frequency.exponentialRampToValueAtTime(28, now + 0.55);
+      subGain.gain.setValueAtTime(0.65, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.55);
+    } catch (e) {
+      console.warn('Audio error in Berserk Armor Snap:', e);
+    }
+  }
+
   // =========================================================================
   // LEVI ACKERMAN (ATTACK ON TITAN) SYNTHESIZERS
   // =========================================================================
