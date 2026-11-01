@@ -100,3 +100,4 @@ describe('The Black Swordsman (Guts) — Berserker Rage Overhaul (Phase 4)', () 
     expect(cinematics.isBerserkerRageFreezing()).toBe(true);
   });
 });
+

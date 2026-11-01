@@ -1252,6 +1252,78 @@ export class AudioManager {
   }
 
   /**
+   * Toji Chain Rampage Windup (Phase 5): Sonic boom vacuum crack + Thousand-Mile Chain tension rattle
+   */
+  playChainRampageWindup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Heavenly Restriction sonic vacuum drop
+      const drop = this.ctx.createOscillator();
+      const dropGain = this.ctx.createGain();
+      drop.type = 'sine';
+      drop.frequency.setValueAtTime(980, now);
+      drop.frequency.exponentialRampToValueAtTime(42, now + 0.26);
+      dropGain.gain.setValueAtTime(0.45, now);
+      dropGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      drop.connect(dropGain);
+      dropGain.connect(this.ctx.destination);
+      drop.start(now);
+      drop.stop(now + 0.28);
+
+      // 2. Rapid iron chain link tension clicks
+      for (let i = 0; i < 4; i++) {
+        const t = now + i * 0.055;
+        const link = this.ctx.createOscillator();
+        const linkGain = this.ctx.createGain();
+        link.type = 'triangle';
+        link.frequency.setValueAtTime(1200 + i * 260, t);
+        link.frequency.exponentialRampToValueAtTime(340, t + 0.06);
+        linkGain.gain.setValueAtTime(0.28, t);
+        linkGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        link.connect(linkGain);
+        linkGain.connect(this.ctx.destination);
+        link.start(t);
+        link.stop(t + 0.06);
+      }
+    } catch (e) {
+      console.warn('Audio error in Chain Rampage Windup:', e);
+    }
+  }
+
+  /**
+   * Toji Chain Storm Impact: Supersonic whip crack + Inverted Spear nullification resonance
+   */
+  playChainStormImpact() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      this.playChainRampage();
+
+      const crack = this.ctx.createOscillator();
+      const crackGain = this.ctx.createGain();
+      crack.type = 'sawtooth';
+      crack.frequency.setValueAtTime(1850, now);
+      crack.frequency.exponentialRampToValueAtTime(65, now + 0.24);
+      crackGain.gain.setValueAtTime(0.52, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      crack.connect(crackGain);
+      crackGain.connect(this.ctx.destination);
+      crack.start(now);
+      crack.stop(now + 0.24);
+    } catch (e) {
+      console.warn('Audio error in Chain Storm Impact:', e);
+    }
+  }
+
+  /**
    * Berserker Roar: Demonic beast roar frequency modulation
    */
   playBerserkRoar() {
@@ -1279,6 +1351,79 @@ export class AudioManager {
       osc.stop(now + 0.9);
     } catch (e) {
       console.warn('Audio error in Berserk Roar:', e);
+    }
+  }
+
+  /**
+   * Berserker Armor Windup (Phase 4): Bone-piercing armor spines locking + abyssal Beast growl
+   */
+  playBerserkWindup() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Abyssal Beast of Darkness growl (sawtooth sub-growl)
+      const growl = this.ctx.createOscillator();
+      const growlGain = this.ctx.createGain();
+      growl.type = 'sawtooth';
+      growl.frequency.setValueAtTime(95, now);
+      growl.frequency.linearRampToValueAtTime(145, now + 0.22);
+      growl.frequency.exponentialRampToValueAtTime(38, now + 0.45);
+      growlGain.gain.setValueAtTime(0.48, now);
+      growlGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      growl.connect(growlGain);
+      growlGain.connect(this.ctx.destination);
+      growl.start(now);
+      growl.stop(now + 0.45);
+
+      // 2. Metallic armor plates snapping shut (3 rapid iron clicks)
+      for (let i = 0; i < 3; i++) {
+        const t = now + i * 0.11;
+        const click = this.ctx.createOscillator();
+        const clickGain = this.ctx.createGain();
+        click.type = 'triangle';
+        click.frequency.setValueAtTime(520 + i * 240, t);
+        click.frequency.exponentialRampToValueAtTime(140, t + 0.09);
+        clickGain.gain.setValueAtTime(0.32, t);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        click.connect(clickGain);
+        clickGain.connect(this.ctx.destination);
+        click.start(t);
+        click.stop(t + 0.09);
+      }
+    } catch (e) {
+      console.warn('Audio error in Berserk Windup:', e);
+    }
+  }
+
+  /**
+   * Berserker Armor Snap Impact: Colossal Dragon Slayer Anvil CLANG + Seismic Sub-Bass Rupture
+   */
+  playBerserkArmorSnap() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      this.playClang();
+
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(110, now);
+      sub.frequency.exponentialRampToValueAtTime(28, now + 0.55);
+      subGain.gain.setValueAtTime(0.65, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.55);
+    } catch (e) {
+      console.warn('Audio error in Berserk Armor Snap:', e);
     }
   }
 
@@ -1798,6 +1943,47 @@ export class AudioManager {
       }
     } catch (e) {
       console.warn('Audio error in Sandevistan Boot:', e);
+    }
+  }
+
+  /**
+   * Sandevistan Snap (Phase 5): Synaptic ear-ringing chime + muffled underwater time-dilation sub-drop
+   */
+  playSandevistanSnap() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Synaptic neural ear-ringing harmonic
+      const ring = this.ctx.createOscillator();
+      const ringGain = this.ctx.createGain();
+      ring.type = 'sine';
+      ring.frequency.setValueAtTime(2850, now);
+      ring.frequency.exponentialRampToValueAtTime(1420, now + 0.32);
+      ringGain.gain.setValueAtTime(0.24, now);
+      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      ring.connect(ringGain);
+      ringGain.connect(this.ctx.destination);
+      ring.start(now);
+      ring.stop(now + 0.35);
+
+      // 2. Time-dilation sub-bass warp drop
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(160, now);
+      sub.frequency.exponentialRampToValueAtTime(32, now + 0.45);
+      subGain.gain.setValueAtTime(0.58, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.48);
+    } catch (e) {
+      console.warn('Audio error in Sandevistan Snap:', e);
     }
   }
 

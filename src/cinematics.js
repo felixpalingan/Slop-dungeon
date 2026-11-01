@@ -34,6 +34,14 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'berserker_rage' && (1 - (c.timer / c.duration)) < 0.07);
   }
 
+  isChainRampageFreezing() {
+    return this.activeCinematics.some(c => c.type === 'inverted_chain_rampage' && (1 - (c.timer / c.duration)) < 0.175);
+  }
+
+  isSandevistanFreezing() {
+    return this.activeCinematics.some(c => c.type === 'sandevistan' && (1 - (c.timer / c.duration)) < 0.07);
+  }
+
   /**
    * Spawns a colossal 180-degree crimson Dragon Slayer cleave wave during Berserker Rage
    * that cracks the dungeon floor into stone rubble!
@@ -142,18 +150,21 @@ export class CinematicManager {
       });
       this.addScreenShake(18);
     } else if (type === 'inverted_chain_rampage') {
-      // Toji's Thousand-Mile Chain Whirlwind: 360-degree high-velocity iron chain storm
+      // Toji's Thousand-Mile Chain & Inverted Spear of Heaven (天逆鉾・万浬の鎖):
+      // Phase 1 (0.0s - 0.28s): Heavenly Restriction sonic boom reality freeze with Inverted Spear glyph!
+      // Phase 2 (0.28s - 1.6s): 240px multi-layered chain cyclone that shreds enemies and nullifies/reflects projectiles!
       this.activeCinematics.push({
         type: 'inverted_chain_rampage',
-        timer: 1.2,
-        duration: 1.2,
+        timer: 1.6,
+        duration: 1.6,
         caster: player,
         isRemote: !!isRemote,
-        x: player.x,
-        y: player.y,
-        angle: player.angle
+        x: player ? player.x : 0,
+        y: player ? player.y : 0,
+        angle: player ? player.angle : 0,
+        hasFired: false
       });
-      this.addScreenShake(14);
+      this.addScreenShake(18);
     } else if (type === 'berserker_rage') {
       // Guts' Berserker Beast Armor (狂戦士の甲冑):
       // Phase 1 (0.0s - 0.42s): Miura-style manga cross-hatching reality freeze, Beast of Darkness
@@ -298,18 +309,28 @@ export class CinematicManager {
       });
       this.addScreenShake(18);
     } else if (type === 'sandevistan') {
-      // David Martinez: Military-Grade Sandevistan Overclock!
-      // Full-screen cyberpunk matrix post-processing for 4.0s
+      // David Martinez: Military-Grade "Apogee" Sandevistan Overclock (サンデヴィスタン)!
+      // Phase 1 (0.0s - 0.28s): Neural spine implant boot-up freeze with RGB glitch & Kiroshi HUD!
+      // Phase 2 (0.28s - 4.0s): Time dilation matrix, bullet-time shockwaves & RGB chromatic afterimages!
+      if (player) {
+        player.isSandevistan = true;
+        player.sandevistanTimer = 4.0;
+        if (player.baseSpeed) {
+          player.currentSpeed = player.baseSpeed * 1.35;
+        }
+      }
       this.activeCinematics.push({
         type: 'sandevistan',
         timer: 4.0,
         duration: 4.0,
         caster: player,
         isRemote: !!isRemote,
-        x: player.x,
-        y: player.y
+        x: player ? player.x : 0,
+        y: player ? player.y : 0,
+        hasFired: false,
+        shockwaves: []
       });
-      this.addScreenShake(12);
+      this.addScreenShake(16);
     } else if (type === 'overcharge_boost') {
       // David Martinez Base Q: Overcharge Boost speed burst
       this.activeCinematics.push({
@@ -413,28 +434,77 @@ export class CinematicManager {
       const c = this.activeCinematics[cIdx];
       c.timer -= dt;
 
-      // Toji's Inverted Chain Whirlwind continuous hit detection locked on caster (LOCAL only!)
-      if (c.type === 'inverted_chain_rampage' && !c.isRemote) {
-        const posX = c.caster ? c.caster.x : c.x;
-        const posY = c.caster ? c.caster.y : c.y;
-        for (const target of targets) {
-          if (!target || target === c.caster) continue;
-          const dx = target.x - posX;
-          const dy = target.y - posY;
-          const dist = Math.hypot(dx, dy);
-          if (dist <= 145) {
-            if (!c.lastHitMap) c.lastHitMap = new Map();
-            const lastHit = c.lastHitMap.get(target) || 0;
-            const now = performance.now();
-            if (now - lastHit >= 220) {
-              c.lastHitMap.set(target, now);
-              if (onHitCallback) {
-                onHitCallback(target, {
-                  type: 'whirlwind',
-                  damage: 55,
-                  angle: Math.atan2(dy, dx),
-                  knockback: 450
-                });
+      // Toji's Inverted Chain Whirlwind continuous hit detection & projectile nullification (locked on caster)
+      if (c.type === 'inverted_chain_rampage') {
+        const caster = c.caster;
+        const progress = 1 - (c.timer / c.duration);
+        const posX = caster ? caster.x : c.x;
+        const posY = caster ? caster.y : c.y;
+        if (caster) {
+          c.x = caster.x;
+          c.y = caster.y;
+          c.angle = caster.angle;
+        }
+
+        // Phase 2 transition (progress >= 0.175, i.e., 0.28s): Unleash the 240px Inverted Spear Chain Storm!
+        if (progress >= 0.175 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(28);
+          if (this.audio) {
+            if (typeof this.audio.playChainStormImpact === 'function') {
+              this.audio.playChainStormImpact();
+            } else if (typeof this.audio.playChainRampage === 'function') {
+              this.audio.playChainRampage();
+            }
+          }
+        }
+
+        if (progress >= 0.175) {
+          const stormRadius = 240;
+
+          // 1. Forced Technique / Projectile Nullification: reflect or shred enemy projectiles entering the 240px storm!
+          for (const proj of this.projectiles) {
+            if (!proj || proj.caster === caster || proj.isReflectedByChain) continue;
+            const pdx = proj.x - posX;
+            const pdy = proj.y - posY;
+            const pDist = Math.hypot(pdx, pdy);
+            if (pDist <= stormRadius + (proj.radius || 10)) {
+              proj.isReflectedByChain = true;
+              proj.isRepelled = true;
+              proj.caster = caster;
+              proj.vx = -proj.vx * 1.35;
+              proj.vy = -proj.vy * 1.35;
+              proj.angle = Math.atan2(proj.vy, proj.vx);
+              if (proj.hitTargets) proj.hitTargets.clear();
+            }
+          }
+
+          // 2. Multi-hit 240px chain storm damage & shield/barrier nullification (LOCAL only!)
+          if (!c.isRemote) {
+            for (const target of targets) {
+              if (!target || target === caster) continue;
+              const dx = target.x - posX;
+              const dy = target.y - posY;
+              const dist = Math.hypot(dx, dy);
+              if (dist <= stormRadius) {
+                // Inverted Spear of Heaven nullifies blocking & Limitless barriers on contact!
+                if (target.isBlocking) target.isBlocking = false;
+                if (target.isLimitlessBarrier) target.isLimitlessBarrier = false;
+
+                if (!c.lastHitMap) c.lastHitMap = new Map();
+                const lastHit = c.lastHitMap.get(target) || 0;
+                const now = performance.now();
+                if (now - lastHit >= 160) {
+                  c.lastHitMap.set(target, now);
+                  if (onHitCallback) {
+                    onHitCallback(target, {
+                      type: 'whirlwind',
+                      damage: 95,
+                      angle: Math.atan2(dy, dx),
+                      knockback: 520
+                    });
+                  }
+                }
               }
             }
           }
@@ -789,6 +859,54 @@ export class CinematicManager {
             caster.currentSpeed = caster.baseSpeed;
           }
         }
+      } else if (c.type === 'sandevistan') {
+        const caster = c.caster;
+        const progress = 1 - (c.timer / c.duration);
+        if (caster) {
+          caster.isSandevistan = true;
+          caster.sandevistanTimer = Math.max(0, c.timer);
+          if (!c.shockwaves) c.shockwaves = [];
+          const lastWave = c.shockwaves[c.shockwaves.length - 1];
+          if (!lastWave || Math.hypot(caster.x - lastWave.x, caster.y - lastWave.y) >= 48) {
+            c.shockwaves.push({
+              x: caster.x,
+              y: caster.y,
+              angle: caster.angle || 0,
+              radius: 28,
+              alpha: 0.9
+            });
+            if (c.shockwaves.length > 14) c.shockwaves.shift();
+          }
+          c.x = caster.x;
+          c.y = caster.y;
+        }
+
+        // Phase 2 transition (progress >= 0.07, i.e., 0.28s): Synaptic Time-Dilation Snap!
+        if (progress >= 0.07 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(22);
+          if (this.audio && typeof this.audio.playSandevistanSnap === 'function') {
+            this.audio.playSandevistanSnap();
+          }
+        }
+
+        if (c.shockwaves) {
+          for (let s = c.shockwaves.length - 1; s >= 0; s--) {
+            c.shockwaves[s].radius += dt * 110;
+            c.shockwaves[s].alpha -= dt * 1.4;
+            if (c.shockwaves[s].alpha <= 0) {
+              c.shockwaves.splice(s, 1);
+            }
+          }
+        }
+
+        if (c.timer <= 0 && caster) {
+          caster.isSandevistan = false;
+          caster.sandevistanTimer = 0;
+          if (caster.baseSpeed) {
+            caster.currentSpeed = caster.baseSpeed;
+          }
+        }
       }
 
       if (c.timer <= 0 || c.phase === 'finished') {
@@ -796,8 +914,8 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, Levi Overdrive, Hollow Purple, or Berserker Rage windup)
-    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing() || this.isBerserkerRageFreezing();
+    // Update projectiles & hit detection (frozen in mid-air during Ultimate windup freezes)
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing() || this.isBerserkerRageFreezing() || this.isChainRampageFreezing() || this.isSandevistanFreezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -1546,39 +1664,67 @@ export class CinematicManager {
         const posX = c.caster ? c.caster.x : c.x;
         const posY = c.caster ? c.caster.y : c.y;
         const progress = 1 - c.timer / c.duration;
-        const sweepAngle = progress * Math.PI * 8; // spins 4 complete revolutions!
-        const maxRange = 135;
+        const sweepAngle = progress * Math.PI * 10; // High-velocity 5-revolution centrifugal storm!
+        const maxRange = 240;
 
         ctx.save();
         ctx.translate(posX, posY);
 
-        // Glowing Iron Chain Arc
-        ctx.strokeStyle = '#38bdf8';
-        ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 20;
-        ctx.lineWidth = 4;
+        // 1. Nullification Vortex Outer Boundary Ring (240px)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
         ctx.beginPath();
-        ctx.arc(0, 0, maxRange, sweepAngle - Math.PI * 0.9, sweepAngle);
-        ctx.stroke();
-
-        // Chain links
-        ctx.strokeStyle = '#f8fafc';
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(0, 0, maxRange * 0.8, sweepAngle - Math.PI * 0.7, sweepAngle);
+        ctx.arc(0, 0, maxRange, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Inverted Spear tip at end of chain
+        // 2. Three Concentric Counter-Whipping Thousand-Mile Chain Loops
+        for (let ring = 0; ring < 3; ring++) {
+          const ringR = maxRange * (0.52 + ring * 0.24);
+          const dir = ring % 2 === 0 ? 1 : -1;
+          const ringAngle = sweepAngle * dir * (1 + ring * 0.18);
+
+          // Glowing Turquoise Heavenly Restriction Aura
+          ctx.strokeStyle = ring === 2 ? '#38bdf8' : 'rgba(56, 189, 248, 0.75)';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 18;
+          ctx.lineWidth = 4.5 - ring * 0.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, ringR, ringAngle - Math.PI * 1.15, ringAngle);
+          ctx.stroke();
+
+          //Segmented Steel Chain Links
+          ctx.strokeStyle = '#f8fafc';
+          ctx.lineWidth = 2.8;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.arc(0, 0, ringR, ringAngle - Math.PI * 1.05, ringAngle);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 3. Inverted Spear of Heaven (天逆鉾) Twin-Pronged Jitte Blade at Outer Whip Tip
         const tipX = Math.cos(sweepAngle) * maxRange;
         const tipY = Math.sin(sweepAngle) * maxRange;
+        ctx.save();
+        ctx.translate(tipX, tipY);
+        ctx.rotate(sweepAngle + Math.PI * 0.5);
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 15;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 22;
         ctx.beginPath();
-        ctx.arc(tipX, tipY, 8, 0, Math.PI * 2);
+        ctx.moveTo(0, -18);
+        ctx.lineTo(7, 6);
+        ctx.lineTo(13, -6); // Side jitte hook prong
+        ctx.lineTo(5, 12);
+        ctx.lineTo(-5, 12);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+        ctx.restore();
 
         ctx.restore();
       } else if (c.type === 'limitless_barrier') {
@@ -1719,6 +1865,25 @@ export class CinematicManager {
         ctx.arc(0, 0, auraR * 0.82, -Date.now() * 0.018, -Date.now() * 0.018 + Math.PI * 1.3);
         ctx.stroke();
         ctx.restore();
+      } else if (c.type === 'sandevistan') {
+        // Draw Bullet-Time Sonic Warp Shockwaves trailing behind David!
+        if (c.shockwaves && c.shockwaves.length > 0) {
+          ctx.save();
+          for (const wave of c.shockwaves) {
+            ctx.save();
+            ctx.translate(wave.x, wave.y);
+            ctx.rotate(wave.angle || 0);
+            ctx.strokeStyle = `rgba(0, 255, 136, ${Math.max(0, wave.alpha * 0.65)})`;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, wave.radius, -Math.PI * 0.65, Math.PI * 0.65);
+            ctx.stroke();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
       }
     }
   }
@@ -2382,82 +2547,228 @@ export class CinematicManager {
           ctx.shadowBlur = 0;
         }
         ctx.restore();
-      } else if (c.type === 'sandevistan') {
-        // David Martinez Sandevistan: Cyberpunk matrix grid overlay with scanlines & chromatic aberration
-        const pulse = 0.3 + Math.sin(Date.now() * 0.012) * 0.12;
+      } else if (c.type === 'inverted_chain_rampage') {
         ctx.save();
+        if (progress < 0.175) {
+          // --- 1. PHASE 1: HEAVENLY RESTRICTION SONIC BOOM CUT-IN (0.0s - 0.28s) ---
+          const centerX = width / 2;
+          const centerY = height / 2;
 
-        // 1. Neon green/cyan vignette border
-        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.25, width / 2, height / 2, width * 0.72);
-        grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        grad.addColorStop(0.7, 'rgba(0, 20, 10, 0.15)');
-        grad.addColorStop(1, `rgba(0, 255, 136, ${pulse * 0.45})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
-
-        // 2. Horizontal scanlines (subtle CRT effect)
-        ctx.fillStyle = 'rgba(0, 255, 136, 0.04)';
-        const scanSpacing = 4;
-        const scanOffset = (Date.now() * 0.15) % scanSpacing;
-        for (let y = scanOffset; y < height; y += scanSpacing) {
-          ctx.fillRect(0, y, width, 1);
-        }
-
-        // 3. Matrix grid overlay (very subtle)
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.035)';
-        ctx.lineWidth = 0.5;
-        const gridSize = 48;
-        const gridScrollX = (Date.now() * 0.02) % gridSize;
-        const gridScrollY = (Date.now() * 0.015) % gridSize;
-        for (let gx = -gridScrollX; gx < width; gx += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(gx, 0);
-          ctx.lineTo(gx, height);
-          ctx.stroke();
-        }
-        for (let gy = -gridScrollY; gy < height; gy += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(0, gy);
-          ctx.lineTo(width, gy);
-          ctx.stroke();
-        }
-
-        // 4. Chromatic aberration color fringe along screen borders
-        const fringeWidth = 4 + Math.sin(Date.now() * 0.02) * 2;
-        // Left edge: Red fringe
-        ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.25})`;
-        ctx.fillRect(0, 0, fringeWidth, height);
-        // Right edge: Cyan fringe
-        ctx.fillStyle = `rgba(0, 240, 255, ${pulse * 0.25})`;
-        ctx.fillRect(width - fringeWidth, 0, fringeWidth, height);
-        // Top edge: Green fringe
-        ctx.fillStyle = `rgba(0, 255, 136, ${pulse * 0.2})`;
-        ctx.fillRect(0, 0, width, fringeWidth * 0.7);
-        // Bottom edge: Magenta fringe
-        ctx.fillStyle = `rgba(200, 0, 255, ${pulse * 0.18})`;
-        ctx.fillRect(0, height - fringeWidth * 0.7, width, fringeWidth * 0.7);
-
-        // 5. Digital timer HUD overlay
-        const timeRemaining = c.timer.toFixed(1);
-        ctx.font = '900 18px "JetBrains Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#00ff88';
-        ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur = 14;
-        ctx.fillText(`\u26a1 SANDEVISTAN OVERCLOCK [${timeRemaining}s]`, width / 2, 42);
-        ctx.shadowBlur = 0;
-
-        // Subtle pulsing border frame
-        ctx.strokeStyle = `rgba(0, 255, 136, ${0.3 + Math.sin(Date.now() * 0.008) * 0.15})`;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(8, 8, width - 16, height - 16);
-
-        // Initial activation flash
-        if (progress < 0.08) {
-          ctx.fillStyle = `rgba(0, 255, 136, ${(0.08 - progress) * 6})`;
+          ctx.fillStyle = 'rgba(3, 12, 22, 0.88)';
           ctx.fillRect(0, 0, width, height);
-        }
 
+          // Turquoise sonic-boom speedlines shattering outward
+          const numLines = 30;
+          for (let i = 0; i < numLines; i++) {
+            const rad = (i / numLines) * Math.PI * 2;
+            const innerR = 95 + ((i * 23) % 55);
+            const outerR = Math.hypot(width, height) * 0.55;
+            ctx.strokeStyle = i % 2 === 0 ? 'rgba(56, 189, 248, 0.8)' : 'rgba(255, 255, 255, 0.65)';
+            ctx.lineWidth = i % 2 === 0 ? 3 : 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX + Math.cos(rad) * innerR, centerY + Math.sin(rad) * innerR);
+            ctx.lineTo(centerX + Math.cos(rad) * outerR, centerY + Math.sin(rad) * outerR);
+            ctx.stroke();
+          }
+
+          // Center Inverted Spear of Heaven (天逆鉾) Jitte Silhouette & Diagonal Chain Cross
+          ctx.strokeStyle = '#38bdf8';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 24;
+          ctx.lineWidth = 6;
+          ctx.setLineDash([12, 8]);
+          ctx.beginPath();
+          ctx.moveTo(width * 0.18, height * 0.22);
+          ctx.lineTo(width * 0.82, height * 0.78);
+          ctx.moveTo(width * 0.82, height * 0.22);
+          ctx.lineTo(width * 0.18, height * 0.78);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Authentic Japanese Typography: 天逆鉾・万浬の鎖
+          ctx.textAlign = 'center';
+          ctx.font = '900 26px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 18;
+          ctx.strokeText('「 天 与 呪 縛 ・ フィジカルギフテッド 」', centerX, height * 0.22);
+          ctx.fillText('「 天 与 呪 縛 ・ フィジカルギフテッド 」', centerX, height * 0.22);
+
+          ctx.font = '900 60px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 10;
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 30;
+          ctx.strokeText('天 逆 鉾 ・ 万 浬 の 鎖', centerX, centerY + 12);
+          ctx.fillText('天 逆 鉾 ・ 万 浬 の 鎖', centerX, centerY + 12);
+
+          ctx.font = '900 20px "JetBrains Mono", monospace';
+          ctx.lineWidth = 5;
+          ctx.fillStyle = '#38bdf8';
+          ctx.strokeText('【 術 式 強 制 解 除 】 [INVERTED SPEAR OF HEAVEN: NULLIFICATION STORM]', centerX, height * 0.72);
+          ctx.fillText('【 術 式 強 制 解 除 】 [INVERTED SPEAR OF HEAVEN: NULLIFICATION STORM]', centerX, height * 0.72);
+        } else {
+          // --- 2. PHASE 2: ACTIVE 240px CHAIN STORM & BORDER CHAIN RATTLE ---
+          const stormProgress = (progress - 0.175) / 0.825;
+          const alpha = Math.max(0, (1 - stormProgress * 0.75) * 0.45);
+
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.28, width / 2, height / 2, width * 0.76);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(1, `rgba(14, 116, 144, ${alpha})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Whipping 3D chain-link silhouettes along top & bottom viewport borders
+          ctx.strokeStyle = `rgba(248, 250, 252, ${alpha * 1.4})`;
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 12;
+          ctx.lineWidth = 5;
+          ctx.setLineDash([14, 10]);
+          const chainScroll = (Date.now() * 1.2) % 24;
+          ctx.beginPath();
+          ctx.moveTo(-chainScroll, 22);
+          ctx.lineTo(width, 22);
+          ctx.moveTo(-chainScroll, height - 22);
+          ctx.lineTo(width, height - 22);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const timeRemaining = Math.max(0, c.timer).toFixed(1);
+          ctx.font = '900 18px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`\u26d3\ufe0f INVERTED SPEAR STORM \u2014 PROJECTILE NULLIFICATION [${timeRemaining}s]`, width / 2, 46);
+        }
+        ctx.restore();
+      } else if (c.type === 'sandevistan') {
+        ctx.save();
+        if (progress < 0.07) {
+          // --- 1. PHASE 1: MILITECH "APOGEE" SANDEVISTAN NEURAL BOOT CUT-IN (0.0s - 0.28s) ---
+          const bootRatio = Math.min(1, progress / 0.07);
+          const centerX = width / 2;
+          const centerY = height / 2;
+
+          ctx.fillStyle = 'rgba(2, 14, 10, 0.88)';
+          ctx.fillRect(0, 0, width, height);
+
+          // Horizontal RGB chromatic glitch slices
+          const glitchColors = ['rgba(0, 255, 136, 0.28)', 'rgba(0, 240, 255, 0.25)', 'rgba(250, 204, 21, 0.22)', 'rgba(255, 0, 85, 0.22)'];
+          for (let g = 0; g < 10; g++) {
+            const gy = ((g * 83 + Math.floor(bootRatio * 120)) % height);
+            const gh = 6 + (g % 4) * 5;
+            ctx.fillStyle = glitchColors[g % glitchColors.length];
+            ctx.fillRect(0, gy, width, gh);
+          }
+
+          // Illuminated Cybernetic Spine Vertebrae Schematic at Center
+          const numNodes = 10;
+          const litNodes = Math.ceil(bootRatio * numNodes);
+          for (let n = 0; n < numNodes; n++) {
+            const ny = centerY - 120 + n * 26;
+            const isLit = n <= litNodes;
+            ctx.fillStyle = isLit ? '#00ff88' : 'rgba(0, 255, 136, 0.18)';
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = isLit ? '#00ff88' : 'transparent';
+            ctx.shadowBlur = isLit ? 18 : 0;
+
+            const nodeW = 54 - Math.abs(n - 4) * 4;
+            ctx.beginPath();
+            ctx.rect(centerX - nodeW / 2, ny - 7, nodeW, 14);
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          // Edgerunners Kiroshi / Katakana Cut-In Typography
+          ctx.textAlign = 'center';
+          ctx.font = '900 24px "JetBrains Mono", monospace';
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#facc15';
+          ctx.shadowColor = '#00ff88';
+          ctx.shadowBlur = 16;
+          ctx.strokeText('「 神 経 接 続 ・ 臨 界 突 破 」 [NEURAL LINK: OVERCLOCK]', centerX, height * 0.20);
+          ctx.fillText('「 神 経 接 続 ・ 臨 界 突 破 」 [NEURAL LINK: OVERCLOCK]', centerX, height * 0.20);
+
+          ctx.font = '900 62px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 10;
+          ctx.fillStyle = '#00ff88';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 32;
+          ctx.strokeText('サンデヴィスタン', centerX, height * 0.76);
+          ctx.fillText('サンデヴィスタン', centerX, height * 0.76);
+
+          ctx.font = '900 20px "JetBrains Mono", monospace';
+          ctx.lineWidth = 4;
+          ctx.fillStyle = '#00f0ff';
+          ctx.strokeText('【 MILITECH "APOGEE" SANDEVISTAN: TIME DILATION 90% 】', centerX, height * 0.83);
+          ctx.fillText('【 MILITECH "APOGEE" SANDEVISTAN: TIME DILATION 90% 】', centerX, height * 0.83);
+        } else {
+          // --- 2. PHASE 2: ACTIVE 4.0s TIME DILATION MATRIX HUD ---
+          const pulse = 0.3 + Math.sin(Date.now() * 0.012) * 0.12;
+
+          // 1. Neon green/cyan vignette border
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.25, width / 2, height / 2, width * 0.72);
+          grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0.7, 'rgba(0, 20, 10, 0.15)');
+          grad.addColorStop(1, `rgba(0, 255, 136, ${pulse * 0.45})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // 2. Horizontal scanlines (subtle CRT effect)
+          ctx.fillStyle = 'rgba(0, 255, 136, 0.04)';
+          const scanSpacing = 4;
+          const scanOffset = (Date.now() * 0.15) % scanSpacing;
+          for (let y = scanOffset; y < height; y += scanSpacing) {
+            ctx.fillRect(0, y, width, 1);
+          }
+
+          // 3. Matrix grid overlay
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.035)';
+          ctx.lineWidth = 0.5;
+          const gridSize = 48;
+          const gridScrollX = (Date.now() * 0.02) % gridSize;
+          const gridScrollY = (Date.now() * 0.015) % gridSize;
+          for (let gx = -gridScrollX; gx < width; gx += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx, height);
+            ctx.stroke();
+          }
+          for (let gy = -gridScrollY; gy < height; gy += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(width, gy);
+            ctx.stroke();
+          }
+
+          // 4. Chromatic aberration color fringe along screen borders
+          const fringeWidth = 4 + Math.sin(Date.now() * 0.02) * 2;
+          ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.25})`;
+          ctx.fillRect(0, 0, fringeWidth, height);
+          ctx.fillStyle = `rgba(0, 240, 255, ${pulse * 0.25})`;
+          ctx.fillRect(width - fringeWidth, 0, fringeWidth, height);
+          ctx.fillStyle = `rgba(0, 255, 136, ${pulse * 0.2})`;
+          ctx.fillRect(0, 0, width, fringeWidth * 0.7);
+          ctx.fillStyle = `rgba(200, 0, 255, ${pulse * 0.18})`;
+          ctx.fillRect(0, height - fringeWidth * 0.7, width, fringeWidth * 0.7);
+
+          // 5. Digital timer HUD overlay
+          const timeRemaining = Math.max(0, c.timer).toFixed(1);
+          ctx.font = '900 18px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#00ff88';
+          ctx.shadowColor = '#00ff88';
+          ctx.shadowBlur = 14;
+          ctx.fillText(`\u26a1 MILITECH SANDEVISTAN \u2014 TIME DILATION [${timeRemaining}s]`, width / 2, 42);
+          ctx.shadowBlur = 0;
+
+          // Subtle pulsing border frame
+          ctx.strokeStyle = `rgba(0, 255, 136, ${0.3 + Math.sin(Date.now() * 0.008) * 0.15})`;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(8, 8, width - 16, height - 16);
+        }
         ctx.restore();
       } else if (c.type === 'overcharge_boost') {
         // David Martinez Overcharge: Brief neon green electric flash

@@ -359,9 +359,13 @@ export class CombatSystem {
         }
         return true;
       } else if (setBonus.ultimateQ === 'inverted_chain_rampage') {
-        // Toji: Thousand-Mile Chain Rampage!
-        this.audio?.playChainRampage?.();
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'CHAIN RAMPAGE!', '#38bdf8');
+        // Toji: Thousand-Mile Chain & Inverted Spear of Heaven Rampage!
+        if (this.audio?.playChainRampageWindup) {
+          this.audio.playChainRampageWindup();
+        } else {
+          this.audio?.playChainRampage?.();
+        }
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'INVERTED SPEAR STORM! ⛓️ 天逆鉾・万浬の鎖', '#38bdf8');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('inverted_chain_rampage', player);
         }

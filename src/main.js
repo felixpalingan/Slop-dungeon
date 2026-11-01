@@ -4708,7 +4708,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
       else audio.playHollowPurple();
     }
     else if (msg.ultimateType === 'world_cutting_slash') audio.playWorldCuttingSlash();
-    else if (msg.ultimateType === 'inverted_chain_rampage') audio.playChainRampage();
+    else if (msg.ultimateType === 'inverted_chain_rampage') {
+      if (audio.playChainRampageWindup) audio.playChainRampageWindup();
+      else audio.playChainRampage();
+    }
     else if (msg.ultimateType === 'berserker_rage') {
       if (audio.playBerserkWindup) audio.playBerserkWindup();
       else { audio.playBerserkRoar(); audio.playClang(); }
@@ -5534,14 +5537,16 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
-  // If Serious Punch (0.45s), World Cutting Slash (0.36s), Levi Overdrive (0.36s), Hollow Purple (0.45s), or Berserker Rage (0.42s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
-  // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
+  // If any Full-Set Ultimate is in its initial windup cut-in freeze, world physics/monsters freeze completely (0.0)!
+  // If Sandevistan is active (after its 0.28s boot cut-in), everyone else (enemies, projectiles, other players) is slowed to 10% speed!
   const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
   const isWorldCuttingSlashFreeze = cinematics.isWorldCuttingSlashFreezing?.() || false;
   const isLeviOverdriveFreeze = cinematics.isLeviOverdriveFreezing?.() || false;
   const isHollowPurpleFreeze = cinematics.isHollowPurpleFreezing?.() || false;
   const isBerserkerRageFreeze = cinematics.isBerserkerRageFreezing?.() || false;
-  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze || isBerserkerRageFreeze;
+  const isChainRampageFreeze = cinematics.isChainRampageFreezing?.() || false;
+  const isSandevistanFreeze = cinematics.isSandevistanFreezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze || isBerserkerRageFreeze || isChainRampageFreeze || isSandevistanFreeze;
   const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 

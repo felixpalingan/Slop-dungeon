@@ -44,7 +44,7 @@ export const SET_DEFINITIONS = {
     requiredItems: ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain'],
     ultimateQ: 'inverted_chain_rampage',
     ultimateTitle: 'INVERTED CHAIN RAMPAGE',
-    desc: 'Swings the Thousand-Mile Chain in a sweeping whirlwind that nullifies enemy shields!'
+    desc: '[Q] Unleashes the Thousand-Mile Chain & Inverted Spear of Heaven (天逆鉾・万浬の鎖): freezes reality with a sonic boom before whipping a 240px multi-layered chain storm that shreds enemies and nullifies/reflects incoming projectiles!'
   },
   'guts': {
     name: 'The Black Swordsman',
