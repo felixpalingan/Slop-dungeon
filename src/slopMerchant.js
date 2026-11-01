@@ -4,6 +4,8 @@
  * and features a Spelunky-style single-target RPG retaliation mechanic with AoE splash!
  */
 
+import { ITEM_CATALOG } from './items.js';
+
 export class SlopMerchant {
   constructor(x, y) {
     this.x = x;
@@ -211,50 +213,84 @@ export class SlopMerchant {
   }
 
   /**
-   * Generates or refreshes the shop stock based on current floor level
+   * Generates or refreshes the shop stock based on current floor level and anime theme
    */
-  generateWares(floorNumber = 1, itemCatalog = {}) {
+  generateWares(floorNumber = 1, itemCatalog = {}, themeKey = null) {
+    const catalog = (itemCatalog && Object.keys(itemCatalog).length > 0) ? itemCatalog : ITEM_CATALOG;
+
     const list = [
-      { item: itemCatalog['health_flask'] || { id: 'health_flask', name: 'Health Flask', slot: 'consumable', rarity: 'COMMON', desc: 'Restores +45 HP instantly on use!' }, price: 25 },
-      { item: itemCatalog['stamina_tonic'] || { id: 'stamina_tonic', name: 'Stamina Tonic', slot: 'consumable', rarity: 'COMMON', desc: 'Refills stamina & grants +20% move speed!' }, price: 20 }
+      { item: catalog['health_flask'] || { id: 'health_flask', name: 'Health Flask', slot: 'consumable', rarity: 'COMMON', desc: 'Restores +45 HP instantly on use!' }, price: 25 },
+      { item: catalog['stamina_tonic'] || { id: 'stamina_tonic', name: 'Stamina Tonic', slot: 'consumable', rarity: 'COMMON', desc: 'Refills stamina & grants +20% move speed!' }, price: 20 }
     ];
 
-    // Floor gear pools
-    const poolFloor1 = ['crystal_blade', 'knight_shield', 'iron_visor', 'leather_tunic', 'travel_boots', 'cloth_pants'];
-    const poolFloor2 = ['titan_greatsword', 'iron_tower_shield', 'horned_barbarian_helm', 'spiked_cuirass', 'winged_boots', 'arcane_tome'];
-    const poolFloor3 = ['thunder_warhammer', 'arcane_tome', 'shadow_hood', 'guts_greaves', 'scout_trousers', 'david_sneakers'];
+    const themePool = ['jjk', 'cyberpunk', 'aot', 'berserk', 'opm'];
+    const effectiveTheme = themeKey || (floorNumber > 0 ? themePool[(floorNumber - 1) % themePool.length] : themePool[Math.floor(Math.random() * themePool.length)]);
 
-    let chosenPool = poolFloor1;
-    if (floorNumber === 2) chosenPool = [...poolFloor1.slice(2), ...poolFloor2];
-    else if (floorNumber >= 3) chosenPool = [...poolFloor2.slice(2), ...poolFloor3];
-
-    // Shuffle and pick 4 unique pieces of equipment
-    const shuffled = [...chosenPool].sort(() => Math.random() - 0.5);
-    const selectedKeys = shuffled.slice(0, 4);
-
-    const rarityPriceMap = {
-      COMMON: 45,
-      RARE: 75,
-      EPIC: 120,
-      LEGENDARY: 190,
-      MYTHIC: 320
+    // Floor Theme Anime Equipment pools
+    const themeItems = {
+      jjk: [
+        'toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain',
+        'gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red',
+        'sukuna_kamutoke', 'sukuna_cleaver', 'sukuna_finger', 'sukuna_hakama', 'sukuna_crown', 'sukuna_robe'
+      ],
+      cyberpunk: [
+        'david_kiroshi', 'david_pants', 'david_sneakers', 'david_jacket', 'david_shotgun', 'david_gorilla_arms'
+      ],
+      aot: [
+        'scout_hood', 'scout_trousers', 'scout_boots', 'odm_harness', 'dual_snap_blades'
+      ],
+      berserk: [
+        'guts_sollerets', 'guts_greaves', 'guts_beast_helm', 'guts_berserker_plate', 'dragon_slayer'
+      ],
+      opm: [
+        'saitama_groceries', 'saitama_boots', 'saitama_tights', 'saitama_suit', 'saitama_glove', 'saitama_bald'
+      ]
     };
 
+    // General high-tier dungeon equipment
+    const generalPool = [
+      'titan_greatsword', 'thunder_warhammer', 'arcane_tome', 'knight_shield',
+      'iron_tower_shield', 'horned_barbarian_helm', 'spiked_cuirass', 'winged_boots',
+      'shadow_hood', 'crystal_blade'
+    ];
+
+    const rarityPriceMap = {
+      COMMON: 40,
+      RARE: 75,
+      EPIC: 135,
+      LEGENDARY: 220,
+      MYTHIC: 360
+    };
+
+    const targetThemeList = themeItems[effectiveTheme] || themeItems.jjk;
+
+    // Pick 3 theme items guaranteed to match the floor's anime theme
+    const shuffledTheme = [...targetThemeList].sort(() => Math.random() - 0.5);
+    const shuffledGeneral = [...generalPool].sort(() => Math.random() - 0.5);
+
+    const selectedKeys = [
+      shuffledTheme[0],
+      shuffledTheme[1],
+      shuffledTheme[2] || shuffledTheme[0],
+      shuffledGeneral[0]
+    ].filter(Boolean);
+
     for (const key of selectedKeys) {
-      const item = itemCatalog[key];
+      const item = catalog[key];
       if (item) {
         const basePrice = rarityPriceMap[item.rarity] || 60;
-        const jitter = Math.floor((Math.random() - 0.5) * 15);
+        const jitter = Math.floor((Math.random() - 0.5) * 16);
         list.push({ item, price: Math.max(30, basePrice + jitter) });
       }
     }
 
     this.stock = list;
+    this.currentTheme = effectiveTheme;
     return this.stock;
   }
 
-  refreshStock(floorNumber = 1, itemCatalog = {}) {
-    this.generateWares(floorNumber, itemCatalog);
+  refreshStock(floorNumber = 1, itemCatalog = {}, themeKey = null) {
+    this.generateWares(floorNumber, itemCatalog, themeKey);
     this.sayRandomRefresh();
     return this.stock;
   }

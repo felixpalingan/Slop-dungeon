@@ -82,6 +82,7 @@ export class StationController {
     // Blackjack state (lazy loaded)
     this.blackjackGame = null;
     this.selectedBjBet = 25;
+    this.lastBjBet = 25;
 
     // Dev Armory filter state
     this.currentArmoryFilter = 'all';
@@ -555,6 +556,17 @@ export class StationController {
     if (bjSlopsAmount) bjSlopsAmount.textContent = `${sharedSlops.toLocaleString()} SLOPS`;
     if (bjCurrentBetVal) bjCurrentBetVal.textContent = this.selectedBjBet;
     if (dealBtnAmt) dealBtnAmt.textContent = this.selectedBjBet;
+
+    const rebetAmountSpan = document.getElementById('bj-rebet-amount');
+    if (rebetAmountSpan) rebetAmountSpan.textContent = this.lastBjBet;
+    const btnBjRebet = document.getElementById('btn-bj-rebet');
+    if (btnBjRebet) {
+      btnBjRebet.disabled = sharedSlops < this.lastBjBet || this.lastBjBet <= 0;
+    }
+    const btnBjRebetChip = document.getElementById('btn-bj-rebet-chip');
+    if (btnBjRebetChip) {
+      btnBjRebetChip.disabled = sharedSlops < this.lastBjBet || this.lastBjBet <= 0;
+    }
 
     if (bjDealerCards) {
       bjDealerCards.innerHTML = '';

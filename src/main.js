@@ -2760,7 +2760,8 @@ function renderShopTab() {
   shopItemsGrid.innerHTML = '';
 
   if (slopMerchant && (!slopMerchant.stock || slopMerchant.stock.length === 0)) {
-    slopMerchant.generateWares(currentFloor, ITEM_CATALOG);
+    const theme = currentDungeon ? currentDungeon.themeKey : null;
+    slopMerchant.generateWares(currentFloor, ITEM_CATALOG, theme);
   }
 
   const shopStock = slopMerchant ? slopMerchant.stock : [];
@@ -2837,7 +2838,8 @@ if (btnRefreshShop) {
     updateSlopsUI();
     broadcastSlops();
 
-    slopMerchant.refreshStock(currentFloor, ITEM_CATALOG);
+    const theme = currentDungeon ? currentDungeon.themeKey : null;
+    slopMerchant.refreshStock(currentFloor, ITEM_CATALOG, theme);
     if (audio.playCashReroll) audio.playCashReroll();
     particles.spawnComicText(player.x, player.y - 35, `-${cost} SLOPS (REROLLED 🔄)`, '#facc15');
 
@@ -3332,9 +3334,11 @@ const btnBjClearBet = document.getElementById('btn-bj-clear-bet');
 const btnBjMaxBet = document.getElementById('btn-bj-max-bet');
 
 let selectedBjBet = 25;
+let lastBjBet = 25;
 
 async function openBlackjackModal() {
   await getBlackjackGame();
+  selectedBjBet = Math.min(lastBjBet, Math.max(10, sharedSlops));
   modalManager.open('blackjack-modal');
 }
 
@@ -3369,6 +3373,17 @@ function renderBlackjackUI() {
   if (bjCurrentBetVal) bjCurrentBetVal.textContent = selectedBjBet;
   const dealBtnAmt = document.getElementById('bj-deal-btn-amount');
   if (dealBtnAmt) dealBtnAmt.textContent = selectedBjBet;
+
+  const rebetAmountSpan = document.getElementById('bj-rebet-amount');
+  if (rebetAmountSpan) rebetAmountSpan.textContent = lastBjBet;
+  const btnBjRebet = document.getElementById('btn-bj-rebet');
+  if (btnBjRebet) {
+    btnBjRebet.disabled = sharedSlops < lastBjBet || lastBjBet <= 0;
+  }
+  const btnBjRebetChip = document.getElementById('btn-bj-rebet-chip');
+  if (btnBjRebetChip) {
+    btnBjRebetChip.disabled = sharedSlops < lastBjBet || lastBjBet <= 0;
+  }
 
   // Hand & Dealer Cards
   if (bjDealerCards) {
@@ -3479,12 +3494,24 @@ if (btnBjMaxBet) {
   });
 }
 
+// Rebet Chip Button
+const btnBjRebetChip = document.getElementById('btn-bj-rebet-chip');
+if (btnBjRebetChip) {
+  btnBjRebetChip.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'BETTING') return;
+    selectedBjBet = Math.min(lastBjBet, Math.max(10, sharedSlops));
+    if (audio.playChipClink) audio.playChipClink();
+    renderBlackjackUI();
+  });
+}
+
 // Deal Cards
 if (btnBjDeal) {
   btnBjDeal.addEventListener('click', () => {
     if (blackjackGame.gameState !== 'BETTING') return;
     if (sharedSlops < selectedBjBet) return;
 
+    lastBjBet = selectedBjBet;
     sharedSlops -= selectedBjBet;
     updateSlopsUI();
     broadcastSlops();
@@ -3542,7 +3569,35 @@ if (btnBjDouble) {
   });
 }
 
-// Play Again
+// Rebet & Deal Immediately
+const btnBjRebet = document.getElementById('btn-bj-rebet');
+if (btnBjRebet) {
+  btnBjRebet.addEventListener('click', () => {
+    if (blackjackGame.gameState !== 'RESOLVED') return;
+    if (sharedSlops < lastBjBet) return;
+
+    selectedBjBet = lastBjBet;
+    blackjackGame.gameState = 'BETTING';
+    blackjackGame.playerHand = [];
+    blackjackGame.dealerHand = [];
+    blackjackGame.dealerHoleCardRevealed = false;
+    blackjackGame.result = null;
+
+    sharedSlops -= selectedBjBet;
+    updateSlopsUI();
+    broadcastSlops();
+
+    blackjackGame.startRound(selectedBjBet);
+    if (audio.playCardFlip) audio.playCardFlip();
+    renderBlackjackUI();
+
+    if (blackjackGame.gameState === 'RESOLVED') {
+      handleBlackjackResolution();
+    }
+  });
+}
+
+// Play Again (Change Bet)
 if (btnBjPlayAgain) {
   btnBjPlayAgain.addEventListener('click', () => {
     blackjackGame.gameState = 'BETTING';
@@ -3550,7 +3605,7 @@ if (btnBjPlayAgain) {
     blackjackGame.dealerHand = [];
     blackjackGame.dealerHoleCardRevealed = false;
     blackjackGame.result = null;
-    selectedBjBet = Math.min(25, sharedSlops > 0 ? sharedSlops : 25);
+    selectedBjBet = Math.min(lastBjBet, Math.max(10, sharedSlops));
     renderBlackjackUI();
   });
 }

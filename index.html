@@ -467,6 +467,7 @@
                 <button class="bj-chip-btn chip-25" data-amount="25">+25</button>
                 <button class="bj-chip-btn chip-50" data-amount="50">+50</button>
                 <button class="bj-chip-btn chip-100" data-amount="100">+100</button>
+                <button class="bj-chip-btn chip-rebet" id="btn-bj-rebet-chip" title="Restore previous bet">REBET</button>
                 <button class="bj-chip-btn chip-clear" id="btn-bj-clear-bet">CLEAR</button>
                 <button class="bj-chip-btn chip-max" id="btn-bj-max-bet">ALL-IN</button>
               </div>
@@ -484,8 +485,11 @@
 
             <!-- Round Finished Controls -->
             <div id="bj-resolved-controls" class="bj-control-group hidden">
-              <button id="btn-bj-play-again" class="action-btn primary-btn uniform-action-btn">
-                🔄 PLAY ANOTHER HAND
+              <button id="btn-bj-rebet" class="action-btn primary-btn bj-deal-btn uniform-action-btn">
+                🔁 REBET & DEAL (<span id="bj-rebet-amount">25</span> SLOPS)
+              </button>
+              <button id="btn-bj-play-again" class="action-btn outline-btn uniform-action-btn">
+                ✏️ CHANGE BET
               </button>
             </div>
           </div>

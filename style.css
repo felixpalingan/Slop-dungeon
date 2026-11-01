@@ -2553,7 +2553,7 @@ kbd {
   border: 3px dashed #facc15;
 }
 
-.chip-clear, .chip-max {
+.chip-clear, .chip-max, .chip-rebet {
   width: auto;
   height: 38px;
   border-radius: 6px;
@@ -2561,6 +2561,18 @@ kbd {
   background: rgba(15, 23, 42, 0.8);
   color: #94a3b8;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.chip-rebet {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.5);
+  font-weight: 800;
+}
+.chip-rebet:hover {
+  background: #10b981;
+  color: #041810;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 
 .chip-max {
