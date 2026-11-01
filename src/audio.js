@@ -1030,9 +1030,9 @@ export class AudioManager {
   // =========================================================================
 
   /**
-   * Hollow Purple: Deep gravitational sub-bass vortex followed by thunderclap shockwave
+   * Hollow Purple Windup: Dual-harmonic Blue (attraction) & Red (repulsion) convergence into singularity vacuum
    */
-  playHollowPurple() {
+  playHollowPurpleWindup() {
     if (this.isMuted) return;
     this.ensureContext();
     if (!this.ctx) return;
@@ -1040,34 +1040,84 @@ export class AudioManager {
     try {
       const now = this.ctx.currentTime;
 
-      // Sub-bass resonance rumble
+      // 1. Lapse Blue gravitational pull hum (rising harmonic)
+      const blueOsc = this.ctx.createOscillator();
+      const blueGain = this.ctx.createGain();
+      blueOsc.type = 'sine';
+      blueOsc.frequency.setValueAtTime(180, now);
+      blueOsc.frequency.exponentialRampToValueAtTime(540, now + 0.42);
+      blueGain.gain.setValueAtTime(0.15, now);
+      blueGain.gain.linearRampToValueAtTime(0.38, now + 0.35);
+      blueGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      blueOsc.connect(blueGain);
+      blueGain.connect(this.ctx.destination);
+      blueOsc.start(now);
+      blueOsc.stop(now + 0.45);
+
+      // 2. Reversal Red repulsion resonance (descending harmonic)
+      const redOsc = this.ctx.createOscillator();
+      const redGain = this.ctx.createGain();
+      redOsc.type = 'triangle';
+      redOsc.frequency.setValueAtTime(1200, now);
+      redOsc.frequency.exponentialRampToValueAtTime(540, now + 0.42);
+      redGain.gain.setValueAtTime(0.15, now);
+      redGain.gain.linearRampToValueAtTime(0.38, now + 0.35);
+      redGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      redOsc.connect(redGain);
+      redGain.connect(this.ctx.destination);
+      redOsc.start(now);
+      redOsc.stop(now + 0.45);
+    } catch (e) {
+      console.warn('Audio error in Hollow Purple Windup:', e);
+    }
+  }
+
+  /**
+   * Hollow Purple Impact: Apocalyptic imaginary mass singularity release & sub-bass collapse
+   */
+  playHollowPurpleImpact() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Sub-bass gravitational singularity collapse
       const oscBass = this.ctx.createOscillator();
       const gainBass = this.ctx.createGain();
       oscBass.type = 'sawtooth';
-      oscBass.frequency.setValueAtTime(70, now);
-      oscBass.frequency.exponentialRampToValueAtTime(32, now + 1.2);
-      gainBass.gain.setValueAtTime(0.5, now);
-      gainBass.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      oscBass.frequency.setValueAtTime(110, now);
+      oscBass.frequency.exponentialRampToValueAtTime(28, now + 1.3);
+      gainBass.gain.setValueAtTime(0.75, now);
+      gainBass.gain.exponentialRampToValueAtTime(0.001, now + 1.35);
       oscBass.connect(gainBass);
       gainBass.connect(this.ctx.destination);
       oscBass.start(now);
-      oscBass.stop(now + 1.2);
+      oscBass.stop(now + 1.35);
 
-      // High energy hollow harmonic ring
+      // 2. High-energy imaginary mass harmonic snap
       const oscHigh = this.ctx.createOscillator();
       const gainHigh = this.ctx.createGain();
       oscHigh.type = 'sine';
-      oscHigh.frequency.setValueAtTime(420, now);
-      oscHigh.frequency.exponentialRampToValueAtTime(880, now + 0.6);
-      gainHigh.gain.setValueAtTime(0.35, now);
-      gainHigh.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      oscHigh.frequency.setValueAtTime(520, now);
+      oscHigh.frequency.exponentialRampToValueAtTime(1280, now + 0.55);
+      gainHigh.gain.setValueAtTime(0.45, now);
+      gainHigh.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
       oscHigh.connect(gainHigh);
       gainHigh.connect(this.ctx.destination);
       oscHigh.start(now);
-      oscHigh.stop(now + 0.8);
+      oscHigh.stop(now + 0.85);
     } catch (e) {
-      console.warn('Audio error in Hollow Purple:', e);
+      console.warn('Audio error in Hollow Purple Impact:', e);
     }
+  }
+
+  /**
+   * Hollow Purple: Deep gravitational sub-bass vortex followed by thunderclap shockwave
+   */
+  playHollowPurple() {
+    this.playHollowPurpleImpact();
   }
 
   /**

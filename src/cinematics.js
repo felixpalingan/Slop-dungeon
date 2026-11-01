@@ -26,6 +26,10 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'levi_grapple_whirlwind' && (1 - (c.timer / c.duration)) < 0.06);
   }
 
+  isHollowPurpleFreezing() {
+    return this.activeCinematics.some(c => c.type === 'hollow_purple' && (1 - (c.timer / c.duration)) < 0.30);
+  }
+
   spawnProjectile(proj) {
     if (!proj) return;
     this.projectiles.push({
@@ -51,37 +55,23 @@ export class CinematicManager {
     const now = performance.now() / 1000;
 
     if (type === 'hollow_purple') {
-      // Gojo's Hollow Purple: Screen collapses into dark purple vortex,
-      // then launches a massive 160px expanding sphere along player's aim angle!
+      // Gojo's Hollow Purple (虚式「茈」):
+      // Phase 1 (0.0s - 0.45s): Reality freezes as Lapse Blue (Left) & Reversal Red (Right)
+      //   converge into an Imaginary Mass singularity with Six Eyes & Nine Ropes chant!
+      // Phase 2 (0.45s - 1.5s): Launches a colossal expanding singularity sphere that
+      //   gravitationally pulls nearby enemies into its core and leaves an erased cosmic trench!
       this.activeCinematics.push({
         type: 'hollow_purple',
-        timer: 1.4,
-        duration: 1.4,
+        timer: 1.5,
+        duration: 1.5,
         caster: player,
         isRemote: !!isRemote,
-        x: player.x,
-        y: player.y,
-        angle: player.angle
+        x: player ? player.x : 0,
+        y: player ? player.y : 0,
+        angle: player ? player.angle : 0,
+        hasFired: false
       });
       this.addScreenShake(18);
-
-      // Spawn Hollow Purple projectile
-      const speed = 680;
-      this.projectiles.push({
-        type: 'hollow_purple',
-        caster: player,
-        isRemote: !!isRemote,
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(player.angle) * speed,
-        vy: Math.sin(player.angle) * speed,
-        radius: 48,
-        maxRadius: 110,
-        damage: 320,
-        life: 1.6,
-        color: '#c084fc',
-        glow: '#a855f7'
-      });
     } else if (type === 'world_cutting_slash') {
       // Sukuna's World Cutting Slash (世界を断つ斬撃):
       // Phase 1 (0.0s - 0.36s): Reality freezes in dark crimson/abyssal void ink.
@@ -629,6 +619,52 @@ export class CinematicManager {
             angle: c.angle
           });
         }
+      } else if (c.type === 'hollow_purple') {
+        const progress = 1 - (c.timer / c.duration);
+        // Phase 1: 0.0 -> 0.30 (0.45s Blue & Red convergence freeze).
+        // Phase 2: >= 0.30 (Launch Imaginary Mass Singularity Sphere!)
+        if (progress >= 0.30 && !c.hasFired) {
+          c.hasFired = true;
+          this.addScreenShake(34);
+          if (this.audio) {
+            if (typeof this.audio.playHollowPurpleImpact === 'function') {
+              this.audio.playHollowPurpleImpact();
+            } else if (typeof this.audio.playHollowPurple === 'function') {
+              this.audio.playHollowPurple();
+            }
+          }
+
+          const caster = c.caster || c.player;
+          if (caster) {
+            c.angle = caster.angle;
+            c.x = caster.x;
+            c.y = caster.y;
+          }
+
+          const speed = 760;
+          const startX = c.x + Math.cos(c.angle) * 48;
+          const startY = c.y + Math.sin(c.angle) * 48;
+          this.projectiles.push({
+            type: 'hollow_purple',
+            caster: caster,
+            isRemote: c.isRemote,
+            x: startX,
+            y: startY,
+            vx: Math.cos(c.angle) * speed,
+            vy: Math.sin(c.angle) * speed,
+            radius: 65,
+            maxRadius: 155,
+            pullRadius: 280,
+            pullStrength: 460,
+            damage: 360,
+            knockback: 680,
+            piercesObstacles: true,
+            life: 1.6,
+            maxLife: 1.6,
+            angle: c.angle,
+            trail: [{ x: startX, y: startY, r: 65 }]
+          });
+        }
       }
 
       if (c.timer <= 0 || c.phase === 'finished') {
@@ -636,8 +672,8 @@ export class CinematicManager {
       }
     }
 
-    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, or Levi Overdrive windup)
-    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing();
+    // Update projectiles & hit detection (frozen in mid-air during Serious Punch, World Cutting Slash, Levi Overdrive, or Hollow Purple windup)
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -650,12 +686,41 @@ export class CinematicManager {
 
         // Expand projectile radius & width if applicable (Hollow Purple or World Cutting Slash Cone)
         if (proj.radius && proj.maxRadius) {
-          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : 45;
+          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : (proj.type === 'hollow_purple' ? 85 : 45);
           proj.radius = Math.min(proj.maxRadius, proj.radius + expansionRate * projDt);
         }
         if (proj.width && proj.maxWidth) {
           const widthRate = proj.type === 'world_cutting_slash' ? 560 : 60;
           proj.width = Math.min(proj.maxWidth, proj.width + widthRate * projDt);
+        }
+
+        // Record cosmic void trench trail for Hollow Purple
+        if (proj.type === 'hollow_purple') {
+          if (!proj.trail) proj.trail = [];
+          const lastNode = proj.trail[proj.trail.length - 1];
+          if (!lastNode || Math.hypot(proj.x - lastNode.x, proj.y - lastNode.y) >= 18) {
+            proj.trail.push({ x: proj.x, y: proj.y, r: proj.radius || 65 });
+            if (proj.trail.length > 42) proj.trail.shift();
+          }
+
+          // Gravitational Singularity Pull: drag nearby enemies into the orb's core!
+          if (!proj.isRemote && targets && targets.length > 0) {
+            const pullRad = proj.pullRadius || 280;
+            const pullForce = proj.pullStrength || 460;
+            for (const target of targets) {
+              if (!target || target === proj.caster) continue;
+              if (proj.caster && proj.caster.roomId !== undefined && target.roomId !== undefined) continue;
+              if (target.isLimitlessBarrier) continue;
+              const tdx = proj.x - target.x;
+              const tdy = proj.y - target.y;
+              const tDist = Math.hypot(tdx, tdy);
+              if (tDist > 8 && tDist <= pullRad) {
+                const pullFactor = (1 - (tDist / pullRad) * 0.55) * pullForce * projDt;
+                target.x += (tdx / tDist) * pullFactor;
+                target.y += (tdy / tDist) * pullFactor;
+              }
+            }
+          }
         }
 
         // Check obstacle collision (tactical cover: pillars block all projectiles except piercing ultimates)
@@ -755,40 +820,85 @@ export class CinematicManager {
       ctx.translate(proj.x, proj.y);
 
       if (proj.type === 'hollow_purple') {
-        // Glowing Singularity Core + Outward Crackling Rays
-        const pulse = 1 + Math.sin(Date.now() * 0.02) * 0.12;
+        // 1. Erased Cosmic Void Trench along flight path (drawn in local space relative to proj.x, proj.y)
+        if (proj.trail && proj.trail.length > 1) {
+          ctx.save();
+          for (let t = 0; t < proj.trail.length; t++) {
+            const node = proj.trail[t];
+            const ratio = (t + 1) / proj.trail.length;
+            const lx = node.x - proj.x;
+            const ly = node.y - proj.y;
+            const tr = (node.r || 65) * (0.48 + ratio * 0.42);
+
+            // Pitch-black erased void floor scar
+            ctx.fillStyle = `rgba(10, 2, 24, ${0.42 * ratio})`;
+            ctx.beginPath();
+            ctx.arc(lx, ly, tr, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glowing ultraviolet star-rim along the gouged trench
+            ctx.strokeStyle = `rgba(192, 132, 252, ${0.45 * ratio})`;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(lx, ly, tr * 0.92, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        // 2. Imaginary Mass Singularity Core + Accretion Disk
+        const pulse = 1 + Math.sin(Date.now() * 0.025) * 0.12;
         const r = proj.radius * pulse;
+        const spin = Date.now() * 0.012;
+
+        // Outer Gravitational Pull Field Ring
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.28)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, (proj.pullRadius || r * 1.8) * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
 
         // Outer Dark Purple Gravity Well
-        const grad = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
+        const grad = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r * 1.15);
         grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.25, '#c084fc');
-        grad.addColorStop(0.65, '#9333ea');
-        grad.addColorStop(1, 'rgba(30, 10, 60, 0)');
+        grad.addColorStop(0.22, '#e879f9');
+        grad.addColorStop(0.55, '#9333ea');
+        grad.addColorStop(0.82, 'rgba(76, 29, 149, 0.55)');
+        grad.addColorStop(1, 'rgba(15, 3, 35, 0)');
 
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 1.15, 0, Math.PI * 2);
         ctx.fill();
 
-        // High Voltage Core
-        ctx.fillStyle = '#fdf4ff';
+        // Swirling Lapis Blue (Ao) & Reversal Red (Aka) Accretion Spiral Arms
+        ctx.lineWidth = 5;
         ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 24;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Orbiting energy streaks
+        ctx.shadowBlur = 18;
         ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.7, Date.now() * 0.01, Date.now() * 0.01 + Math.PI);
+        ctx.arc(0, 0, r * 0.72, spin, spin + Math.PI * 1.15);
         ctx.stroke();
 
-        ctx.strokeStyle = '#ef4444';
+        ctx.shadowColor = '#ff2a5f';
+        ctx.strokeStyle = '#f43f5e';
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.85, -Date.now() * 0.015, -Date.now() * 0.015 + Math.PI);
+        ctx.arc(0, 0, r * 0.86, -spin * 1.3, -spin * 1.3 + Math.PI * 1.15);
+        ctx.stroke();
+
+        // White-Hot Imaginary Mass Event Horizon Core
+        ctx.fillStyle = '#fdf4ff';
+        ctx.shadowColor = '#d946ef';
+        ctx.shadowBlur = 32;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Event Horizon Black Singularity Pupil Ring
+        ctx.strokeStyle = '#1e0538';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.24, 0, Math.PI * 2);
         ctx.stroke();
       } else if (proj.type === 'world_cutting_slash') {
         // Sukuna's World Cutting Slash: Colossal Reality-Bisecting Dimensional Cone
@@ -1371,19 +1481,159 @@ export class CinematicManager {
       const progress = 1 - c.timer / c.duration;
 
       if (c.type === 'hollow_purple') {
-        // Screen collapses into dark purple cosmic vignette
-        const alpha = Math.sin(progress * Math.PI) * 0.65;
         ctx.save();
-        const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.2, width / 2, height / 2, width * 0.75);
-        grad.addColorStop(0, 'rgba(147, 51, 234, 0)');
-        grad.addColorStop(1, `rgba(45, 10, 80, ${alpha})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
+        if (progress < 0.30) {
+          // --- 1. PHASE 1: BLUE & RED CONVERGENCE FREEZE (0.0s - 0.45s) ---
+          const windupRatio = Math.min(1, progress / 0.30);
+          // Smooth ease-in-out convergence toward center
+          const ease = windupRatio < 0.5
+            ? 2 * windupRatio * windupRatio
+            : 1 - Math.pow(-2 * windupRatio + 2, 2) / 2;
 
-        // Electric flash on launch
-        if (progress < 0.25) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${(0.25 - progress) * 1.5})`;
+          // Deep cosmic void backdrop
+          ctx.fillStyle = 'rgba(6, 2, 16, 0.84)';
           ctx.fillRect(0, 0, width, height);
+
+          const centerX = width / 2;
+          const centerY = height / 2;
+          const startOffset = width * 0.36;
+          const currentOffset = startOffset * (1 - ease);
+
+          const blueX = centerX - currentOffset;
+          const redX = centerX + currentOffset;
+          const orbR = 68 + ease * 28;
+
+          // Left Sphere: Cursed Technique Lapse — BLUE (蒼)
+          const blueGrad = ctx.createRadialGradient(blueX, centerY, orbR * 0.1, blueX, centerY, orbR * 1.6);
+          blueGrad.addColorStop(0, '#ffffff');
+          blueGrad.addColorStop(0.28, '#00f0ff');
+          blueGrad.addColorStop(0.65, '#0284c7');
+          blueGrad.addColorStop(1, 'rgba(2, 132, 199, 0)');
+          ctx.fillStyle = blueGrad;
+          ctx.beginPath();
+          ctx.arc(blueX, centerY, orbR * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Right Sphere: Cursed Technique Reversal — RED (赫)
+          const redGrad = ctx.createRadialGradient(redX, centerY, orbR * 0.1, redX, centerY, orbR * 1.6);
+          redGrad.addColorStop(0, '#ffffff');
+          redGrad.addColorStop(0.28, '#ff2a5f');
+          redGrad.addColorStop(0.65, '#dc2626');
+          redGrad.addColorStop(1, 'rgba(220, 38, 38, 0)');
+          ctx.fillStyle = redGrad;
+          ctx.beginPath();
+          ctx.arc(redX, centerY, orbR * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Center Singularity Spark as Blue & Red overlap
+          if (ease > 0.55) {
+            const fuseRatio = (ease - 0.55) / 0.45;
+            const fuseR = orbR * 1.9 * fuseRatio;
+            const fuseGrad = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, fuseR);
+            fuseGrad.addColorStop(0, '#ffffff');
+            fuseGrad.addColorStop(0.4, '#e879f9');
+            fuseGrad.addColorStop(0.8, '#9333ea');
+            fuseGrad.addColorStop(1, 'rgba(147, 51, 234, 0)');
+            ctx.fillStyle = fuseGrad;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, fuseR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Gojo's Glowing Six Eyes (六眼) in upper center
+          const eyeY = height * 0.34;
+          const eyeSpread = 52;
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 22;
+          ctx.fillStyle = '#e0f2fe';
+          for (const dir of [-1, 1]) {
+            ctx.beginPath();
+            if (typeof ctx.ellipse === 'function') {
+              ctx.ellipse(centerX + dir * eyeSpread, eyeY, 18, 7, dir * -0.08, 0, Math.PI * 2);
+            } else {
+              ctx.arc(centerX + dir * eyeSpread, eyeY, 14, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            ctx.arc(centerX + dir * eyeSpread, eyeY, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#e0f2fe';
+          }
+
+          // Left / Right Technique Labels following spheres
+          ctx.textAlign = 'center';
+          ctx.font = '900 22px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#000000';
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 14;
+          ctx.strokeText('術式順転「蒼」', blueX, centerY + orbR + 32);
+          ctx.fillText('術式順転「蒼」', blueX, centerY + orbR + 32);
+
+          ctx.fillStyle = '#fb7185';
+          ctx.shadowColor = '#ff2a5f';
+          ctx.strokeText('術式反転「赫」', redX, centerY + orbR + 32);
+          ctx.fillText('術式反転「赫」', redX, centerY + orbR + 32);
+
+          // Nine-Rope Sacred Chant Calligraphy at Top
+          ctx.font = '900 26px "Impact", "Arial Black", sans-serif';
+          ctx.fillStyle = '#e879f9';
+          ctx.shadowColor = '#c084fc';
+          ctx.shadowBlur = 18;
+          ctx.strokeText('「 九 綱 ・ 偏 光 ・ 烏 と 声 明 ・ 表 裏 の 間 」', centerX, height * 0.21);
+          ctx.fillText('「 九 綱 ・ 偏 光 ・ 烏 と 声 明 ・ 表 裏 の 間 」', centerX, height * 0.21);
+
+          ctx.font = '700 14px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#f0abfc';
+          ctx.shadowBlur = 6;
+          ctx.fillText('NINE ROPES \u2022 POLARIZED LIGHT \u2022 CROW AND SHOMYO \u2022 THE GAP BETWEEN WITHIN AND WITHOUT', centerX, height * 0.26);
+        } else {
+          // --- 2. PHASE 2: IMAGINARY MASS DETONATION & RELEASE (0.45s - 1.50s) ---
+          const postProgress = (progress - 0.30) / 0.70;
+          const alpha = Math.max(0, Math.sin((1 - postProgress) * Math.PI * 0.5) * 0.72);
+
+          // Blinding ultraviolet/white flash on collision
+          if (postProgress < 0.18) {
+            const flashAlpha = (1 - postProgress / 0.18) * 0.85;
+            ctx.fillStyle = `rgba(250, 232, 255, ${flashAlpha})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Deep purple cosmic vignette
+          const grad = ctx.createRadialGradient(width / 2, height / 2, width * 0.18, width / 2, height / 2, width * 0.78);
+          grad.addColorStop(0, 'rgba(147, 51, 234, 0)');
+          grad.addColorStop(0.6, `rgba(88, 28, 135, ${alpha * 0.45})`);
+          grad.addColorStop(1, `rgba(25, 5, 50, ${alpha})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+
+          // Colossal Impact Kanji: 虚式「茈」
+          const textAlpha = Math.max(0, 1 - postProgress * 1.25);
+          if (textAlpha > 0.02) {
+            ctx.save();
+            ctx.globalAlpha = textAlpha;
+            ctx.textAlign = 'center';
+
+            ctx.font = '900 58px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#090214';
+            ctx.fillStyle = '#fdf4ff';
+            ctx.shadowColor = '#d946ef';
+            ctx.shadowBlur = 28;
+            ctx.strokeText('虚 式 「 茈 」', width / 2, height * 0.22);
+            ctx.fillText('虚 式 「 茈 」', width / 2, height * 0.22);
+
+            ctx.font = '900 18px "JetBrains Mono", monospace';
+            ctx.lineWidth = 4;
+            ctx.fillStyle = '#e879f9';
+            ctx.strokeText('【 仮想の質量を押し出す 】 [IMAGINARY MASS: HOLLOW PURPLE]', width / 2, height * 0.28);
+            ctx.fillText('【 仮想の質量を押し出す 】 [IMAGINARY MASS: HOLLOW PURPLE]', width / 2, height * 0.28);
+            ctx.restore();
+          }
         }
         ctx.restore();
       } else if (c.type === 'world_cutting_slash') {

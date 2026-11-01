@@ -336,8 +336,12 @@ export class CombatSystem {
       }
       if (setBonus.ultimateQ === 'hollow_purple') {
         // Gojo: Hollow Purple!
-        this.audio?.playHollowPurple?.();
-        this.particles?.spawnComicText?.(player.x, player.y - 36, 'HOLLOW PURPLE!', '#c084fc');
+        if (this.audio?.playHollowPurpleWindup) {
+          this.audio.playHollowPurpleWindup();
+        } else if (this.audio?.playHollowPurple) {
+          this.audio.playHollowPurple();
+        }
+        this.particles?.spawnComicText?.(player.x, player.y - 36, 'HOLLOW PURPLE! 🔮 虚式「茈」', '#c084fc');
         if (triggerCinematicCallback) {
           triggerCinematicCallback('hollow_purple', player);
         }

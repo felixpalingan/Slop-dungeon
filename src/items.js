@@ -23,7 +23,7 @@ export const SET_DEFINITIONS = {
     requiredItems: ['gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red'],
     ultimateQ: 'hollow_purple',
     ultimateTitle: 'HOLLOW PURPLE',
-    desc: 'Combines Blue & Red into the screen-clearing Hollow Purple!'
+    desc: '[Q] Unleashes Hollow Purple: freezes reality as Lapse Blue and Reversal Red collide into an Imaginary Mass singularity, pulling enemies into its core and erasing a cosmic trench!'
   },
   'sukuna': {
     name: 'King of Curses',

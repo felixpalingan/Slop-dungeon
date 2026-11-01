@@ -4703,7 +4703,10 @@ network.onMessageReceived = (fromPeerId, msg) => {
 
     // Remote cinematics are purely visual on other peers (isRemote = true)
     cinematics.trigger(msg.ultimateType, caster, true);
-    if (msg.ultimateType === 'hollow_purple') audio.playHollowPurple();
+    if (msg.ultimateType === 'hollow_purple') {
+      if (audio.playHollowPurpleWindup) audio.playHollowPurpleWindup();
+      else audio.playHollowPurple();
+    }
     else if (msg.ultimateType === 'world_cutting_slash') audio.playWorldCuttingSlash();
     else if (msg.ultimateType === 'inverted_chain_rampage') audio.playChainRampage();
     else if (msg.ultimateType === 'berserker_rage') { audio.playBerserkRoar(); audio.playClang(); }
@@ -5528,12 +5531,13 @@ function gameLoop(now) {
   }
   wasSandevistanActive = isAnySandevistan;
 
-  // If Serious Punch (0.45s), World Cutting Slash (0.36s), or Levi Overdrive (0.36s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
+  // If Serious Punch (0.45s), World Cutting Slash (0.36s), Levi Overdrive (0.36s), or Hollow Purple (0.45s) is in its windup freeze, world physics/monsters freeze completely (0.0)!
   // If Sandevistan is active, everyone else (enemies, projectiles, other players) is slowed to 10% speed!
   const isSeriousPunchFreeze = cinematics.isSeriousPunchFreezing();
   const isWorldCuttingSlashFreeze = cinematics.isWorldCuttingSlashFreezing?.() || false;
   const isLeviOverdriveFreeze = cinematics.isLeviOverdriveFreezing?.() || false;
-  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze;
+  const isHollowPurpleFreeze = cinematics.isHollowPurpleFreezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze;
   const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 
