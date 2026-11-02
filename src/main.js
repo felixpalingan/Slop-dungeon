@@ -1042,8 +1042,9 @@ function populateFloorMonsters(dungeon) {
       });
 
       boss.onPhase2Trigger = (b) => {
+        cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(18);
+        cinematics.addScreenShake(20);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: SANDEVISTAN OVERCLOCK! ⚡', '#00ff88');
         particles.spawnDashBurst(b.x, b.y, 0, '#00ff88');
       };
@@ -1248,9 +1249,10 @@ function populateFloorMonsters(dungeon) {
       });
 
       boss.onPhase2Trigger = (b) => {
+        cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
         audio.playTitanRoar();
-        cinematics.addScreenShake(20);
+        cinematics.addScreenShake(22);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: ARMOR SHED & UNSTOPPABLE BLITZ! ⚠️', '#eab308');
         particles.spawnDashBurst(b.x, b.y, 0, '#f59e0b');
       };
@@ -1476,9 +1478,10 @@ function populateFloorMonsters(dungeon) {
       });
 
       boss.onPhase2Trigger = (b) => {
+        cinematics.triggerBossPhase2(b);
         audio.playBerserkRoar();
         audio.playClang();
-        cinematics.addScreenShake(20);
+        cinematics.addScreenShake(22);
         particles.spawnComicText(b.x, b.y - 55, 'APOSTLE AWAKENING: BEAST OF DARKNESS! 🦇🩸', '#ef4444');
         particles.spawnDashBurst(b.x, b.y, 0, '#dc2626');
         b.radius = 58;
@@ -1695,8 +1698,9 @@ function populateFloorMonsters(dungeon) {
       });
 
       boss.onPhase2Trigger = (b) => {
+        cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(22);
+        cinematics.addScreenShake(24);
         particles.spawnComicText(b.x, b.y - 55, '💥 CARNAGE MODE UNLEASHED! UNTIL NEXT SATURDAY! 🪲', '#facc15');
         particles.spawnDashBurst(b.x, b.y, 0, '#eab308');
         b.radius = 54;
@@ -1880,8 +1884,9 @@ function populateFloorMonsters(dungeon) {
       });
 
       boss.onPhase2Trigger = (b) => {
+        cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(16);
+        cinematics.addScreenShake(20);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: DOMAIN AWAKENING! ⚠️', '#c084fc');
         particles.spawnDashBurst(b.x, b.y, 0, '#a855f7');
       };
@@ -5628,7 +5633,8 @@ function gameLoop(now) {
   const isBerserkerRageFreeze = cinematics.isBerserkerRageFreezing?.() || false;
   const isChainRampageFreeze = cinematics.isChainRampageFreezing?.() || false;
   const isSandevistanFreeze = cinematics.isSandevistanFreezing?.() || false;
-  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze || isBerserkerRageFreeze || isChainRampageFreeze || isSandevistanFreeze;
+  const isBossPhase2Freeze = cinematics.isBossPhase2Freezing?.() || false;
+  const isAnyUltimateFreeze = isSeriousPunchFreeze || isWorldCuttingSlashFreeze || isLeviOverdriveFreeze || isHollowPurpleFreeze || isBerserkerRageFreeze || isChainRampageFreeze || isSandevistanFreeze || isBossPhase2Freeze;
   const worldTimeScale = isAnyUltimateFreeze ? 0.0 : (isAnySandevistan ? 0.10 : 1.0);
   const worldDt = dt * worldTimeScale;
 

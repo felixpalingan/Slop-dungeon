@@ -42,6 +42,10 @@ export class CinematicManager {
     return this.activeCinematics.some(c => c.type === 'sandevistan' && (1 - (c.timer / c.duration)) < 0.07);
   }
 
+  isBossPhase2Freezing() {
+    return this.activeCinematics.some(c => c.type === 'boss_phase2' && (1 - (c.timer / c.duration)) < 0.38);
+  }
+
   /**
    * Spawns a colossal 180-degree crimson Dragon Slayer cleave wave during Berserker Rage
    * that cracks the dungeon floor into stone rubble!
@@ -371,8 +375,48 @@ export class CinematicManager {
         hasFired: false
       });
       this.addScreenShake(28);
+    } else if (type === 'boss_phase2') {
+      return this.triggerBossPhase2(player, isRemote);
     }
     this.shakeDecay = 16.0;
+  }
+
+  /**
+   * Triggers an anime-accurate cinematic Phase 2 transition cut-in for Floor Guardian Bosses.
+   * Freezes world simulation for ~0.5s with a high-contrast manga screentone banner,
+   * dialog quote, boss title in Japanese Kanji, screen shake, and unfreeze shockwave!
+   */
+  triggerBossPhase2(boss, isRemote = false) {
+    if (!boss) return null;
+    const duration = 1.35;
+    const cinematic = {
+      type: 'boss_phase2',
+      timer: duration,
+      duration,
+      boss,
+      bossType: boss.type,
+      bossName: boss.name,
+      x: boss.x || 0,
+      y: boss.y || 0,
+      isRemote: !!isRemote,
+      hasTriggeredSound: false
+    };
+    this.activeCinematics.push(cinematic);
+    this.addScreenShake(26);
+    this.shakeDecay = 16.0;
+
+    if (this.audio) {
+      if (boss.type === 'adam_smasher_prototype' && typeof this.audio.playCyberSlam === 'function') {
+        this.audio.playCyberSlam();
+      } else if (boss.type === 'armored_titan' && typeof this.audio.playTitanRoar === 'function') {
+        this.audio.playTitanRoar();
+      } else if (boss.type === 'nosferatu_zodd' && typeof this.audio.playBerserkRoar === 'function') {
+        this.audio.playBerserkRoar();
+      } else if (typeof this.audio.playEnrageRoar === 'function') {
+        this.audio.playEnrageRoar();
+      }
+    }
+    return cinematic;
   }
 
   spawnProjectile(proj) {
@@ -433,6 +477,30 @@ export class CinematicManager {
     for (let cIdx = this.activeCinematics.length - 1; cIdx >= 0; cIdx--) {
       const c = this.activeCinematics[cIdx];
       c.timer -= dt;
+
+      // Boss Phase 2 Awakening & Roar sound trigger
+      if (c.type === 'boss_phase2') {
+        const progress = 1 - (c.timer / c.duration);
+        if (c.boss) {
+          c.x = c.boss.x;
+          c.y = c.boss.y;
+        }
+        if (progress >= 0.38 && !c.hasTriggeredSound) {
+          c.hasTriggeredSound = true;
+          this.addScreenShake(22);
+          if (this.audio) {
+            if (c.bossType === 'adam_smasher_prototype' && typeof this.audio.playCyberSlam === 'function') {
+              this.audio.playCyberSlam();
+            } else if (c.bossType === 'armored_titan' && typeof this.audio.playSteamHiss === 'function') {
+              this.audio.playSteamHiss();
+            } else if (c.bossType === 'nosferatu_zodd' && typeof this.audio.playClang === 'function') {
+              this.audio.playClang();
+            } else if (typeof this.audio.playEnrageRoar === 'function') {
+              this.audio.playEnrageRoar();
+            }
+          }
+        }
+      }
 
       // Toji's Inverted Chain Whirlwind continuous hit detection & projectile nullification (locked on caster)
       if (c.type === 'inverted_chain_rampage') {
@@ -914,7 +982,7 @@ export class CinematicManager {
     }
 
     // Update projectiles & hit detection (frozen in mid-air during Ultimate windup freezes)
-    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing() || this.isBerserkerRageFreezing() || this.isChainRampageFreezing() || this.isSandevistanFreezing();
+    const isFrozen = this.isSeriousPunchFreezing() || this.isWorldCuttingSlashFreezing() || this.isLeviOverdriveFreezing() || this.isHollowPurpleFreezing() || this.isBerserkerRageFreezing() || this.isChainRampageFreezing() || this.isSandevistanFreezing() || this.isBossPhase2Freezing();
     if (!isFrozen) {
       const projDt = dt * timeScale;
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -2990,6 +3058,304 @@ export class CinematicManager {
             ctx.shadowBlur = 24;
             ctx.strokeText('マジ殴り [SERIOUS PUNCH]', width / 2, height / 2 + 35);
             ctx.fillText('マジ殴り [SERIOUS PUNCH]', width / 2, height / 2 + 35);
+          }
+        }
+        ctx.restore();
+      } else if (c.type === 'boss_phase2') {
+        ctx.save();
+        const bossType = c.bossType || (c.boss ? c.boss.type : '');
+        const progress = 1 - (c.timer / c.duration);
+        const isFreeze = progress < 0.38;
+
+        // Boss profile metadata & anime styling
+        let kanji = '強敵覚醒';
+        let bossTitle = 'BOSS ENRAGED: PHASE 2';
+        let quote = '"FEEL TRUE DESPAIR!"';
+        let accentColor = '#ef4444';
+        let secondaryColor = '#f59e0b';
+        let bgTint = 'rgba(20, 5, 8, 0.88)';
+        let badgeText = 'WARNING: PHASE 2 ENRAGE';
+
+        if (bossType === 'adam_smasher_prototype') {
+          kanji = '「アダム・スマッシャー」';
+          bossTitle = 'SANDEVISTAN OVERCLOCK ⚡';
+          quote = '"YOU LOOK LIKE A CUT OF SHITABLE MEAT. ARE YOU?!"';
+          accentColor = '#00ff88';
+          secondaryColor = '#00f0ff';
+          bgTint = 'rgba(2, 20, 10, 0.88)';
+          badgeText = 'CYBERWARE OVERDRIVE // MILITARY GRADE';
+        } else if (bossType === 'armored_titan') {
+          kanji = '「鎧の巨人」';
+          bossTitle = 'ARMOR SHED & UNSTOPPABLE BLITZ ⚠️';
+          quote = '"I AM THE ARMORED TITAN, AND HE IS THE COLOSSAL TITAN!"';
+          accentColor = '#eab308';
+          secondaryColor = '#f97316';
+          bgTint = 'rgba(25, 15, 2, 0.88)';
+          badgeText = 'TITAN HARDENING // STEAM OVERHEAT';
+        } else if (bossType === 'nosferatu_zodd') {
+          kanji = '「不滅のゾッド」';
+          bossTitle = 'APOSTLE AWAKENING: BEAST OF DARKNESS 🦇';
+          quote = '"BLOOD! CARNAGE! OFFER YOUR VERY LIVES TO ME!"';
+          accentColor = '#ef4444';
+          secondaryColor = '#7f1d1d';
+          bgTint = 'rgba(22, 2, 4, 0.90)';
+          badgeText = 'ECLIPSE REVELATION // IMMORTAL BEAST';
+        } else if (bossType === 'carnage_kabuto') {
+          kanji = '「阿修羅カブト」';
+          bossTitle = 'CARNAGE MODE: UNLEASHED 🪲';
+          quote = '"I WILL GO ON A COMPLETE RAMPAGE UNTIL NEXT SATURDAY!"';
+          accentColor = '#ef4444';
+          secondaryColor = '#22c55e';
+          bgTint = 'rgba(24, 4, 4, 0.88)';
+          badgeText = 'DISASTER LEVEL: DRAGON // BIO-FRENZY';
+        } else if (bossType === 'finger_bearer') {
+          kanji = '「特級呪霊」';
+          bossTitle = 'CURSED DOMAIN MANIFESTATION 🌀';
+          quote = '"GIGGLE... HEHEHEHE... (UNFATHOMABLE MALICE)"';
+          accentColor = '#c084fc';
+          secondaryColor = '#9333ea';
+          bgTint = 'rgba(18, 4, 28, 0.88)';
+          badgeText = 'SPECIAL GRADE // UNREGISTERED CURSE';
+        }
+
+        const cx = width / 2;
+        const cy = height / 2;
+
+        if (isFreeze) {
+          // --- 1. PHASE 2 TIME FREEZE & ANIME MANGA CUT-IN (0.0s - 0.51s) ---
+          const freezeRatio = progress / 0.38; // 0 to 1
+          const ease = Math.sin(freezeRatio * Math.PI * 0.5);
+
+          // Dark atmosphere backdrop wash
+          ctx.fillStyle = bgTint;
+          ctx.fillRect(0, 0, width, height);
+
+          // Dynamic radial vignette with boss accent tint
+          const vig = ctx.createRadialGradient(cx, cy, width * 0.1, cx, cy, Math.max(width, height) * 0.72);
+          vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          vig.addColorStop(0.65, 'rgba(0, 0, 0, 0.45)');
+          vig.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+          ctx.fillStyle = vig;
+          ctx.fillRect(0, 0, width, height);
+
+          // Manga radial speedlines converging toward screen center
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 * ease})`;
+          ctx.lineWidth = 2.5;
+          const numLines = 32;
+          for (let i = 0; i < numLines; i++) {
+            const ang = (i / numLines) * Math.PI * 2;
+            const r1 = Math.max(width, height) * 0.7;
+            const r2 = 130 + ((i * 43) % 100);
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+            ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+            ctx.stroke();
+          }
+
+          // --- BOSS-SPECIFIC VISUAL SIGNATURES ---
+          if (bossType === 'adam_smasher_prototype') {
+            // Cyberpunk scanline matrix & Kiroshi HUD telemetry
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.18)';
+            ctx.lineWidth = 1;
+            for (let y = 0; y < height; y += 14) {
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(width, y);
+              ctx.stroke();
+            }
+
+            // Kiroshi tactical targeting brackets
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(cx - 160, cy - 80, 320, 160);
+            ctx.font = '700 12px "Courier New", monospace';
+            ctx.fillStyle = '#00ff88';
+            ctx.textAlign = 'left';
+            ctx.fillText('TARGET: HOSTILE SQUAD [THREAT: EXTREME]', cx - 150, cy - 62);
+            ctx.textAlign = 'right';
+            ctx.fillText('ARASAKA CORPO WAR CHASSIS v4.2', cx + 150, cy + 72);
+          } else if (bossType === 'armored_titan') {
+            // Golden Shifter Lightning bolts descending from heavens
+            ctx.strokeStyle = '#fde047';
+            ctx.shadowColor = '#eab308';
+            ctx.shadowBlur = 18;
+            ctx.lineWidth = 3.5;
+            for (let l = 0; l < 4; l++) {
+              const lx = cx - 180 + l * 120;
+              ctx.beginPath();
+              ctx.moveTo(lx, 0);
+              ctx.lineTo(lx - 25, cy * 0.35);
+              ctx.lineTo(lx + 20, cy * 0.65);
+              ctx.lineTo(cx - 80 + l * 60, cy - 60);
+              ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+          } else if (bossType === 'nosferatu_zodd') {
+            // Berserk Eclipse disc & Brand of Sacrifice crimson glow
+            ctx.fillStyle = 'rgba(127, 29, 29, 0.45)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 140, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Brand of Sacrifice outline in center
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#dc2626';
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 40);
+            ctx.lineTo(cx, cy + 40);
+            ctx.moveTo(cx - 24, cy - 15);
+            ctx.lineTo(cx, cy);
+            ctx.lineTo(cx + 24, cy - 15);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          } else if (bossType === 'carnage_kabuto') {
+            // High-contrast warning stripes top and bottom
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(0, 0, width, 18);
+            ctx.fillRect(0, height - 18, width, 18);
+            ctx.fillStyle = '#22c55e';
+            for (let sx = 0; sx < width; sx += 40) {
+              ctx.beginPath();
+              ctx.moveTo(sx, 0);
+              ctx.lineTo(sx + 20, 0);
+              ctx.lineTo(sx + 10, 18);
+              ctx.lineTo(sx - 10, 18);
+              ctx.fill();
+
+              ctx.beginPath();
+              ctx.moveTo(sx, height - 18);
+              ctx.lineTo(sx + 20, height - 18);
+              ctx.lineTo(sx + 10, height);
+              ctx.lineTo(sx - 10, height);
+              ctx.fill();
+            }
+          } else if (bossType === 'finger_bearer') {
+            // 4 Glowing ominous red eyes in the dark
+            ctx.fillStyle = '#ff003c';
+            ctx.shadowColor = '#dc2626';
+            ctx.shadowBlur = 20;
+            const eyeOffsets = [[-36, -70], [-12, -82], [12, -82], [36, -70]];
+            for (const [ox, oy] of eyeOffsets) {
+              ctx.beginPath();
+              ctx.arc(cx + ox, cy + oy, 7, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+          }
+
+          // --- CENTRAL HIGH-CONTRAST MANGA RIBBON BANNER ---
+          const ribbonH = 155;
+          const ribbonY = cy - ribbonH / 2;
+
+          // Black letterbox bar
+          ctx.fillStyle = 'rgba(8, 8, 12, 0.94)';
+          ctx.fillRect(0, ribbonY, width, ribbonH);
+
+          // Double glowing border rails
+          ctx.strokeStyle = accentColor;
+          ctx.shadowColor = accentColor;
+          ctx.shadowBlur = 14;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(0, ribbonY);
+          ctx.lineTo(width, ribbonY);
+          ctx.moveTo(0, ribbonY + ribbonH);
+          ctx.lineTo(width, ribbonY + ribbonH);
+          ctx.stroke();
+
+          ctx.strokeStyle = secondaryColor;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(0, ribbonY + 6);
+          ctx.lineTo(width, ribbonY + 6);
+          ctx.moveTo(0, ribbonY + ribbonH - 6);
+          ctx.lineTo(width, ribbonY + ribbonH - 6);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          ctx.textAlign = 'center';
+
+          // 1. Warning Badge Pill (Top)
+          ctx.font = '900 13px "Courier New", monospace';
+          ctx.fillStyle = accentColor;
+          ctx.shadowColor = accentColor;
+          ctx.shadowBlur = 8;
+          ctx.fillText(`⚡ ${badgeText} ⚡`, cx, ribbonY + 26);
+          ctx.shadowBlur = 0;
+
+          // 2. Japanese Super-Header (Kanji)
+          ctx.font = '900 36px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeText(kanji, cx, ribbonY + 66);
+          ctx.fillText(kanji, cx, ribbonY + 66);
+
+          // 3. Main Boss Title (English)
+          ctx.font = '900 30px "Impact", "Arial Black", sans-serif';
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = secondaryColor;
+          ctx.shadowColor = accentColor;
+          ctx.shadowBlur = 18;
+          ctx.strokeText(bossTitle, cx, ribbonY + 106);
+          ctx.fillText(bossTitle, cx, ribbonY + 106);
+          ctx.shadowBlur = 0;
+
+          // 4. Iconic Quote (Bottom)
+          ctx.font = 'italic 700 16px "Georgia", serif';
+          ctx.fillStyle = '#e2e8f0';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 10;
+          ctx.fillText(quote, cx, ribbonY + 138);
+          ctx.shadowBlur = 0;
+        } else {
+          // --- 2. POST-FREEZE UNFREEZE SHOCKWAVE (0.51s - 1.35s) ---
+          const unfreezeProg = (progress - 0.38) / 0.62; // 0 to 1
+          const fadeAlpha = Math.max(0, 1 - unfreezeProg);
+
+          // Initial blinding blast flash (first 120ms of unfreeze)
+          if (unfreezeProg < 0.22) {
+            const flashAlpha = ((0.22 - unfreezeProg) / 0.22) * 0.85;
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          // Expanding Colossal Radial Shockwave Ring
+          const maxShockwaveR = Math.max(width, height) * 0.9;
+          const currentR = unfreezeProg * maxShockwaveR;
+          ctx.strokeStyle = accentColor;
+          ctx.lineWidth = 8 * fadeAlpha;
+          ctx.shadowColor = accentColor;
+          ctx.shadowBlur = 24 * fadeAlpha;
+          ctx.beginPath();
+          ctx.arc(cx, cy, currentR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Screen perimeter danger vignette fading out
+          const edgeVig = ctx.createRadialGradient(cx, cy, width * 0.3, cx, cy, Math.max(width, height) * 0.75);
+          edgeVig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          edgeVig.addColorStop(0.7, `${accentColor}${Math.floor(fadeAlpha * 60).toString(16).padStart(2, '0')}`);
+          edgeVig.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = edgeVig;
+          ctx.fillRect(0, 0, width, height);
+
+          // Fading "ENRAGED!!" overhead banner
+          if (unfreezeProg < 0.6) {
+            const textFade = Math.max(0, 1 - unfreezeProg / 0.6);
+            ctx.textAlign = 'center';
+            ctx.font = '900 52px "Impact", "Arial Black", sans-serif';
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${textFade})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${textFade})`;
+            ctx.shadowColor = accentColor;
+            ctx.shadowBlur = 22 * textFade;
+            ctx.strokeText('⚡ PHASE 2: AWAKENED! ⚡', cx, cy - 80);
+            ctx.fillText('⚡ PHASE 2: AWAKENED! ⚡', cx, cy - 80);
+            ctx.shadowBlur = 0;
           }
         }
         ctx.restore();

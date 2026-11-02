@@ -642,6 +642,20 @@ export class Monster {
       this.isBuffing = specialState === 2;
     }
     if (fuseTimer !== undefined) this.fuseTimer = fuseTimer;
+
+    // Remote peer boss phase 2 trigger check
+    if (this.archetype === 'boss' && this.hp <= this.maxHp * 0.5 && !this.phaseTransitionTriggered && this.hp > 0) {
+      this.phase = 2;
+      this.phaseTransitionTriggered = true;
+      const speedMult = (this.type === 'adam_smasher_prototype' || this.type === 'armored_titan' || this.type === 'carnage_kabuto') ? 1.45 : 1.25;
+      this.baseSpeed *= speedMult;
+      if (this.onPhase2Trigger) {
+        this.onPhase2Trigger(this);
+      }
+      if (this.eventBus) {
+        this.eventBus.emit('monster:phase2', { monster: this });
+      }
+    }
   }
 }
 
