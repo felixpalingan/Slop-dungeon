@@ -2261,15 +2261,15 @@ function dropAllPlayerItemsOnDeath(deadPlayer) {
   broadcastMyState();
 }
 
-function startFloorDescent(floorNumber, broadcast = true) {
+function startFloorDescent(floorNumber, broadcast = true, resetGear = true) {
   readyCircle.reset();
   // Ensure any dev or floor menus are closed
   closeDevArmoryModal();
   closeFloorModal();
 
   const wasFromLobby = currentFloor === 0;
-  // If descending from lobby (currentFloor === 0), reset lobby armor to starter gear!
-  if (wasFromLobby) {
+  // If descending from lobby (currentFloor === 0), reset lobby armor to starter gear (unless in combat test mode)!
+  if (wasFromLobby && resetGear) {
     resetPlayerToStarterGear();
     particles.spawnComicText(player.x, player.y - 30, 'LOBBY GEAR RESET TO STARTER! 🛡️', '#38bdf8');
   }
@@ -2309,7 +2309,7 @@ function startFloorDescent(floorNumber, broadcast = true) {
   }
 
   // If player was dead on previous floor and dropped gear, re-equip starter gear so they can fight!
-  if (wasDead && !player.equipment?.weapon) {
+  if (wasDead && !player.equipment?.weapon && resetGear) {
     if (ITEM_CATALOG['rusty_sword']) player.equipItem(ITEM_CATALOG['rusty_sword']);
     if (ITEM_CATALOG['leather_tunic'] && !player.equipment?.chest) player.equipItem(ITEM_CATALOG['leather_tunic']);
     if (ITEM_CATALOG['cloth_pants'] && !player.equipment?.pants) player.equipItem(ITEM_CATALOG['cloth_pants']);
@@ -2374,10 +2374,15 @@ function startFloorDescent(floorNumber, broadcast = true) {
     });
   }
 
-  // Hide LOBBY button and dev hints inside the dungeon (keep settings button & FPS counter visible)
+  // Toggle LOBBY button and in-game RETURN TO LOBBY button inside the dungeon (keep settings button & FPS counter visible)
   const btnOpenLobby = document.getElementById('btn-open-lobby');
   if (btnOpenLobby) {
     btnOpenLobby.style.display = 'none';
+  }
+  const btnHudReturnLobby = document.getElementById('btn-hud-return-lobby');
+  if (btnHudReturnLobby) {
+    btnHudReturnLobby.classList.remove('hidden');
+    btnHudReturnLobby.style.display = 'inline-flex';
   }
   const hudDevHint = document.getElementById('hud-dev-hint');
   if (hudDevHint) {
@@ -2470,6 +2475,11 @@ function returnToLobby(broadcast = true) {
   if (btnOpenLobby) {
     btnOpenLobby.style.display = '';
   }
+  const btnHudReturnLobby = document.getElementById('btn-hud-return-lobby');
+  if (btnHudReturnLobby) {
+    btnHudReturnLobby.classList.add('hidden');
+    btnHudReturnLobby.style.display = 'none';
+  }
   const hudDevHint = document.getElementById('hud-dev-hint');
   if (hudDevHint) {
     hudDevHint.classList.remove('hidden');
@@ -2493,10 +2503,33 @@ function returnToLobby(broadcast = true) {
 
 window.returnToLobby = returnToLobby;
 
-// --- FLOOR SELECTOR MODAL LOGIC ---
+/**
+ * Universal return-to-lobby handler for in-game HUD button, settings modal, and floor testing modal.
+ * Syncs seamlessly across solo and multiplayer co-op sessions.
+ */
+function handleReturnToLobbyRequest() {
+  modalManager.close('settings-modal');
+  modalManager.close('floor-modal');
+  modalManager.close('game-over-modal');
+
+  if (network.isHost || !network.peer || !network.isConnected) {
+    returnToLobby(true);
+  } else {
+    network.sendToHost({ type: 'REQUEST_RETURN_TO_LOBBY' });
+    returnToLobby(false);
+  }
+}
+
+window.handleReturnToLobbyRequest = handleReturnToLobbyRequest;
+
+// --- FLOOR SELECTOR & COMBAT TESTING LAB LOGIC ---
+let selectedTestLoadout = 'auto';
+
 const floorModal = document.getElementById('floor-modal');
 const btnFloorBadge = document.getElementById('btn-floor-badge');
 const btnCloseFloorModal = document.getElementById('btn-close-floor-modal');
+const btnHudReturnLobby = document.getElementById('btn-hud-return-lobby');
+const btnSettingsReturnLobby = document.getElementById('btn-settings-return-lobby');
 
 function openFloorModal() {
   modalManager.open('floor-modal');
@@ -2525,14 +2558,62 @@ if (btnCloseFloorModal) {
   btnCloseFloorModal.addEventListener('click', closeFloorModal);
 }
 
+// In-Game Return to Lobby buttons (HUD Top-Right & Settings Modal)
+if (btnHudReturnLobby) {
+  btnHudReturnLobby.addEventListener('click', () => {
+    handleReturnToLobbyRequest();
+  });
+}
+
+if (btnSettingsReturnLobby) {
+  btnSettingsReturnLobby.addEventListener('click', () => {
+    handleReturnToLobbyRequest();
+  });
+}
+
+// Test Loadout Pills Selection
+document.querySelectorAll('.loadout-pill').forEach((pill) => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.loadout-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    selectedTestLoadout = pill.getAttribute('data-set') || 'auto';
+    audio.playSwing();
+  });
+});
+
 document.querySelectorAll('.floor-warp-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const targetFloor = parseInt(btn.getAttribute('data-floor'), 10);
     closeFloorModal();
     if (targetFloor === 0) {
-      returnToLobby(true);
+      handleReturnToLobbyRequest();
     } else {
-      startFloorDescent(targetFloor, true);
+      // 1. Determine loadout set
+      let chosenSet = selectedTestLoadout;
+      if (chosenSet === 'auto') {
+        const autoThematicSets = {
+          1: 'sukuna',
+          2: 'david',
+          3: 'levi',
+          4: 'guts',
+          5: 'saitama'
+        };
+        chosenSet = autoThematicSets[targetFloor] || 'saitama';
+      }
+
+      // 2. Equip full endgame anime loadout immediately for testing
+      equipFullSet(chosenSet);
+
+      // 3. Reset ability cooldown and refill player HP to 100%
+      player.lastAbilityTime = 0;
+      player.hp = player.maxHp;
+      player.isDowned = false;
+      player.isDead = false;
+      player.syncHUD();
+
+      // 4. Warp into testing floor directly WITHOUT resetting to starter gear
+      startFloorDescent(targetFloor, true, false);
+      particles.spawnComicText(player.x, player.y - 50, `🧪 TESTING FLOOR ${targetFloor} WITH ${chosenSet.toUpperCase()}! ⚔️`, '#38bdf8');
     }
   });
 });
@@ -5010,10 +5091,15 @@ network.onMessageReceived = (fromPeerId, msg) => {
       hudFloor.style.textShadow = `0 0 15px ${currentDungeon.theme.torchColor}`;
     }
 
-    // Hide LOBBY button and dev hints inside the dungeon
+    // Toggle LOBBY button and in-game RETURN TO LOBBY button inside the dungeon
     const btnOpenLobby = document.getElementById('btn-open-lobby');
     if (btnOpenLobby) {
       btnOpenLobby.style.display = 'none';
+    }
+    const btnHudReturnLobby = document.getElementById('btn-hud-return-lobby');
+    if (btnHudReturnLobby) {
+      btnHudReturnLobby.classList.remove('hidden');
+      btnHudReturnLobby.style.display = 'inline-flex';
     }
     const hudDevHint = document.getElementById('hud-dev-hint');
     if (hudDevHint) {

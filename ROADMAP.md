@@ -297,3 +297,32 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 - **Step 9.4: Unit Tests & WebRTC State Sync** `[COMPLETED ✅]`:
   - Full Vitest suite for boss phase triggers, telegraph data structures, network batch synchronization, and cinematic overlays (17 tests in `tests/unit/boss-cinematics.test.js`, 220 tests total).
   - Double redundancy WebRTC synchronization (`BOSS_PHASE2_TRIGGER` packet broadcast & `applyNetworkState` snapshot restoration).
+
+---
+
+### Phase 10: Combat Testing Lab & Instant Fullset Loadouts `[COMPLETED ✅]`
+
+> Core Goal: Transform the lobby Floor Gateway into an instant Combat Testing Lab, equipping players with full endgame anime loadouts (Saitama, Sukuna, Gojo, Guts, Levi, David) for direct boss encounters, along with instant in-game escape routes to return to base camp.
+
+- **Step 10.1: Interactive Combat Testing Lab Altar** `[COMPLETED ✅]`:
+  - Overhauled in-world `FloorSelectStation` at `(240, -120)` with tech-laboratory rune aesthetics, pulsing cyan-emerald crystal shard, and prompt: `[E] / [F] COMBAT TEST LAB (Instant Endgame Fullset & Floor Testing)`.
+- **Step 10.2: Anime Fullset Loadout Selector** `[COMPLETED ✅]`:
+  - Added test loadout selection bar inside `#floor-modal` with pill buttons:
+    - *⚡ THEMATIC AUTO*: Dynamically maps Floor 1 $\rightarrow$ Sukuna (JJK), Floor 2 $\rightarrow$ David (Cyberpunk), Floor 3 $\rightarrow$ Levi (AoT), Floor 4 $\rightarrow$ Guts (Berserk), Floor 5 $\rightarrow$ Saitama (OPM).
+    - *🥊 SAITAMA*: Caped Baldy full set with Serious Punch ultimate & groceries.
+    - *🗡️ SUKUNA*: King of Curses full set with World Cutting Slash & Kamutoke.
+    - *♾️ GOJO*: The Honored One full set with Hollow Purple & Infinity barrier.
+    - *⚔️ GUTS*: The Black Swordsman full set with Berserker Armor & Dragon Slayer.
+    - *🌪️ LEVI*: Survey Corps Strongest full set with Dual Snap Blades & ODM Overdrive.
+    - *⚡ DAVID*: Night City Legend full set with Sandevistan Overclock & Gorilla Arms.
+- **Step 10.3: Zero-Penalty Floor Warping & Combat Initialization** `[COMPLETED ✅]`:
+  - Updated `startFloorDescent(floorNumber, broadcast, resetGear = true)`: when testing (`resetGear = false`), bypasses starter gear stripping, keeping all equipped endgame gear intact.
+  - Automatically refills player HP to 100% (`player.hp = player.maxHp`) and resets ultimate cooldown timer (`player.lastAbilityTime = 0`).
+  - Spawns comic text banner announcing test level & active anime set.
+- **Step 10.4: Instant In-Game Lobby Escape Routes** `[COMPLETED ✅]`:
+  - Added `#btn-hud-return-lobby` (`🏕️ LOBBY`) in HUD top-right, visible automatically whenever inside any dungeon floor (`currentFloor >= 1`), hidden at Base Camp (`currentFloor === 0`).
+  - Added `#btn-settings-return-lobby` (`🏕️ RETURN TO LOBBY`) inside the Settings modal (`#settings-modal`).
+  - Created universal `handleReturnToLobbyRequest()` syncing cleanly across solo runs, host lobbies, and multiplayer co-op peers.
+- **Step 10.5: Automated Verification & Unit Tests** `[COMPLETED ✅]`:
+  - Added `tests/unit/floor-testing-lab.test.js` validating fullset gear retention, thematic auto mapping, set bonus triggers, and FloorSelectStation proximity.
+  - Total test suite expanded to **234 passing tests across 28 test files** with 0 failures; Vite production build compiles in ~1.2s.

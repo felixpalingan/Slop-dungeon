@@ -141,7 +141,7 @@ export function getNearbyInteractable({
       return { type: 'armory', icon: '⚔️', label: 'ARMORY', active: true };
     }
     if (floorStation && typeof floorStation.isPlayerNearby === 'function' && floorStation.isPlayerNearby(player)) {
-      return { type: 'floor', icon: '🪜', label: 'FLOORS', active: true };
+      return { type: 'floor', icon: '🧪', label: 'TEST LAB', active: true };
     }
     if (wardrobeStation && typeof wardrobeStation.isPlayerNearby === 'function' && wardrobeStation.isPlayerNearby(player)) {
       return { type: 'wardrobe', icon: '👔', label: 'WARDROBE', active: true };

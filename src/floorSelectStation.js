@@ -1,7 +1,8 @@
 /**
- * In-World Floor Selection Gateway Entity for Dungeon Slop
- * An interactive dimensional rune obelisk / teleporter pedestal in the lobby (240, -120)
- * where players can walk up, press [E] or [F], and instantly select any dungeon floor or test level.
+ * In-World Combat Testing Lab Gateway Entity for Dungeon Slop
+ * An interactive dimensional testing rune / teleporter pedestal in the lobby (240, -120)
+ * where players can walk up, press [E] or [F], select any dungeon floor, receive an instant
+ * endgame anime fullset loadout, and immediately test combat & boss mechanics.
  */
 
 export class FloorSelectStation {
@@ -90,7 +91,7 @@ export class FloorSelectStation {
     const shardGrad = ctx.createLinearGradient(0, -20, 0, 20);
     shardGrad.addColorStop(0, '#38bdf8');
     shardGrad.addColorStop(0.5, '#818cf8');
-    shardGrad.addColorStop(1, '#c084fc');
+    shardGrad.addColorStop(1, '#00ff88');
     ctx.fillStyle = shardGrad;
     ctx.fill();
 
@@ -126,18 +127,18 @@ export class FloorSelectStation {
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
       ctx.shadowBlur = 6;
-      ctx.fillText('[E] / [F] SELECT FLOOR', 0, 0);
+      ctx.fillText('[E] / [F] COMBAT TEST LAB', 0, 0);
 
       ctx.font = '600 10px "Outfit", sans-serif';
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillText('Choose Dungeon Floor / Level', 0, 14);
+      ctx.fillText('Instant Endgame Fullset & Floor Testing', 0, 14);
     } else {
       ctx.font = '700 11px "Outfit", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#a5b4fc';
+      ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
       ctx.shadowBlur = 4;
-      ctx.fillText('FLOOR GATEWAY', 0, 0);
+      ctx.fillText('🧪 COMBAT TEST LAB', 0, 0);
     }
 
     ctx.restore();

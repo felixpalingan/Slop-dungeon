@@ -66,6 +66,7 @@
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
+        <button id="btn-hud-return-lobby" class="lobby-btn return-lobby-hud-btn hidden" title="Langsung Balik ke Base Camp / Lobby" data-testid="hud-return-lobby-btn">🏕️ LOBBY</button>
         <button id="btn-hud-fullscreen" class="lobby-btn hud-fullscreen-btn" title="Mode Layar Penuh / Toggle Fullscreen" data-testid="hud-fullscreen-btn">⛶ FULLSCREEN</button>
         <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Create Lobby / Multiplayer Co-op" data-testid="btn-open-lobby">🎮 CREATE LOBBY</button>
         <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]" data-testid="hud-settings-btn">⚙️ SETTINGS</button>
@@ -75,62 +76,76 @@
       <div id="floor-modal" class="modal-backdrop interactive hidden">
         <div class="modal-card floor-card-container">
           <div class="floor-modal-header">
-            <span class="floor-modal-icon">🌀</span>
+            <span class="floor-modal-icon">🧪</span>
             <div>
-              <h2 class="modal-title">DIMENSIONAL GATEWAY</h2>
-              <p class="modal-subtitle">Select dungeon floor level to test or return to base camp</p>
+              <h2 class="modal-title">COMBAT TESTING LAB</h2>
+              <p class="modal-subtitle">Pilih lantai dungeon & set anime fullset untuk uji coba boss encounter langsung!</p>
+            </div>
+          </div>
+
+          <!-- Anime Fullset Selector for Combat Testing -->
+          <div class="lab-loadout-panel">
+            <div class="lab-loadout-title">⚡ PILIH FULLSET ANIME (TEST LOADOUT):</div>
+            <div class="lab-loadout-pills" id="lab-loadout-pills">
+              <button type="button" class="loadout-pill active" data-set="auto" title="Otomatis cocokin anime set dengan tema lantai">⚡ THEMATIC AUTO</button>
+              <button type="button" class="loadout-pill" data-set="saitama" title="Caped Baldy Full Set (Serious Punch)">🥊 SAITAMA</button>
+              <button type="button" class="loadout-pill" data-set="sukuna" title="King of Curses Full Set (Cleave/Dismantle)">🗡️ SUKUNA</button>
+              <button type="button" class="loadout-pill" data-set="gojo" title="The Honored One Full Set (Infinity)">♾️ GOJO</button>
+              <button type="button" class="loadout-pill" data-set="guts" title="The Black Swordsman Full Set (Berserker)">⚔️ GUTS</button>
+              <button type="button" class="loadout-pill" data-set="levi" title="Survey Corps Strongest Full Set (ODM/Blades)">🌪️ LEVI</button>
+              <button type="button" class="loadout-pill" data-set="david" title="Night City Legend Full Set (Sandevistan)">⚡ DAVID</button>
             </div>
           </div>
 
           <div class="floor-grid">
             <!-- Floor 1 Card -->
             <div class="floor-select-card" data-floor="1">
-              <div class="floor-badge-tag jjk-tag">FLOOR 1</div>
+              <div class="floor-badge-tag jjk-tag">FLOOR 1 (TEST)</div>
               <div class="floor-card-title">Cursed Detention Center</div>
-              <div class="floor-card-theme">Theme: Jujutsu Kaisen</div>
+              <div class="floor-card-theme">Theme: Jujutsu Kaisen | Auto: Sukuna</div>
               <div class="floor-card-boss">💀 Boss: Finger Bearer (Special Grade)</div>
               <div class="floor-card-desc">Dark stone crypts, cursed energy, swarmers, and blood sorcery.</div>
-              <button class="floor-warp-btn jjk-btn" data-floor="1" data-testid="btn-floor-warp-1">WARP TO FLOOR 1</button>
+              <button class="floor-warp-btn jjk-btn" data-floor="1" data-testid="btn-floor-warp-1">WARP & TEST (FULLSET)</button>
             </div>
 
             <!-- Floor 2 Card -->
             <div class="floor-select-card" data-floor="2">
-              <div class="floor-badge-tag cyber-tag">FLOOR 2</div>
+              <div class="floor-badge-tag cyber-tag">FLOOR 2 (TEST)</div>
               <div class="floor-card-title">Arasaka R&D Sublevel</div>
-              <div class="floor-card-theme">Theme: Cyberpunk: Edgerunners</div>
+              <div class="floor-card-theme">Theme: Cyberpunk: Edgerunners | Auto: David</div>
               <div class="floor-card-boss">💀 Boss: Adam Smasher Prototype</div>
               <div class="floor-card-desc">Cybernetic neon corridors, missile artillery, laser sweep, and Sandevistan overclock.</div>
-              <button class="floor-warp-btn cyber-btn" data-floor="2">WARP TO FLOOR 2</button>
+              <button class="floor-warp-btn cyber-btn" data-floor="2">WARP & TEST (FULLSET)</button>
             </div>
 
             <!-- Floor 3 Card -->
             <div class="floor-select-card" data-floor="3">
-              <div class="floor-badge-tag aot-tag">FLOOR 3</div>
+              <div class="floor-badge-tag aot-tag">FLOOR 3 (TEST)</div>
               <div class="floor-card-title">Wall Maria Crypts</div>
-              <div class="floor-card-theme">Theme: Attack on Titan</div>
+              <div class="floor-card-theme">Theme: Attack on Titan | Auto: Levi</div>
               <div class="floor-card-boss">💀 Boss: Armored Titan (Reiner)</div>
               <div class="floor-card-desc">Ancient moss cobblestone, pure titan crawlers, riflemen, crystal shatter & steam geysers.</div>
-              <button class="floor-warp-btn aot-btn" data-floor="3">WARP TO FLOOR 3</button>
+              <button class="floor-warp-btn aot-btn" data-floor="3">WARP & TEST (FULLSET)</button>
             </div>
 
             <!-- Floor 4 Card -->
             <div class="floor-select-card" data-floor="4">
-              <div class="floor-badge-tag berserk-tag">FLOOR 4</div>
+              <div class="floor-badge-tag berserk-tag">FLOOR 4 (TEST)</div>
               <div class="floor-card-title">The Eclipse Sanctum</div>
-              <div class="floor-card-theme">Theme: Berserk</div>
+              <div class="floor-card-theme">Theme: Berserk | Auto: Guts</div>
               <div class="floor-card-boss">💀 Boss: Nosferatu Zodd (The Immortal Apostle)</div>
               <div class="floor-card-desc">Obsidian blood soil, Brand of Sacrifice crypts, apostle fiends, and two-phase demon boss.</div>
-              <button class="floor-warp-btn berserk-btn" data-floor="4" data-testid="btn-floor-warp-4">WARP TO FLOOR 4</button>
+              <button class="floor-warp-btn berserk-btn" data-floor="4" data-testid="btn-floor-warp-4">WARP & TEST (FULLSET)</button>
             </div>
 
             <!-- Floor 5 Card -->
             <div class="floor-select-card" data-floor="5">
-              <div class="floor-badge-tag opm-tag">FLOOR 5</div>
+              <div class="floor-badge-tag opm-tag">FLOOR 5 (TEST)</div>
               <div class="floor-card-title">City Z Subterranean Ruins</div>
-              <div class="floor-card-theme">Theme: One Punch Man</div>
+              <div class="floor-card-theme">Theme: One Punch Man | Auto: Saitama</div>
               <div class="floor-card-boss">💀 Boss: Carnage Kabuto (Carnage Mode)</div>
               <div class="floor-card-desc">Cracked industrial asphalt, hazard caution girders, subterranean brutes, and seismic shockwaves.</div>
-              <button class="floor-warp-btn opm-btn" data-floor="5" data-testid="btn-floor-warp-5">WARP TO FLOOR 5</button>
+              <button class="floor-warp-btn opm-btn" data-floor="5" data-testid="btn-floor-warp-5">WARP & TEST (FULLSET)</button>
             </div>
 
             <!-- Base Camp Card -->
@@ -772,7 +787,8 @@
             </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px;">
+            <button id="btn-settings-return-lobby" class="action-btn outline-btn settings-return-lobby-btn" style="min-width: 160px; border-color: rgba(239, 68, 68, 0.6); color: #f87171;" data-testid="settings-return-lobby-btn">🏕️ RETURN TO LOBBY</button>
             <button id="btn-save-settings" class="action-btn primary-btn" style="min-width: 140px;">SIMPAN & TUTUP [ESC]</button>
           </div>
         </div>

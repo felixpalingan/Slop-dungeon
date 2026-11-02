@@ -135,8 +135,8 @@ describe('Phase 2: Mobile Action Cluster & Smart Interact [E]', () => {
       });
 
       expect(prompt.type).toBe('floor');
-      expect(prompt.icon).toBe('🪜');
-      expect(prompt.label).toBe('FLOORS');
+      expect(prompt.icon).toBe('🧪');
+      expect(prompt.label).toBe('TEST LAB');
       expect(prompt.active).toBe(true);
     });
 
