@@ -8,6 +8,8 @@
     <a href="https://slop-dungeon.vercel.app"><img src="https://img.shields.io/badge/Play_Live-slop--dungeon.vercel.app-00f0ff.svg?style=flat-square&logo=vercel" alt="Play Live" /></a>
     <a href="https://github.com/felixpalingan/Slop-dungeon/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/Multiplayer-WebRTC%20P2P-cyan.svg?style=flat-square" alt="WebRTC P2P" />
+    <img src="https://img.shields.io/badge/Mobile-Touch%20HUD%20Ready-38bdf8.svg?style=flat-square" alt="Mobile Touch HUD" />
+    <img src="https://img.shields.io/badge/Tests-203%20passed%20(Vitest)-emerald.svg?style=flat-square" alt="Vitest Tests Passing" />
     <img src="https://img.shields.io/badge/Graphics-HTML5%20Canvas%202D-violet.svg?style=flat-square" alt="HTML5 Canvas" />
     <img src="https://img.shields.io/badge/Audio-Web%20Audio%20API-emerald.svg?style=flat-square" alt="Web Audio API" />
     <img src="https://img.shields.io/badge/Bundler-Vite%205-purple.svg?style=flat-square" alt="Vite 5" />
@@ -19,11 +21,11 @@
 
 ## 📖 Overview
 
-**Slop Dungeon** is a lightweight, zero-install, serverless roguelike dungeon crawler engineered for high-energy friend-group sessions. Jump straight into procedural chamber floors directly in any modern desktop web browser. 
+**Slop Dungeon** is a lightweight, zero-install, serverless roguelike dungeon crawler engineered for high-energy friend-group sessions. Jump straight into procedural chamber floors directly in any modern desktop, tablet, or mobile web browser. 
 
 🎮 **Live Production Deployment**: [https://slop-dungeon.vercel.app](https://slop-dungeon.vercel.app)
 
-Players coordinate via ephemeral **6-character room codes** (`SLOP-XXXX`), equip over 54 distinct procedural items inspired by iconic anime archetypes, unleash screen-shattering cinematic ultimates, manage a shared party wallet of **Slops**, gamble items at the **Slop Merchant's Gacha Altar** (or Blackjack Table), and face multi-phase room-filling bosses.
+Players coordinate via ephemeral **6-character room codes** (`SLOP-XXXXXX`), equip over 60 distinct procedural items inspired by iconic anime archetypes, unleash screen-shattering cinematic ultimates, manage a shared party wallet of **Slops**, gamble items at the **Slop Merchant's Gacha Altar** (or Blackjack Table), explore 5 themed procedural floors with distinct mob rosters, and face multi-phase room-filling bosses with telegraphed attack phases. Complete with a responsive mobile touch HUD featuring dynamic analog joysticks, auto-aim assistance, and fullscreen landscape orientation lock.
 
 ---
 
@@ -92,20 +94,28 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
 | Archetype Set | Epithet / Title | Signature Ultimate Ability | Cinematic FX |
 | :--- | :--- | :--- | :--- |
 | **The Honored One** | Cursed Sorcerer | **Hollow Purple** | Screen collapses into a dark violet vortex, obliterating everything along its path with 320 True Damage. |
-| **King of Curses** | Cursed Sovereign | **World Cutting Slash** | Freezes global viewport in monochrome gray before bisecting the screen with 350 True Damage. |
+| **King of Curses** | Cursed Sovereign | **World Cutting Slash** | Colossal stationary anchored cone (1280px wide) with expanding multi-layer slash waves dealing 350 True Damage. |
 | **The Sorcerer Killer** | Heavenly Restriction | **Inverted Chain Rampage** | 360° rapid-spinning iron chain storm that shreds nearby foes and neutralizes enemy shields. |
-| **The Black Swordsman** | The Berserker | **Berserker Rage** | Total invulnerability for 6 seconds, +85% attack speed, 35% lifesteal, and screen-shaking `CLANG!` impacts. |
+| **The Black Swordsman** | The Berserker | **Berserker Rage** | Total invulnerability for 6 seconds, +85% attack speed, 35% lifesteal, ground-fracturing craters, and `CLANG!` impacts. |
 | **Humanity's Strongest** | Titan Hunter | **ODM Grapple Whirlwind** | Dual wire grapple flight with collision-free pass-through, spinning 360° for 80 damage per slice. |
 | **Night City Legend** | Cyber Sandevistan | **Sandevistan Time Dilation** | Global time dilation slows the entire world and all enemies to 10% speed for 4 seconds. |
+| **The Caped Baldy** | One-Punch Hero | **Serious Punch** | Monochrome ink manga freeze before discharging an apocalyptic 400 True Damage atmospheric pressure beam. |
 
 *Full equipment details are available in the [Item Encyclopedia](ANIME_EQUIPMENT.md).*
 
-### 3. 🩸 Downed State, Co-op Revive & Party Wipe
+### 3. 📱 Mobile & Tablet Touch HUD
+- **Virtual Dual-Ring Movement Joystick**: Floating or fixed virtual joystick with deadzone filtering, smooth 360° analog clamping, and zero-latency movement vectors.
+- **Ergonomic Action Cluster**: Dedicated touch buttons for Primary Attack, Comic Slap, Shield Block, Dodge Roll, Proximity Interact (`[E]`), Ultimate (`[Q]`), Dev Armory (`[G]`), and Inventory Bag.
+- **Auto-Aim & Drag Aiming**: Proximity target-assist lock for mobile players alongside directional touch drag aiming.
+- **Dedicated Fullscreen Controller**: One-tap fullscreen toggle (`#btn-hud-fullscreen` & Settings modal) supporting standard, webkit, and moz APIs, integrated with `screen.orientation.lock('landscape')`.
+- **Intelligent Controls Guide**: Help banner only renders on desktop/laptop in the Base Camp lobby, automatically hiding during dungeon runs and on all touch devices.
+
+### 4. 🩸 Downed State, Co-op Revive & Party Wipe
 - **Dynamic Lethal Damage Routing**: In solo play, reaching 0 HP causes instant death and triggers the Party Wipe modal immediately without bleedout delay.
 - **Co-op Crawl State**: In multiplayer, if at least one teammate remains standing, taking fatal damage puts the player into a 30-second Downed crawl state. Teammates can stand near and hold `[E]` for 2.5s to revive with 40% HP.
 - **Run Summary Screen**: Detailed game over statistics tracking floors cleared, dungeon elapsed time, total kills, and Run MVP awards.
 
-### 4. 🪙 Slop Economy, Merchant & Gambling Altars
+### 5. 🪙 Slop Economy, Merchant & Gambling Altars
 - **Shared Party Slops**: Defeated enemies and bosses drop physical slop coins that magnetize toward players.
 - **The Slop Merchant**: Sells health flasks and stamina tonics, and buys unwanted equipment.
 - **Spelunky RPG Retaliation**: Attacking or slapping the merchant causes him to draw a military RPG and fire explosive rockets at the instigator!
@@ -113,10 +123,15 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
 - **Spin-a-Wheel Gacha Altar**: Wager any equipment piece (50% Shatter into ash, 45% Upgrade rarity tier, 5% Jackpot Secret Mythic).
 - **In-Lobby Blackjack Table**: Sit at the green felt table in Base Camp to wager Slops in a complete dealer blackjack game.
 
-### 5. 🏕️ Base Camp Lobby & Dev Tools
+### 6. 🏕️ Base Camp Lobby & Dev Tools
 - **Interactive Wardrobe Mirror**: Customize player avatar color hex code and multiplayer display name.
 - **Dev Armory Chest (`[G]`)**: Interactive sandbox chest allowing instant one-click equipping of any anime set or item.
-- **Floor Selector Terminal (`[F]`)**: Teleport straight to any themed floor (JJK Detention Center, Cyberpunk Arasaka Sublevel, AoT Wall Maria Crypts).
+- **Floor Selector Terminal (`[F]`)**: Teleport straight to any themed floor:
+  - Floor 1: JJK Detention Center (*Finger Bearer Boss*)
+  - Floor 2: Cyberpunk Arasaka Sublevel (*Adam Smasher Prototype*)
+  - Floor 3: AoT Wall Maria Crypts (*Armored Titan*)
+  - Floor 4: Berserk Eclipse Ruins (*Nosferatu Zodd Apostle*)
+  - Floor 5: OPM House of Evolution (*Carnage Kabuto Artificial God*)
 
 ---
 
@@ -150,6 +165,12 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
    npm run build
    ```
    The compiled static assets will be output to the `dist/` directory, ready to deploy to Vercel, Netlify, or GitHub Pages.
+
+5. **Run automated test suites**:
+   ```bash
+   npm test
+   ```
+   Executes the full Vitest suite covering 203 unit and integration tests across 25 test files (network protocols, domain combat math, mobile responsiveness, and anime cinematics).
 
 ---
 

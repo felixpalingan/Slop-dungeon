@@ -16,6 +16,7 @@ Every item features unique procedural statistics, customized 2D Canvas rendering
    - [The Black Swordsman (The Berserker)](#4-the-black-swordsman-the-berserker)
    - [Humanity's Strongest Soldier (Titan Hunter)](#5-humanitys-strongest-soldier-titan-hunter)
    - [Night City Legend (Cyber Sandevistan)](#6-night-city-legend-cyber-sandevistan)
+   - [The Caped Baldy (One-Punch Hero)](#7-the-caped-baldy-one-punch-hero)
 4. [Baseline Dungeon Fantasy Gear](#-baseline-dungeon-fantasy-gear)
    - [Weapons](#weapons)
    - [Off-Hand & Shields](#off-hand--shields)
@@ -45,7 +46,7 @@ Every equipment piece belongs to one of five distinct rarity tiers. Scrap sell p
 
 ## 📊 Master Item Catalog Table
 
-Summary table of all 54 active items registered in `ITEM_CATALOG`:
+Summary table of all 60 active items registered in `ITEM_CATALOG`:
 
 | No | Item ID | Item Name | Slot | Hands | Rarity | Set Archetype | Key Stats & Special Abilities | Scrap Value |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: |
@@ -103,6 +104,12 @@ Summary table of all 54 active items registered in `ITEM_CATALOG`:
 | 52 | `wind_striders` | Wind Striders | Boots | 1H | RARE | — | Move Speed +35, Dash Stamina -10% | 15 🪙 |
 | 53 | `health_flask` | Health Flask | Consumable| — | COMMON | — | Instantly restores +50 HP | 25 Slops (Buy) |
 | 54 | `stamina_tonic` | Stamina Tonic | Consumable| — | RARE | — | Full stamina + 8s Unlimited Stamina | 20 Slops (Buy) |
+| 55 | `saitama_bald` | Hero's Polished Scalp | Helmet | 1H | MYTHIC | The Caped Baldy | HP +45, Knockback Immunity, Sparkle Glint | 150 🪙 |
+| 56 | `saitama_suit` | Yellow Hero Suit & Cape | Chest | 1H | MYTHIC | The Caped Baldy | HP +70, Armor +22, Base Q: Consecutive Punches | 150 🪙 |
+| 57 | `saitama_tights` | Yellow Hero Tights | Pants | 1H | LEGENDARY | The Caped Baldy | HP +30, Move Speed +30, Dash Stamina -15% | 75 🪙 |
+| 58 | `saitama_boots` | Red Rubber Hero Boots | Boots | 1H | LEGENDARY | The Caped Baldy | Move Speed +35, Ground Hazard/Trap Immunity | 75 🪙 |
+| 59 | `saitama_glove` | Red Serious Fist | Weapon | 1H | MYTHIC | The Caped Baldy | Dmg 68, Spd 1.45, Shockwave Cleaves | 150 🪙 |
+| 60 | `saitama_groceries` | Supermarket Bargain Bag | Off-Hand | 1H | MYTHIC | The Caped Baldy | Armor +16, Slop Coin Drop +50%, +30 Slops/floor | 150 🪙 |
 
 ---
 
@@ -220,6 +227,24 @@ Summary table of all 54 active items registered in `ITEM_CATALOG`:
 
 ---
 
+### 7. The Caped Baldy (One-Punch Hero)
+> *"I'm just a guy who's a hero for fun."*
+
+* **Visual Theme**: Brilliant gleaming bald scalp with sparkle glints, canary yellow superhero suit with billowing white cape, cherry red rubber boots and gloves, and supermarket grocery haul.
+* **Set Components (6 Pieces)**:
+  1. **Helmet**: `Hero's Polished Scalp` (`saitama_bald`, Mythic) — HP +45, complete Knockback Immunity, and periodic sunlight glints.
+  2. **Chest**: `Yellow Hero Suit & Cape` (`saitama_suit`, Mythic) — HP +70, Armor +22, billowing cape physics.
+     - *Base Q*: **Consecutive Normal Punches** — Unleashes a blistering 10-punch flurry in 0.5s dealing heavy cone damage with red impact shockwaves.
+  3. **Pants**: `Yellow Hero Tights` (`saitama_tights`, Legendary) — HP +30, Move Speed +30, Dash Roll Stamina Cost -15%.
+  4. **Boots**: `Red Rubber Hero Boots` (`saitama_boots`, Legendary) — Move Speed +35, complete immunity to spikes and ground hazard traps.
+  5. **Weapon (1H)**: `Red Serious Fist` (`saitama_glove`, Mythic) — Dmg 68, Spd 1.45. Swift punch strikes that unleash explosive shockwave cleaves.
+  6. **Off-Hand**: `Supermarket Bargain Bag` (`saitama_groceries`, Mythic) — Armor +16, Slop Coin Drop Rate +50%, grants +30 Slops automatically when entering each new floor.
+* 👊 **FULL SET BONUS — Serious Punch**:
+  - Replaces `[Q]` with the world-shattering **Serious Punch**!
+  - **Cinematic FX**: Reality collapses into pure black-and-white manga ink with dynamic speed lines and a high-contrast eye flare freeze (0.45s). Fires an apocalyptic 400 True Damage atmospheric pressure beam that obliterates everything in its path with maximum screen shake and thunderous concussive boom!
+
+---
+
 ## 🛡️ Baseline Dungeon Fantasy Gear
 
 ### Weapons
@@ -301,20 +326,17 @@ Purchasable from **The Slop Merchant** or discovered inside dungeon treasure cha
 
 Planned sets currently scheduled for upcoming content expansions:
 
-1. **The Caped Baldy (One-Punch Hero)**
-   - Components: *Hero's Polished Scalp*, *Yellow Hero Suit & Cape*, *Hero Tights*, *Red Rubber Boots*, *Red Hero Glove*, *Grocery Bag*.
-   - **Ultimate Q**: **Serious Punch** — High-contrast monochrome manga panel blast dealing **350 True Damage**.
-2. **Devil's Footprints (Flame Ignition Soldier)**
+1. **Devil's Footprints (Flame Ignition Soldier)**
    - Components: *Fire Brigade Visor*, *Bunker Coat*, *Turnout Pants*, *Devil's Ignition Boots*, *Flame Claws*.
    - **Ultimate Q**: **Adolla Flight & Light-Speed Kick** — Supersonic flame streak explosion.
-3. **The Knight King (Plasma Paladin)**
+2. **The Knight King (Plasma Paladin)**
    - Components: *Knight's Circlet*, *White Surcoat*, *Paladin Breeches*, *Excalibur (Plasma Blade)*.
    - **Ultimate Q**: **Violet Flash: Earth Divider** — Massive horizontal plasma blade sweep.
-4. **True Demon Lord (Slime Sovereign)**
+3. **True Demon Lord (Slime Sovereign)**
    - Components: *Anti-Magic Mask*, *Demon Lord Coat*, *Demon Katana*, *Water Orb*.
    - **Ultimate Q**: **Beelzebuth** — Black hole gravity vortex that swallows all projectiles and heals the caster.
-5. **The God of Judgment (Kira)**
+4. **The God of Judgment (Kira)**
    - Components: *Judgment Spectacles*, *School Uniform Blazer*, *Dress Shoes*, *The Death Note*.
    - **Ultimate Q**: **Heart Attack Judgment (40s)** — Timed instant-death judgment against room bosses.
-6. **The Death Returner & The Oni Maid**
+5. **The Death Returner & The Oni Maid**
    - Components: *Legendary Tracksuit*, *Return by Death* (Passive rewind on death) & *Spiked Morningstar Flail*.

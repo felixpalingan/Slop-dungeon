@@ -23,20 +23,22 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 3.2: Real-Time Combat & Shield Blocking [DONE ✅]              │
 │    ├── Step 3.3: Ground Loot Entities & Inventory UI [DONE ✅]             │
 │    ├── Step 3.4: Anime Batch 1 (Jujutsu Kaisen & Berserk) [DONE ✅]        │
-│    ├── Step 3.5: Anime Batch 2 (AoT, Cyberpunk) [DONE ✅]                  │
+│    ├── Step 3.5: Anime Batch 2 (AoT, Cyberpunk, OPM) [DONE ✅]             │
 │    │     • Levi Ackerman — ODM Gear & Dual Snap Blades [DONE ✅]           │
 │    │     • David Martinez — Sandevistan & Carnage Shotgun [DONE ✅]        │
-│    │     • Saitama (One Punch Man) [UPCOMING]                              │
+│    │     • Saitama — Bald Hero Suit & Serious Punch [DONE ✅]              │
 │    └── Step 3.6: Anime Batch 3 (Fire Force, Tensura, Death Note, Re:Zero) [UPCOMING]
 │      ▼                                                                     │
-│  Phase 4: Procedural Dungeon, Monster AI, Themed Floors & Boss Fights      │
+│  Phase 4: Procedural Dungeon, Monster AI, 5 Themed Floors & Bosses [DONE ✅]│
 │    ├── Step 4.1: Procedural Room Generation & Cardinal Doors [DONE ✅]     │
-│    ├── Step 4.2: 3 Monster Archetypes (Swarmer/Ranged/Brute) [DONE ✅]     │
-│    ├── Step 4.3: Floor 1 — JJK Detention Center (Finger Bearer Boss) [DONE ✅] │
-│    ├── Step 4.4: Floor 2 — Cyberpunk Arasaka Sublevel (Adam Smasher) [DONE ✅]  │
+│    ├── Step 4.2: 4 Monster Archetypes (Swarmer/Ranged/Brute/Exploder) [DONE ✅]│
+│    ├── Step 4.3: Floor 1 — JJK Detention Center (Finger Bearer) [DONE ✅]  │
+│    ├── Step 4.4: Floor 2 — Cyberpunk Arasaka Sublevel (Adam Smasher) [DONE ✅] │
 │    ├── Step 4.5: Floor 3 — AoT Wall Maria Crypts (Armored Titan) [DONE ✅] │
-│    ├── Step 4.6: Boss Multi-Phase Attacks & Phase 2 Enrage [DONE ✅]       │
-│    └── Step 4.7: Floor Selector & Dev Test Hub [DONE ✅]                   │
+│    ├── Step 4.6: Floor 4 — Berserk Eclipse Ruins (Nosferatu Zodd) [DONE ✅]│
+│    ├── Step 4.7: Floor 5 — OPM House of Evolution (Carnage Kabuto) [DONE ✅]│
+│    ├── Step 4.8: Boss Multi-Phase Attacks & Phase 2 Enrage [DONE ✅]       │
+│    └── Step 4.9: Floor Selector & Dev Test Hub [DONE ✅]                   │
 │      ▼                                                                     │
 │  Phase 5: Gameplay Refinement & Content Depth [ACTIVE ✅]                   │
 │    ├── Step 5.1: Downed / Revive Co-op System [DONE ✅]                    │
@@ -58,6 +60,19 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── P2: Frontend Modularization & Canvas Performance [COMPLETED ✅]     │
 │    ├── P3: Backend & Networking Evolution (Host Migration & Schemas) [COMPLETED ✅]
 │    └── P3: Architectural Evolution (DDD EventBus Decoupling) [COMPLETED ✅] │
+│      ▼                                                                     │
+│  Phase 8: Mobile Support & Touch HUD Overhaul [COMPLETED ✅]               │
+│    ├── Step 8.1: Mobile Viewport, SafeArea & Fullscreen Controller [COMPLETED ✅]
+│    ├── Step 8.2: Virtual Movement Joystick (Floating/Fixed, Analog Clamp) [COMPLETED ✅]
+│    ├── Step 8.3: Ergonomic Action Cluster & Touch Aim Assist [COMPLETED ✅]│
+│    ├── Step 8.4: Touch-Friendly Modals & Backdrop Dismiss [COMPLETED ✅]   │
+│    └── Step 8.5: Contextual Controls Hint & Mobile Orientation Lock [COMPLETED ✅]
+│      ▼                                                                     │
+│  Phase 9: Boss Battle Cinematic Overhaul & Anime Animations [ACTIVE 🔧]    │
+│    ├── Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s) [IN PROGRESS]
+│    ├── Step 9.2: Ground Telegraph Danger Zones (Cone/Corridor/Nova) [PLANNED]
+│    ├── Step 9.3: Boss Visual Evolutions & Anime Sprite Overhaul [PLANNED]  │
+│    └── Step 9.4: Boss Audio Stingers & Multiplayer Sync [PLANNED]          │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -92,25 +107,27 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - **JJK Set**: Gojo (*Hollow Purple* ultimate), Sukuna (*World Cutting Slash*), Toji (*Chain Rampage*).
   - **Berserk Set**: Guts (*Berserker Rage* invulnerability + lifesteal).
 
-- **Step 3.5: Anime Batch 2 — AoT & Cyberpunk** `[PARTIALLY COMPLETE]`
+- **Step 3.5: Anime Batch 2 — AoT, Cyberpunk & OPM** `[COMPLETED ✅]`
   - **Levi Ackerman** `[DONE ✅]`: ODM Dual Grapple Cables (Fanny MLBB-style), 360° Blade Whirlwind.
   - **David Martinez** `[DONE ✅]`: Sandevistan Global Slow-Mo (10% speed for all, David full speed), Carnage Shotgun 6-pellet cone.
-  - **Saitama (One Punch Man)** `[UPCOMING]`: Bald Hero Suit, Consecutive Normal Punches, *Serious Punch* black-and-white manga cinematic.
+  - **Saitama (One Punch Man)** `[DONE ✅]`: Bald Hero Suit, Consecutive Normal Punches flurry, *Serious Punch* black-and-white monochrome manga cinematic (400 True Damage).
 
 - **Step 3.6: Anime Batch 3** `[UPCOMING]`
   - Shinra & Arthur (Fire Force), Rimuru (Tensura), Light Yagami (Death Note), Subaru & Rem (Re:Zero).
 
 ---
 
-### Phase 4: Procedural Dungeon, Monster AI & Themed Floor Descent `[COMPLETED ✅]`
+### Phase 4: Procedural Dungeon, Monster AI & 5 Themed Floors `[COMPLETED ✅]`
 
 - **Room Generation**: Isaac-style discrete room graph, door transitions with physics-correct portal spawning.
-- **3 Monster Archetypes**: Swarmer (fast, swarm AI), Ranged (kiting + projectiles), Brute (telegraphed AoE ground slam).
+- **4 Monster Archetypes**: Swarmer (fast swarm AI), Ranged (kiting + projectiles), Brute (telegraphed AoE ground slam), Exploder (kamikaze suicide bombers).
 - **Door Lockdown System**: Rooms lock when player enters; all enemies must die before doors reopen.
-- **3 Themed Floors** with unique mob squads, music, palette, and boss encounters:
-  - **Floor 1 — JJK Detention Center**: Fly Heads, Masked Ino, Cursed Brutes → **Finger Bearer Boss** (3-attack phases + Phase 2 enrage).
-  - **Floor 2 — Cyberpunk Arasaka Sublevel**: Maelstrom Cyberpsychos, Tyger Claw Snipers, Arasaka Drones → **Adam Smasher Prototype** (Hydraulic Slam / Missile Salvo / Laser Sweep + Phase 2 Sandevistan Overclock).
-  - **Floor 3 — AoT Wall Maria Crypts**: Crawler Titans, Marleyan Riflemen, Hardened Brutes → **Armored Titan** (Crystal Fist / Bull Rush / Steam Vent + Phase 2 Crystal Shatter & Steam Geyser death).
+- **5 Themed Floors** with unique mob squads, music, palette, and boss encounters:
+  - **Floor 1 — JJK Detention Center**: Fly Heads, Masked Ino, Cursed Brutes → **Finger Bearer Boss** (Cursed Claws, Divergent Beams, Cursed Maelstrom + Phase 2 Domain Awakening).
+  - **Floor 2 — Cyberpunk Arasaka Sublevel**: Maelstrom Cyberpsychos, Tyger Claw Snipers, Arasaka Drones → **Adam Smasher Prototype** (Hydraulic Slam, Micro-Missile Salvo, Laser Sweep + Phase 2 Sandevistan Overclock).
+  - **Floor 3 — AoT Wall Maria Crypts**: Crawler Titans, Marleyan Riflemen, Hardened Brutes → **Armored Titan** (Crystal Fist, Wall Maria Rush, Scalding Steam Vent + Phase 2 Armor Shed Blitz).
+  - **Floor 4 — Berserk Eclipse Ruins**: Eclipse Heretics, Executioner Brutes, Possessed Souls → **Nosferatu Zodd (The Immortal Apostle)** (Scimitar Cleave, Flying Cleaver, 4-way Stomp + Phase 2 Winged Apostle Dive & Eclipse Nova).
+  - **Floor 5 — OPM House of Evolution**: Black Sperm Cells, Rhino Wrestler (70% frontal deflection armor), Fuhrer Ugly → **Carnage Kabuto** (Beetle Dash, Air Cannon Sneeze, Seismic Horn Uppercut + Phase 2 Carnage Mode Rampage).
 - **Multi-Phase Bosses**: Unique visuals, 3 distinct attack patterns per floor, Phase 2 enrage at 50% HP, unique death animations, Legendary loot explosion on kill.
 - **Exit Portal with Countdown**: All players must stand in portal together; 3-second group countdown before descent.
 - **Floor Selector (Dev Tool)**: `[F]` hotkey + HUD badge click + in-lobby Dimensional Gateway Altar for instant floor warping during development.
@@ -228,4 +245,54 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Entities emit domain events (`player:hudSync`, `player:healthChanged`, `player:staminaChanged`, `player:itemEquipped`, `player:itemUnequipped`, `player:downed`, `player:revived`, `player:died`, `combat:attackLanded`, `combat:abilityUsed`, `monster:hit`, `monster:died`, `monster:phase2`).
   - Implemented `src/presenters/hudPresenter.js` adapter subscribing to `player:hudSync` to update browser HUD bars and badges with zero domain coupling.
   - Enabled 100% headless automated testing of domain entities in pure Node.js environments.
-  - Comprehensive unit test suite `tests/unit/eventBus.test.js` brings total test coverage to **78 passing tests across 9 test files**.
+  - Comprehensive unit test suites expanded to **203 passing tests across 25 test files** in Vitest.
+
+---
+
+### Phase 8: Mobile Support & Touch HUD Overhaul `[COMPLETED ✅]`
+
+- **Step 8.1: Viewport & Layout Adaptation** `[COMPLETED ✅]`:
+  - Added CSS environment variables (`env(safe-area-inset-*)`) and viewport-fit=cover meta tag for notch and home-indicator protection.
+  - Added PWA mobile web app capable meta tags for fullscreen web app execution.
+  - Implemented universal fullscreen controller (`toggleFullscreen`) supporting cross-browser prefixes (`webkitRequestFullscreen`, `mozRequestFullScreen`, `msRequestFullscreen`).
+  - Added automatic landscape orientation lock via `screen.orientation.lock('landscape')` with fallback toast instructions.
+- **Step 8.2: Virtual Movement Joystick** `[COMPLETED ✅]`:
+  - Implemented dual-ring analog touch joystick in `src/mobileHUD.js` (`#mobile-joystick-container`).
+  - Supports both dynamic floating (spawns under left-thumb touch) and fixed modes.
+  - 10% deadzone filtering and 360° circular vector clamping (`Math.hypot`, `Math.atan2`).
+- **Step 8.3: Ergonomic Action Cluster** `[COMPLETED ✅]`:
+  - Built radial action buttons cluster in lower right viewport (`#mobile-actions-container`).
+  - Big Primary Attack button (`#btn-mobile-attack`) with satellite clusters: Slap, Block, Roll, Interact, Ultimate [Q], Dev Armory [G], and Backpack.
+  - Implemented proximity auto-aim target lock against monsters, allowing seamless mobile combat navigation.
+- **Step 8.4: Touch-Friendly Modals & Backdrop Dismiss** `[COMPLETED ✅]`:
+  - Optimized all 10 modal interfaces with minimum 44×44px tap targets (`--min-tap-target`).
+  - Added explicit close buttons (`#btn-inventory-close`, etc.) and backdrop touch dismissals.
+  - Orientation warning prompt (`#mobile-orientation-modal`) guiding players to hold their device in landscape orientation.
+- **Step 8.5: Contextual Controls Hint** `[COMPLETED ✅]`:
+  - Controls keyboard guide (`#hud-controls-hint`) only shows on desktop/laptop in the Base Camp lobby (`currentFloor === 0`).
+  - Automatically hidden during dungeon floor descent (`currentFloor >= 1`) and completely hidden on all touch/mobile viewports.
+  - Covered by 5 dedicated mobile unit test suites (`mobile-responsive.test.js`, `mobile-touch.test.js`, `mobile-action-cluster.test.js`, `mobile-phase4.test.js`, `mobile-e2e-integration.test.js`).
+
+---
+
+### Phase 9: Boss Battle Cinematic Overhaul & Anime Animations `[ACTIVE 🔧]`
+
+> Core Goal: Elevate all 5 Floor Guardian Boss battles into dramatic, anime-accurate cinematic encounters with manga cut-ins, time freezes, telegraph hazard zones, and dedicated animations.
+
+- **Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s)** `[IN PROGRESS 🔧]`:
+  - Trigger time freeze and screen shake when any boss drops to $\le 50\%$ HP (`cinematics.triggerBossPhase2(boss)`).
+  - Full-screen high-contrast screentone overlay, diagonal speed lines, kanji boss title banner, and iconic anime dialogue quotes.
+  - Boss audio stingers, roars, and shockwave bursts.
+- **Step 9.2: Dynamic Ground Telegraph Hazard Zones** `[PLANNED]`:
+  - Visual floor indicators during `windupTimer` before attacks fire:
+    - *Corridor Rush*: Dashed warning lines projecting dash path.
+    - *Danger Cone*: Arced conical sector displaying projectile scatter.
+    - *Radial Nova*: Pulsing circular hazard zone with countdown fill.
+- **Step 9.3: Boss Visual Evolutions & Enhanced Animations** `[PLANNED]`:
+  - *Adam Smasher*: Sandevistan green trailing after-images, targeting optical red glare, open shoulder missile pods.
+  - *Armored Titan*: Boiling steam cloud aura, cracked gold armor veins, crystal fist hardening glow.
+  - *Nosferatu Zodd*: Giant bat wings unfolding in Phase 2, Brand of Sacrifice, blood miasma dripping.
+  - *Finger Bearer*: Cursed swamp domain pool on the floor, Black Flash red-black lightning sparks.
+  - *Carnage Kabuto*: Shell color shift to iridescent red & radioactive green stripes (Carnage Mode), hypersonic motion jitter.
+- **Step 9.4: Unit Tests & Verification** `[PLANNED]`:
+  - Full Vitest suite for boss phase triggers, telegraph data structures, and cinematic overlays.
