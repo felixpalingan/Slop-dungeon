@@ -15,6 +15,10 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
   const createMockCtx = () => ({
     save: vi.fn(),
     restore: vi.fn(),
+    rotate: vi.fn(),
+    translate: vi.fn(),
+    closePath: vi.fn(),
+    setLineDash: vi.fn(),
     fillRect: vi.fn(),
     strokeRect: vi.fn(),
     beginPath: vi.fn(),
@@ -210,4 +214,129 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
     expect(phase2Fired).toBe(true);
     expect(boss.baseSpeed).toBeGreaterThan(75);
   });
+
+  describe('Phase 2: Dynamic Ground Telegraph Hazard Zones', () => {
+    it('automatically configures corridor, cone, and radial telegraph parameters during attack windup', () => {
+      const titan = new Monster({
+        id: 'titan-test',
+        type: 'armored_titan',
+        name: 'Armored Titan',
+        archetype: 'boss',
+        x: 100,
+        y: 100,
+        radius: 52,
+        hp: 1400,
+        speed: 75
+      });
+
+      const player = { x: 150, y: 100 }; // close distance
+
+      // 1. Force cooldown expiration to pick attack 1 (Melee / Rush)
+      titan.bossActionCooldown = 0;
+      titan.bossAttackIndex = 0;
+      titan.updateBoss(0.016, player);
+
+      expect(titan.windupTimer).toBeGreaterThan(0);
+      expect(titan.chosenAttack).toBe(1);
+      expect(titan.telegraphType).toBe('corridor');
+      expect(titan.telegraphRange).toBeGreaterThan(200);
+      expect(titan.telegraphWidth).toBeGreaterThan(50);
+
+      // 2. Advance until attack 1 fires and reset cooldown
+      titan.updateBoss(1.0, player);
+      expect(titan.telegraphType).toBeNull();
+
+      // 3. Force cooldown expiration to pick attack 2 (Ranged / Cone)
+      titan.bossActionCooldown = 0;
+      titan.bossAttackIndex = 1;
+      titan.updateBoss(0.016, player);
+
+      expect(titan.chosenAttack).toBe(2);
+      expect(titan.telegraphType).toBe('cone');
+      expect(titan.telegraphRange).toBeGreaterThan(300);
+      expect(titan.telegraphSpread).toBeGreaterThan(0.5);
+
+      // 4. Force attack 3 (Radial Nova)
+      titan.updateBoss(1.0, player);
+      titan.bossActionCooldown = 0;
+      titan.bossAttackIndex = 2;
+      titan.updateBoss(0.016, player);
+
+      expect(titan.chosenAttack).toBe(3);
+      expect(titan.telegraphType).toBe('radial');
+      expect(titan.telegraphRange).toBeGreaterThan(150);
+    });
+
+    it('sets cone claw telegraph for Finger Bearer on attack 1', () => {
+      const fingerBearer = new Monster({
+        id: 'fb-test',
+        type: 'finger_bearer',
+        name: 'Finger Bearer',
+        archetype: 'boss',
+        x: 100,
+        y: 100,
+        hp: 950,
+        speed: 95
+      });
+      const player = { x: 140, y: 100 };
+
+      fingerBearer.bossActionCooldown = 0;
+      fingerBearer.bossAttackIndex = 0;
+      fingerBearer.updateBoss(0.016, player);
+
+      expect(fingerBearer.chosenAttack).toBe(1);
+      expect(fingerBearer.telegraphType).toBe('cone');
+      expect(fingerBearer.telegraphSpread).toBeGreaterThan(1.0);
+    });
+
+    it('renders corridor, cone, and radial ground telegraph zones without error on Canvas', async () => {
+      const { Renderer } = await import('../../src/renderer.js');
+      const ctx = createMockCtx();
+      ctx.setLineDash = vi.fn();
+      const mockCanvas = {
+        getContext: () => ctx,
+        width: 1280,
+        height: 720
+      };
+      const renderer = new Renderer(mockCanvas);
+
+      const testMonster = {
+        type: 'nosferatu_zodd',
+        archetype: 'boss',
+        phase: 1,
+        windupTimer: 0.35,
+        maxWindupTimer: 0.70,
+        animTime: 2.5,
+        radius: 48,
+        angle: 0.5,
+        isDying: false
+      };
+
+      // Test Corridor
+      testMonster.telegraphType = 'corridor';
+      testMonster.telegraphRange = 250;
+      testMonster.telegraphWidth = 90;
+      expect(() => {
+        renderer.drawBossTelegraphZone(ctx, testMonster);
+      }).not.toThrow();
+      expect(ctx.strokeRect).toHaveBeenCalled();
+
+      // Test Cone
+      testMonster.telegraphType = 'cone';
+      testMonster.telegraphRange = 350;
+      testMonster.telegraphSpread = Math.PI * 0.45;
+      expect(() => {
+        renderer.drawBossTelegraphZone(ctx, testMonster);
+      }).not.toThrow();
+      expect(ctx.arc).toHaveBeenCalled();
+
+      // Test Radial
+      testMonster.telegraphType = 'radial';
+      testMonster.telegraphRange = 200;
+      expect(() => {
+        renderer.drawBossTelegraphZone(ctx, testMonster);
+      }).not.toThrow();
+    });
+  });
 });
+

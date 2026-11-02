@@ -3431,6 +3431,11 @@ export class Renderer {
       ctx.ellipse(0, m.radius * 0.75, m.radius * 0.85, m.radius * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Boss Dynamic Ground Telegraph Danger Zone (Corridor, Danger Cone, Radial Nova)
+      if (m.archetype === 'boss' && m.windupTimer > 0 && !m.isDying) {
+        this.drawBossTelegraphZone(ctx, m);
+      }
+
       // Kamikaze Exploder Priming Telegraph (Expanding red danger zone)
       if (m.isPriming || (m.fuseTimer && m.fuseTimer > 0)) {
         const explR = m.explosionRadius || 120;
@@ -5540,6 +5545,194 @@ export class Renderer {
 
       ctx.restore();
     }
+  }
+
+  /**
+   * Draws dynamic high-visibility ground telegraph danger zones for Boss windup attacks.
+   * Renders Corridor rush tracks with animated chevrons, Danger Cones with trajectory rays,
+   * or Radial Nova circles with pulsing borders and progressive countdown fill indicators.
+   */
+  drawBossTelegraphZone(ctx, m) {
+    if (!m || m.windupTimer <= 0 || m.isDying) return;
+
+    const maxT = m.maxWindupTimer || (m.phase === 2 ? 0.45 : 0.70);
+    const prog = Math.max(0, Math.min(1, 1 - (m.windupTimer / maxT))); // 0 to 1
+    const isPhase2 = m.phase === 2;
+
+    // Pick boss color palette
+    let accentColor = '#ef4444';
+    let rgb = '239, 68, 68';
+
+    if (m.type === 'adam_smasher_prototype') {
+      accentColor = isPhase2 ? '#00ff88' : '#00f0ff';
+      rgb = isPhase2 ? '0, 255, 136' : '0, 240, 255';
+    } else if (m.type === 'armored_titan') {
+      accentColor = isPhase2 ? '#fde047' : '#f97316';
+      rgb = isPhase2 ? '253, 224, 71' : '249, 115, 22';
+    } else if (m.type === 'nosferatu_zodd') {
+      accentColor = isPhase2 ? '#dc2626' : '#ea580c';
+      rgb = isPhase2 ? '220, 38, 38' : '234, 88, 12';
+    } else if (m.type === 'carnage_kabuto') {
+      accentColor = isPhase2 ? '#ef4444' : '#facc15';
+      rgb = isPhase2 ? '239, 68, 68' : '250, 204, 21';
+    } else if (m.type === 'finger_bearer') {
+      accentColor = isPhase2 ? '#c084fc' : '#9333ea';
+      rgb = isPhase2 ? '192, 132, 252' : '147, 51, 234';
+    }
+
+    const pulse = 0.16 + Math.sin((m.animTime || 0) * (isPhase2 ? 26 : 16)) * 0.08;
+    const type = m.telegraphType || (m.chosenAttack === 1 ? 'corridor' : (m.chosenAttack === 2 ? 'cone' : 'radial'));
+    const targetAngle = m.telegraphAngle !== undefined ? m.telegraphAngle : (m.angle || 0);
+
+    ctx.save();
+
+    if (type === 'corridor') {
+      // 1. CORRIDOR / RUSH TACKLE TELEGRAPH
+      const range = m.telegraphRange || (isPhase2 ? 320 : 230);
+      const width = m.telegraphWidth || (m.radius * 2.0);
+
+      ctx.rotate(targetAngle);
+
+      // Background hazard fill (progress fill toward full range)
+      const currentLen = range * (0.2 + 0.8 * prog);
+      ctx.fillStyle = `rgba(${rgb}, ${pulse * 0.9})`;
+      ctx.fillRect(0, -width / 2, currentLen, width);
+
+      // Outer dashed hazard border with animated marching dash
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = isPhase2 ? 3 : 2.5;
+      if (typeof ctx.setLineDash === 'function') {
+        ctx.setLineDash([12, 8]);
+        ctx.lineDashOffset = -(m.animTime || 0) * (isPhase2 ? 90 : 60);
+      }
+      ctx.strokeRect(0, -width / 2, range, width);
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash([]);
+
+      // Leading charge wavefront bar
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(currentLen, -width / 2);
+      ctx.lineTo(currentLen, width / 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Animated directional chevrons (>>>)
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2.5;
+      const numChevrons = Math.floor(range / 65);
+      for (let c = 1; c <= numChevrons; c++) {
+        const cX = (range / (numChevrons + 1)) * c;
+        if (cX <= currentLen + 20) {
+          ctx.beginPath();
+          ctx.moveTo(cX - 12, -width * 0.28);
+          ctx.lineTo(cX + 6, 0);
+          ctx.lineTo(cX - 12, width * 0.28);
+          ctx.stroke();
+        }
+      }
+    } else if (type === 'cone') {
+      // 2. DANGER CONE / SPREAD BARRAGE TELEGRAPH
+      const range = m.telegraphRange || (isPhase2 ? 420 : 340);
+      const spread = m.telegraphSpread || (isPhase2 ? Math.PI * 0.55 : Math.PI * 0.40);
+
+      ctx.rotate(targetAngle);
+
+      // Progress radial sector fill
+      const currentR = range * (0.25 + 0.75 * prog);
+      ctx.fillStyle = `rgba(${rgb}, ${pulse})`;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, currentR, -spread / 2, spread / 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Outer dashed sector boundary with animated marching dash
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = isPhase2 ? 3 : 2.5;
+      if (typeof ctx.setLineDash === 'function') {
+        ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -(m.animTime || 0) * (isPhase2 ? 80 : 50);
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(-spread / 2) * range, Math.sin(-spread / 2) * range);
+      ctx.arc(0, 0, range, -spread / 2, spread / 2);
+      ctx.lineTo(0, 0);
+      ctx.stroke();
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash([]);
+
+      // Leading expanding arc wavefront
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(0, 0, currentR, -spread / 2, spread / 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Trajectory guide lines inside the fan
+      ctx.strokeStyle = `rgba(${rgb}, 0.55)`;
+      ctx.lineWidth = 1.5;
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash([4, 6]);
+      const guideSteps = [-0.35, 0, 0.35];
+      for (const st of guideSteps) {
+        const rayAng = (spread / 2) * st;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(rayAng) * range, Math.sin(rayAng) * range);
+        ctx.stroke();
+      }
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash([]);
+    } else {
+      // 3. RADIAL NOVA / SEISMIC STOMP TELEGRAPH
+      const rad = m.telegraphRange || (isPhase2 ? 260 : 190);
+      const currentR = rad * (0.2 + 0.8 * prog);
+
+      // Inner expanding danger disk
+      ctx.fillStyle = `rgba(${rgb}, ${pulse * 1.1})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, currentR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer dashed perimeter boundary with rotating line dash
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = isPhase2 ? 3.5 : 2.5;
+      if (typeof ctx.setLineDash === 'function') {
+        ctx.setLineDash([12, 8]);
+        ctx.lineDashOffset = (m.animTime || 0) * (isPhase2 ? 70 : 45);
+      }
+      ctx.beginPath();
+      ctx.arc(0, 0, rad, 0, Math.PI * 2);
+      ctx.stroke();
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash([]);
+
+      // Leading expanding ring wavefront
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0, 0, currentR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Hazard crosshair tick marks at 8 cardinal & diagonal angles
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2;
+      for (let k = 0; k < 8; k++) {
+        const kAng = (k / 8) * Math.PI * 2 + (m.animTime || 0) * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(kAng) * (rad - 12), Math.sin(kAng) * (rad - 12));
+        ctx.lineTo(Math.cos(kAng) * (rad + 12), Math.sin(kAng) * (rad + 12));
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
   }
 
   /**

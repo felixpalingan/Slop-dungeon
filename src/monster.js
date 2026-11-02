@@ -96,6 +96,14 @@ export class Monster {
     this.scale = 1.0;
     this.squash = 1.0;
 
+    // Dynamic Boss Telegraph Zone properties
+    this.maxWindupTimer = 0;
+    this.telegraphType = null; // 'corridor' | 'cone' | 'radial'
+    this.telegraphRange = 0;
+    this.telegraphWidth = 0;
+    this.telegraphAngle = 0;
+    this.telegraphSpread = 0;
+
     // Room association (activates when room discovered)
     this.roomId = options.roomId || null;
     this.isActive = options.isActive !== undefined ? options.isActive : true;
@@ -485,6 +493,8 @@ export class Monster {
       this.vy = 0;
       return;
     }
+    if (!player) return;
+    dist = dist !== undefined ? dist : Math.hypot(player.x - this.x, player.y - this.y);
 
     // Sandevistan / Berserk after-images in Phase 2 for Adam Smasher and Armored Titan
     if (this.phase === 2) {
@@ -532,6 +542,7 @@ export class Monster {
       this.vy = 0;
       this.windupTimer -= dt;
       if (this.windupTimer <= 0) {
+        this.telegraphType = null;
         // Trigger the chosen attack (1 = Melee/Slam, 2 = Ranged/Barrage, 3 = AoE/Burst)
         if (this.chosenAttack === 1) {
           if (this.onBossAttack1) {
@@ -566,7 +577,8 @@ export class Monster {
     }
 
     // Count down action cooldown
-    this.bossActionCooldown = (this.bossActionCooldown || 1.4) - dt;
+    const currentCd = this.bossActionCooldown !== undefined ? this.bossActionCooldown : 1.4;
+    this.bossActionCooldown = currentCd - dt;
 
     if (this.bossActionCooldown <= 0) {
       // Pick next attack in sequence (1, 2, 3)
@@ -580,12 +592,43 @@ export class Monster {
       }
 
       this.chosenAttack = nextAttack;
-      const windupBase = this.phase === 2 ? 0.4 : 0.65;
+      const windupBase = this.phase === 2 ? 0.45 : 0.70;
       this.windupTimer = windupBase;
+      this.maxWindupTimer = windupBase;
+      this.telegraphAngle = this.angle;
+
+      // Automatically configure dynamic telegraph danger zone parameters
+      if (nextAttack === 1) {
+        // Melee / Slam / Corridor Rush (Corridor for charges, wide cone for claw swipes)
+        if (this.type === 'finger_bearer') {
+          this.telegraphType = 'cone';
+          this.telegraphRange = this.phase === 2 ? 240 : 180;
+          this.telegraphSpread = Math.PI * 0.65; // ~117° claw arc
+        } else {
+          this.telegraphType = 'corridor';
+          this.telegraphRange = this.phase === 2 ? 320 : 230;
+          this.telegraphWidth = Math.max(75, this.radius * 2.0);
+        }
+      } else if (nextAttack === 2) {
+        // Ranged / Missile / Conical Beam or Air Barrage
+        this.telegraphType = 'cone';
+        this.telegraphRange = this.phase === 2 ? 420 : 340;
+        this.telegraphSpread = this.phase === 2 ? Math.PI * 0.55 : Math.PI * 0.40;
+      } else if (nextAttack === 3) {
+        // AoE / Seismic Stomp / Radial Nova / Laser Sweep
+        if (this.type === 'adam_smasher_prototype') {
+          this.telegraphType = 'cone';
+          this.telegraphRange = this.phase === 2 ? 380 : 300;
+          this.telegraphSpread = this.phase === 2 ? Math.PI * 0.75 : Math.PI * 0.50; // Laser sweep fan
+        } else {
+          this.telegraphType = 'radial';
+          this.telegraphRange = this.phase === 2 ? 260 : 190;
+        }
+      }
 
       // Notify windup for telegraph effects
       if (this.onBossWindup) {
-        this.onBossWindup(nextAttack, this.phase, this.windupTimer);
+        this.onBossWindup(nextAttack, this.phase, this.windupTimer, this);
       }
       return;
     }
