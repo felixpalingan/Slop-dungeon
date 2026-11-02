@@ -20,11 +20,23 @@ export class Renderer {
   }
 
   resize() {
-    this.width = typeof window !== 'undefined' ? window.innerWidth : (this.canvas?.width || 800);
-    this.height = typeof window !== 'undefined' ? window.innerHeight : (this.canvas?.height || 600);
+    const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    // Cap DPR between 1.0 and 2.0 to prevent mobile GPU overheating on 3x/4x Retina screens
+    this.dpr = Math.min(Math.max(1, rawDpr), 2.0);
+
+    const cssWidth = typeof window !== 'undefined' ? window.innerWidth : (this.canvas?.width || 800);
+    const cssHeight = typeof window !== 'undefined' ? window.innerHeight : (this.canvas?.height || 600);
+
+    this.width = cssWidth;
+    this.height = cssHeight;
+
     if (this.canvas) {
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
+      this.canvas.width = Math.round(cssWidth);
+      this.canvas.height = Math.round(cssHeight);
+      if (this.canvas.style) {
+        this.canvas.style.width = `${cssWidth}px`;
+        this.canvas.style.height = `${cssHeight}px`;
+      }
     }
   }
 

@@ -22,6 +22,45 @@ export class AudioManager {
     this.bgmTimer = null;
     this.bgmStep = 0;
     this.bgmNextNoteTime = 0;
+
+    // Mobile Web Audio Unlock State (Phase 4)
+    this._mobileAudioUnlocked = false;
+    this.setupMobileAudioUnlock();
+  }
+
+  /**
+   * Sets up touch listeners to unlock Web AudioContext on iOS Safari and mobile browsers (Phase 4)
+   */
+  setupMobileAudioUnlock() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (this._mobileAudioUnlocked) return;
+
+    const unlock = () => {
+      this.ensureContext();
+      if (this.rawCtx) {
+        if (this.rawCtx.state === 'suspended') {
+          this.rawCtx.resume().catch(() => {});
+        }
+        try {
+          const buffer = this.rawCtx.createBuffer(1, 1, 22050);
+          const source = this.rawCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(this.rawCtx.destination);
+          source.start(0);
+        } catch (_) {}
+      }
+      this._mobileAudioUnlocked = true;
+
+      ['touchstart', 'touchend', 'pointerdown', 'keydown'].forEach((evt) => {
+        window.removeEventListener(evt, unlock, true);
+        document.removeEventListener(evt, unlock, true);
+      });
+    };
+
+    ['touchstart', 'touchend', 'pointerdown', 'keydown'].forEach((evt) => {
+      window.addEventListener(evt, unlock, { capture: true, passive: true });
+      document.addEventListener(evt, unlock, { capture: true, passive: true });
+    });
   }
 
   init() {

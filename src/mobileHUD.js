@@ -349,3 +349,67 @@ export function closeItemInspectionSheet() {
   if (sheet) sheet.classList.add('hidden');
 }
 
+/**
+ * Sets up landscape orientation detection and enforcement overlay (Phase 4)
+ */
+export function setupOrientationEnforcement() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const modal = document.getElementById('orientation-modal');
+  const fullscreenBtn = document.getElementById('btn-fullscreen-toggle');
+
+  const checkOrientation = () => {
+    if (!modal) return;
+    const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 1024;
+    if (isPortrait) {
+      modal.classList.remove('hidden');
+    } else {
+      modal.classList.add('hidden');
+    }
+  };
+
+  window.addEventListener('resize', checkOrientation, { passive: true });
+  window.addEventListener('orientationchange', checkOrientation, { passive: true });
+  checkOrientation();
+
+  if (fullscreenBtn) {
+    fullscreenBtn.onclick = () => {
+      const doc = document;
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (doc.documentElement.requestFullscreen) {
+          doc.documentElement.requestFullscreen().catch(() => {});
+        } else if (doc.documentElement.webkitRequestFullscreen) {
+          doc.documentElement.webkitRequestFullscreen();
+        }
+      } else {
+        if (doc.exitFullscreen) {
+          doc.exitFullscreen().catch(() => {});
+        } else if (doc.webkitExitFullscreen) {
+          doc.webkitExitFullscreen();
+        }
+      }
+    };
+  }
+
+  return { checkOrientation };
+}
+
+/**
+ * Hardens touch gestures against double-tap zoom, pull-to-refresh, and pinch-zoom (Phase 4)
+ */
+export function setupGestureHardening() {
+  if (typeof document === 'undefined') return;
+
+  // Prevent double-tap to zoom on mobile devices
+  document.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+  }, { passive: false });
+
+  // Prevent pinch-to-zoom gestures on canvas and touch elements
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((evt) => {
+    document.addEventListener(evt, (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  });
+}
+
