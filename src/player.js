@@ -61,6 +61,10 @@ export class Player {
     this.name = 'SlopCrawler';
     this.color = '#00f0ff';
 
+    // Mobile Touch Target Lock & Auto-Aim State
+    this.targetedEnemy = null;
+    this.autoAimMaxDistance = 420;
+
     // Stats
     this.hp = 100;
     this.maxHp = 100;
@@ -562,7 +566,34 @@ export class Player {
     };
   }
 
-  update(dt, input, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }) {
+  /**
+   * Finds closest living enemy, dummy, or PvP peer within autoAimMaxDistance (Phase 1 Mobile Support)
+   * @param {Array} potentialTargets - Living entities
+   * @returns {Object|null}
+   */
+  findAutoAimTarget(potentialTargets = []) {
+    if (!potentialTargets || potentialTargets.length === 0) return null;
+    let closestTarget = null;
+    let closestDistSq = this.autoAimMaxDistance * this.autoAimMaxDistance;
+
+    for (const t of potentialTargets) {
+      if (!t) continue;
+      if (t.isDead || t.isDowned) continue;
+      if (t === this) continue;
+
+      const dx = t.x - this.x;
+      const dy = t.y - this.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq <= closestDistSq) {
+        closestDistSq = distSq;
+        closestTarget = t;
+      }
+    }
+    return closestTarget;
+  }
+
+  update(dt, input, bounds = { minX: -580, minY: -580, maxX: 580, maxY: 580 }, potentialTargets = []) {
     // 0. Invulnerability i-frames timer countdown
     if (this.invulnerableTimer > 0) {
       this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
@@ -787,11 +818,40 @@ export class Player {
       return;
     }
 
-    // 2. Mouse Aiming angle
+    // 2. Mouse Aiming angle & Mobile Smart Auto-Aim
     const screenCenterX = (typeof window !== 'undefined' ? window.innerWidth : 800) / 2;
     const screenCenterY = (typeof window !== 'undefined' ? window.innerHeight : 600) / 2;
-    if (input && input.mouse) {
-      this.angle = Math.atan2(input.mouse.screenY - screenCenterY, input.mouse.screenX - screenCenterX);
+    if (input) {
+      if (input.isTouchAiming && input.touchAimAngle !== null) {
+        // Manual Drag-to-Aim override from touch controls
+        this.angle = input.touchAimAngle;
+        this.targetedEnemy = null;
+      } else if (input.isTouchActive) {
+        // Mobile Touch Mode: Smart Auto-Aim Lock-on
+        const target = this.findAutoAimTarget(potentialTargets);
+        if (target) {
+          this.targetedEnemy = target;
+          this.angle = Math.atan2(target.y - this.y, target.x - this.x);
+        } else {
+          this.targetedEnemy = null;
+          // If moving with joystick or velocity, face movement direction
+          const moveLen = Math.hypot(this.vx, this.vy);
+          if (moveLen > 5) {
+            this.angle = Math.atan2(this.vy, this.vx);
+          } else if (input.joystickVector && (Math.abs(input.joystickVector.dx) > 0.1 || Math.abs(input.joystickVector.dy) > 0.1)) {
+            this.angle = Math.atan2(input.joystickVector.dy, input.joystickVector.dx);
+          }
+        }
+        // Keep virtual mouse synchronized with aim direction for projectiles & cables
+        if (input.mouse) {
+          input.mouse.screenX = screenCenterX + Math.cos(this.angle) * 200;
+          input.mouse.screenY = screenCenterY + Math.sin(this.angle) * 200;
+        }
+      } else if (input.mouse) {
+        // Standard Desktop Mouse Aim
+        this.targetedEnemy = null;
+        this.angle = Math.atan2(input.mouse.screenY - screenCenterY, input.mouse.screenX - screenCenterX);
+      }
     }
 
     // 3. Weapon Attack Animation update
@@ -1008,7 +1068,9 @@ export class Player {
       }
     } else {
       // 5. Normal Movement
-      const { dx, dy } = input.getMovementVector();
+      const { dx, dy } = typeof input?.getMovementVector === 'function'
+        ? input.getMovementVector()
+        : (input?.joystickVector || { dx: 0, dy: 0 });
 
       if (input.justPressedShift && (this.stamina >= this.rollCost || this.isInfiniteStamina)) {
         this.isRolling = true;

@@ -14,14 +14,18 @@ export class Renderer {
     this.tileSize = 64;
 
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => this.resize());
+    }
   }
 
   resize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
+    this.width = typeof window !== 'undefined' ? window.innerWidth : (this.canvas?.width || 800);
+    this.height = typeof window !== 'undefined' ? window.innerHeight : (this.canvas?.height || 600);
+    if (this.canvas) {
+      this.canvas.width = this.width;
+      this.canvas.height = this.height;
+    }
   }
 
   clear() {
@@ -5628,6 +5632,113 @@ export class Renderer {
     ctx.fillStyle = '#ffffff';
     const hpLabel = isDying ? '0 / ' + boss.maxHp + ' HP (0%)' : `${Math.round(boss.hp)} / ${boss.maxHp} HP (${Math.round(hpPct * 100)}%)`;
     ctx.fillText(hpLabel, screenWidth / 2, y + 11);
+
+    ctx.restore();
+  }
+
+  /**
+   * Draws a target lock-on reticle over an auto-aimed enemy or training dummy (Phase 1 Mobile Support)
+   * @param {Object} target - The entity being targeted (x, y, radius)
+   * @param {number} time - Animation time in seconds
+   */
+  drawTargetReticle(target, time = 0) {
+    if (!target) return;
+    if (target.isDead || target.isDowned) return;
+    const ctx = this.ctx;
+    const r = (target.radius || 24) + 12;
+    const x = target.x;
+    const y = target.y;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Subtle breathing pulse & smooth rotation
+    const pulse = Math.sin(time * 6) * 2;
+    const currentR = r + pulse;
+    const rot = time * 2;
+    ctx.rotate(rot);
+
+    // 4 Corner brackets with neon red/amber glow
+    const bracketLen = 9;
+    ctx.strokeStyle = '#ef4444';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(currentR - bracketLen, -currentR);
+      ctx.lineTo(currentR, -currentR);
+      ctx.lineTo(currentR, -currentR + bracketLen);
+      ctx.stroke();
+      ctx.rotate(Math.PI / 2);
+    }
+
+    // Small glowing center diamond
+    ctx.rotate(-rot);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Draws a manual aiming trajectory arrow/guideline when dragging the attack button on touch devices (Phase 1 Mobile Support)
+   * @param {Object} player - The player entity (x, y)
+   * @param {number} aimAngle - Aiming angle in radians
+   */
+  drawTouchAimGuide(player, aimAngle) {
+    if (!player || aimAngle === null || aimAngle === undefined) return;
+    const ctx = this.ctx;
+    const x = player.x;
+    const y = player.y;
+    const lineLength = 220;
+
+    const startX = x + Math.cos(aimAngle) * 28;
+    const startY = y + Math.sin(aimAngle) * 28;
+    const endX = x + Math.cos(aimAngle) * lineLength;
+    const endY = y + Math.sin(aimAngle) * lineLength;
+
+    ctx.save();
+
+    // Glowing dashed line
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 6]);
+
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Directional Arrow Head at endpoint
+    ctx.save();
+    ctx.translate(endX, endY);
+    ctx.rotate(aimAngle);
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(-10, -7);
+    ctx.lineTo(-6, 0);
+    ctx.lineTo(-10, 7);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+
+    // Outer aiming ring at endpoint
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(endX, endY, 14, 0, Math.PI * 2);
+    ctx.stroke();
 
     ctx.restore();
   }

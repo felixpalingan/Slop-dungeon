@@ -5554,7 +5554,26 @@ function gameLoop(now) {
   // David (the caster) moves at normal/boosted dt; all others update at worldDt!
   const playerDt = isAnyUltimateFreeze ? 0.0 : (player.isSandevistan ? dt : worldDt);
   const activeBounds = (currentFloor >= 1 && currentDungeon) ? currentDungeon : dungeonBounds;
-  player.update(playerDt, input, activeBounds);
+
+  // Mobile Touch Auto-Aim: Collect living enemy candidates
+  const autoAimCandidates = [];
+  if (currentFloor === 0) {
+    if (dummy) autoAimCandidates.push(dummy);
+  } else if (monsterManager) {
+    autoAimCandidates.push(...monsterManager.getAliveMonsters());
+    if (slopMerchant && slopMerchant.isAggro && !slopMerchant.isDead) {
+      autoAimCandidates.push(slopMerchant);
+    }
+  }
+  if (network && network.remotePlayers) {
+    for (const [_, remote] of network.remotePlayers) {
+      if (remote && !remote.isDead && !remote.isDowned) {
+        autoAimCandidates.push(remote);
+      }
+    }
+  }
+
+  player.update(playerDt, input, activeBounds, autoAimCandidates);
 
   if (currentFloor === 0) {
     const isBotAuthority = network.isHost || !network.peer;
@@ -6640,6 +6659,14 @@ function gameLoop(now) {
 
   // Draw local player
   renderer.drawCharacter(player);
+
+  // Mobile Touch Feedback: Lock-on Reticle & Drag-to-Aim Trajectory
+  if (player.targetedEnemy && !player.targetedEnemy.isDead && !player.targetedEnemy.isDowned) {
+    renderer.drawTargetReticle(player.targetedEnemy, now * 0.001);
+  }
+  if (input && input.isTouchAiming && input.touchAimAngle !== null) {
+    renderer.drawTouchAimGuide(player, input.touchAimAngle);
+  }
 
   renderer.endCamera();
 
