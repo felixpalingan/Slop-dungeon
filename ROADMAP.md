@@ -68,11 +68,11 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 8.4: Touch-Friendly Modals & Backdrop Dismiss [COMPLETED ✅]   │
 │    └── Step 8.5: Contextual Controls Hint & Mobile Orientation Lock [COMPLETED ✅]
 │      ▼                                                                     │
-│  Phase 9: Boss Battle Cinematic Overhaul & Anime Animations [ACTIVE 🔧]    │
-│    ├── Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s) [IN PROGRESS]
-│    ├── Step 9.2: Ground Telegraph Danger Zones (Cone/Corridor/Nova) [PLANNED]
-│    ├── Step 9.3: Boss Visual Evolutions & Anime Sprite Overhaul [PLANNED]  │
-│    └── Step 9.4: Boss Audio Stingers & Multiplayer Sync [PLANNED]          │
+│  Phase 9: Boss Battle Cinematic Overhaul & Anime Animations [COMPLETED ✅]   │
+│    ├── Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s) [COMPLETED ✅] │
+│    ├── Step 9.2: Ground Telegraph Danger Zones (Cone/Corridor/Nova) [COMPLETED ✅]
+│    ├── Step 9.3: Boss Visual Evolutions & Anime Sprite Overhaul [COMPLETED ✅] │
+│    └── Step 9.4: Boss Audio Stingers & Multiplayer Sync [COMPLETED ✅]         │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -275,24 +275,25 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 
 ---
 
-### Phase 9: Boss Battle Cinematic Overhaul & Anime Animations `[ACTIVE 🔧]`
+### Phase 9: Boss Battle Cinematic Overhaul & Anime Animations `[COMPLETED ✅]`
 
 > Core Goal: Elevate all 5 Floor Guardian Boss battles into dramatic, anime-accurate cinematic encounters with manga cut-ins, time freezes, telegraph hazard zones, and dedicated animations.
 
-- **Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s)** `[IN PROGRESS 🔧]`:
+- **Step 9.1: Boss Phase 2 Anime Cut-In & Time Freeze (0.5s)** `[COMPLETED ✅]`:
   - Trigger time freeze and screen shake when any boss drops to $\le 50\%$ HP (`cinematics.triggerBossPhase2(boss)`).
   - Full-screen high-contrast screentone overlay, diagonal speed lines, kanji boss title banner, and iconic anime dialogue quotes.
   - Boss audio stingers, roars, and shockwave bursts.
-- **Step 9.2: Dynamic Ground Telegraph Hazard Zones** `[PLANNED]`:
+- **Step 9.2: Dynamic Ground Telegraph Hazard Zones** `[COMPLETED ✅]`:
   - Visual floor indicators during `windupTimer` before attacks fire:
-    - *Corridor Rush*: Dashed warning lines projecting dash path.
-    - *Danger Cone*: Arced conical sector displaying projectile scatter.
-    - *Radial Nova*: Pulsing circular hazard zone with countdown fill.
-- **Step 9.3: Boss Visual Evolutions & Enhanced Animations** `[PLANNED]`:
-  - *Adam Smasher*: Sandevistan green trailing after-images, targeting optical red glare, open shoulder missile pods.
-  - *Armored Titan*: Boiling steam cloud aura, cracked gold armor veins, crystal fist hardening glow.
-  - *Nosferatu Zodd*: Giant bat wings unfolding in Phase 2, Brand of Sacrifice, blood miasma dripping.
-  - *Finger Bearer*: Cursed swamp domain pool on the floor, Black Flash red-black lightning sparks.
-  - *Carnage Kabuto*: Shell color shift to iridescent red & radioactive green stripes (Carnage Mode), hypersonic motion jitter.
-- **Step 9.4: Unit Tests & Verification** `[PLANNED]`:
-  - Full Vitest suite for boss phase triggers, telegraph data structures, and cinematic overlays.
+    - *Corridor Rush*: Dashed warning lines projecting dash path, animated chevron arrows (`>>>`), and leading wavefront bar.
+    - *Danger Cone*: Arced conical sector displaying projectile scatter with trajectory guide rays.
+    - *Radial Nova*: Pulsing circular hazard zone with 8 cardinal/diagonal tick marks and countdown progress ring.
+- **Step 9.3: Boss Visual Evolutions & Enhanced Animations** `[COMPLETED ✅]`:
+  - *Adam Smasher*: Sandevistan green trailing after-images, targeting optical red laser with holographic HUD reticle `[ + ] TARGET LOCKED`, open shoulder missile pods with exhaust venting smoke puffs.
+  - *Armored Titan*: Boiling steam cloud reactor aura, cracked gold armor fissures with molten magma veins, crystal fist diamond hardening glow.
+  - *Nosferatu Zodd*: Articulated bat wings unfolding and flapping with skeletal phalanges, serrated horns with smoldering embers, blood smoke eye trails, blood-soaked scimitar with dripping gore drops.
+  - *Finger Bearer*: Swirling cursed swamp domain pool on the floor, Black Flash red-black lightning sparks, needle teeth jagged grin, cursed singularity core.
+  - *Carnage Kabuto*: Shell color shift to iridescent red & radioactive green stripes (Carnage Mode), hypersonic motion jitter, air pressure cyclone shockwave rings around trident horn.
+- **Step 9.4: Unit Tests & WebRTC State Sync** `[COMPLETED ✅]`:
+  - Full Vitest suite for boss phase triggers, telegraph data structures, network batch synchronization, and cinematic overlays (17 tests in `tests/unit/boss-cinematics.test.js`, 220 tests total).
+  - Double redundancy WebRTC synchronization (`BOSS_PHASE2_TRIGGER` packet broadcast & `applyNetworkState` snapshot restoration).

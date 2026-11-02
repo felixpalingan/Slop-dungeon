@@ -623,6 +623,67 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
         expect(m.archetype).toBe('boss');
       }
     });
+
+    it('batch synchronizes boss and escorts via MonsterManager.applyBatchNetworkState', async () => {
+      const { MonsterManager } = await import('../../src/monster.js');
+      const mm = new MonsterManager();
+
+      // Host sends batch: [boss, escort]
+      const batchData = [
+        [
+          'boss-fl3',
+          'armored_titan',
+          250,
+          300,
+          0.4,
+          700,
+          0,
+          0,
+          1, // isWindingUp
+          0,
+          0,
+          0,
+          1400, // maxHp
+          2, // phase 2
+          'corridor', // telegraphType
+          0.4,
+          320,
+          105,
+          0,
+          0.45,
+          0.45
+        ],
+        [
+          'escort-1',
+          'hardened_brute',
+          200,
+          250,
+          0.2,
+          180,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ];
+
+      mm.applyBatchNetworkState(batchData);
+
+      const boss = mm.getMonsterById('boss-fl3');
+      expect(boss).toBeDefined();
+      expect(boss.type).toBe('armored_titan');
+      expect(boss.archetype).toBe('boss');
+      expect(boss.phase).toBe(2);
+      expect(boss.telegraphType).toBe('corridor');
+      expect(boss.telegraphWidth).toBe(105);
+
+      const escort = mm.getMonsterById('escort-1');
+      expect(escort).toBeDefined();
+      expect(escort.type).toBe('hardened_brute');
+      expect(escort.hp).toBe(180);
+    });
   });
 });
 
