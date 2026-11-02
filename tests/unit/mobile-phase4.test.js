@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioManager } from '../../src/audio.js';
 import { Renderer } from '../../src/renderer.js';
-import { setupOrientationEnforcement, setupGestureHardening } from '../../src/mobileHUD.js';
+import {
+  setupOrientationEnforcement,
+  setupGestureHardening,
+  setupFullscreenController,
+  toggleFullscreen,
+  updateFullscreenDOMState,
+  showMobileToast,
+  isFullscreen
+} from '../../src/mobileHUD.js';
 
 describe('Phase 4: Landscape Orientation, Web Audio Unlock & Gesture Hardening', () => {
   describe('AudioManager Web Audio Unlock', () => {
@@ -200,4 +208,127 @@ describe('Phase 4: Landscape Orientation, Web Audio Unlock & Gesture Hardening',
       );
     });
   });
+
+  describe('Universal Fullscreen Controller & Orientation Lock', () => {
+    let hudBtn;
+    let settingsBtn;
+    let modalBtn;
+    let dismissBtn;
+    let modalEl;
+    let toastEl;
+
+    beforeEach(() => {
+      hudBtn = { textContent: '⛶ FULLSCREEN', classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() }, onclick: null };
+      settingsBtn = { textContent: 'AKTIFKAN ⛶', classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() }, onclick: null };
+      modalBtn = { textContent: '⛶ ENTER FULLSCREEN', onclick: null };
+      dismissBtn = { onclick: null };
+      modalEl = { classList: { add: vi.fn(), remove: vi.fn() }, dataset: {} };
+      toastEl = { textContent: '', classList: { add: vi.fn(), remove: vi.fn() } };
+
+      global.window = {
+        innerWidth: 844,
+        innerHeight: 390,
+        scrollTo: vi.fn(),
+        navigator: { userAgent: 'Android Chrome', platform: 'Linux armv8l' },
+        screen: {
+          orientation: {
+            lock: vi.fn().mockResolvedValue(),
+            unlock: vi.fn()
+          }
+        },
+        addEventListener: vi.fn()
+      };
+
+      global.document = {
+        fullscreenElement: null,
+        addEventListener: vi.fn(),
+        getElementById: vi.fn((id) => {
+          if (id === 'btn-hud-fullscreen') return hudBtn;
+          if (id === 'btn-settings-fullscreen') return settingsBtn;
+          if (id === 'btn-fullscreen-toggle') return modalBtn;
+          if (id === 'btn-orientation-dismiss') return dismissBtn;
+          if (id === 'orientation-modal') return modalEl;
+          if (id === 'mobile-toast') return toastEl;
+          return null;
+        }),
+        documentElement: {
+          requestFullscreen: vi.fn().mockResolvedValue()
+        },
+        exitFullscreen: vi.fn().mockResolvedValue()
+      };
+    });
+
+    afterEach(() => {
+      delete global.window;
+      delete global.document;
+    });
+
+    it('attaches click listeners to HUD, Settings, Modal, and Dismiss buttons', () => {
+      setupFullscreenController();
+
+      expect(hudBtn.onclick).toBeDefined();
+      expect(settingsBtn.onclick).toBeDefined();
+      expect(modalBtn.onclick).toBeDefined();
+      expect(dismissBtn.onclick).toBeDefined();
+    });
+
+    it('requests fullscreen on documentElement and locks orientation to landscape', async () => {
+      setupFullscreenController();
+      await toggleFullscreen();
+
+      expect(global.document.documentElement.requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
+      expect(global.window.screen.orientation.lock).toHaveBeenCalledWith('landscape');
+    });
+
+    it('exits fullscreen and unlocks orientation when currently fullscreen', async () => {
+      global.document.fullscreenElement = global.document.documentElement;
+
+      await toggleFullscreen();
+
+      expect(global.document.exitFullscreen).toHaveBeenCalled();
+      expect(global.window.screen.orientation.unlock).toHaveBeenCalled();
+    });
+
+    it('synchronizes button labels and active classes across all UI elements', () => {
+      // Test Entering Fullscreen state
+      updateFullscreenDOMState(true);
+      expect(hudBtn.textContent).toBe('⛶ EXIT');
+      expect(hudBtn.classList.toggle).toHaveBeenCalledWith('active-fullscreen', true);
+      expect(settingsBtn.textContent).toBe('AKTIF ⛶');
+      expect(settingsBtn.classList.toggle).toHaveBeenCalledWith('active', true);
+      expect(modalBtn.textContent).toBe('⛶ EXIT FULLSCREEN');
+
+      // Test Exiting Fullscreen state
+      updateFullscreenDOMState(false);
+      expect(hudBtn.textContent).toBe('⛶ FULLSCREEN');
+      expect(hudBtn.classList.toggle).toHaveBeenCalledWith('active-fullscreen', false);
+      expect(settingsBtn.textContent).toBe('AKTIFKAN ⛶');
+      expect(settingsBtn.classList.toggle).toHaveBeenCalledWith('active', false);
+      expect(modalBtn.textContent).toBe('⛶ ENTER FULLSCREEN');
+    });
+
+    it('dismisses orientation overlay permanently when user clicks dismiss', () => {
+      setupFullscreenController();
+
+      dismissBtn.onclick({ preventDefault: vi.fn() });
+
+      expect(modalEl.classList.add).toHaveBeenCalledWith('hidden');
+      expect(modalEl.dataset.manuallyDismissed).toBe('true');
+    });
+
+    it('triggers smooth scroll and toast notice on iOS devices without Fullscreen API', async () => {
+      delete global.document.documentElement.requestFullscreen;
+      global.window.navigator = {
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+        platform: 'iPhone'
+      };
+
+      await toggleFullscreen();
+
+      expect(global.window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'smooth' });
+      expect(toastEl.textContent).toContain('iOS Safari');
+      expect(toastEl.classList.remove).toHaveBeenCalledWith('hidden');
+    });
+  });
 });
+

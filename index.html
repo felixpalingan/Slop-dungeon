@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Slop Dungeon" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0a0f" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://0.peerjs.com; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;" />
   <title>Slop Dungeon - Co-op Dungeon Crawler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,6 +66,7 @@
           <span class="ping-dot online" id="hud-ping-dot"></span>
           <span id="hud-network-status">SOLO</span>
         </div>
+        <button id="btn-hud-fullscreen" class="lobby-btn hud-fullscreen-btn" title="Mode Layar Penuh / Toggle Fullscreen" data-testid="hud-fullscreen-btn">⛶ FULLSCREEN</button>
         <button id="btn-open-lobby" class="lobby-btn mabar-btn" title="Create Lobby / Multiplayer Co-op" data-testid="btn-open-lobby">🎮 CREATE LOBBY</button>
         <button id="btn-open-settings" class="lobby-btn settings-hud-btn" title="Pengaturan Grafik & Audio [O]" data-testid="hud-settings-btn">⚙️ SETTINGS</button>
       </div>
@@ -719,6 +725,14 @@
               </div>
               <button id="toggle-fps" class="toggle-btn active">HIDUP</button>
             </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>Mode Layar Penuh (Fullscreen)</strong>
+                <span>Maksimalkan tampilan game, sembunyikan bar browser, & kunci orientasi horizontal.</span>
+              </div>
+              <button id="btn-settings-fullscreen" class="toggle-btn" data-testid="settings-fullscreen-btn">AKTIFKAN ⛶</button>
+            </div>
           </div>
 
           <!-- Audio & SFX Settings -->
@@ -870,9 +884,15 @@
           <div class="phone-rotate-icon">📱 ↷</div>
           <h2 class="orientation-title">PLEASE ROTATE DEVICE</h2>
           <p class="orientation-desc">Slop Dungeon is designed for Landscape Mode. Please rotate your device horizontally for optimal dual-stick combat.</p>
-          <button id="btn-fullscreen-toggle" class="fullscreen-btn">⛶ ENTER FULLSCREEN</button>
+          <div class="orientation-actions">
+            <button id="btn-fullscreen-toggle" class="fullscreen-btn" data-testid="btn-fullscreen-toggle">⛶ ENTER FULLSCREEN</button>
+            <button id="btn-orientation-dismiss" class="orientation-dismiss-btn" data-testid="btn-orientation-dismiss">LANJUT MAIN (SKIP) ➔</button>
+          </div>
         </div>
       </div>
+
+      <!-- Mobile Micro Notification Toast -->
+      <div id="mobile-toast" class="mobile-toast hidden"></div>
     </div>
   </div>
 

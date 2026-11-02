@@ -1,6 +1,6 @@
 import { checkSetBonus, ItemRarity } from '../items.js';
 import { sanitizePlayerName } from '../security.js';
-import { openItemInspectionSheet } from '../mobileHUD.js';
+import { openItemInspectionSheet, updateFullscreenDOMState } from '../mobileHUD.js';
 
 /**
  * ModalController
@@ -358,6 +358,9 @@ export class ModalController {
     if (hudBadge) {
       hudBadge.classList.toggle('hidden', !current.showFps);
     }
+
+    // Fullscreen state sync
+    updateFullscreenDOMState();
 
     // Sliders
     const sliderMaster = document.getElementById('slider-master-vol');

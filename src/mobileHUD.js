@@ -349,6 +349,240 @@ export function closeItemInspectionSheet() {
   if (sheet) sheet.classList.add('hidden');
 }
 
+let toastTimeout = null;
+
+/**
+ * Displays a transient mobile toast notification for user feedback
+ * @param {string} message
+ * @param {number} [durationMs=3500]
+ */
+export function showMobileToast(message, durationMs = 3500) {
+  if (typeof document === 'undefined') return;
+  const toast = document.getElementById('mobile-toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.remove('hidden');
+
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.add('hidden');
+    toastTimeout = null;
+  }, durationMs);
+}
+
+/**
+ * Checks whether the document is currently in fullscreen across browser variants
+ * @returns {boolean}
+ */
+export function isFullscreen() {
+  if (typeof document === 'undefined') return false;
+  const doc = document;
+  return !!(
+    doc.fullscreenElement ||
+    doc.webkitFullscreenElement ||
+    doc.mozFullScreenElement ||
+    doc.msFullscreenElement
+  );
+}
+
+/**
+ * Universal cross-browser fullscreen toggle supporting standard, WebKit, Moz, and MS prefixes,
+ * Screen Orientation locking (Landscape), and iOS Safari fallbacks.
+ * @returns {Promise<boolean>}
+ */
+export async function toggleFullscreen() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  const doc = document;
+  const docEl = doc.documentElement;
+  const currentlyFullscreen = isFullscreen();
+
+  if (!currentlyFullscreen) {
+    // 1. Enter Fullscreen
+    const requestMethod =
+      docEl?.requestFullscreen ||
+      docEl?.webkitRequestFullscreen ||
+      docEl?.mozRequestFullScreen ||
+      docEl?.msRequestFullscreen ||
+      (doc.body && (doc.body.requestFullscreen || doc.body.webkitRequestFullscreen));
+
+    if (requestMethod) {
+      try {
+        const p = requestMethod.call(docEl, { navigationUI: 'hide' });
+        if (p && typeof p.then === 'function') {
+          await p.catch(async () => {
+            // Older webkit engines reject the options object parameter
+            try {
+              const p2 = requestMethod.call(docEl);
+              if (p2 && typeof p2.then === 'function') await p2;
+            } catch (e) {
+              console.warn('[Fullscreen] Direct fallback request failed:', e);
+            }
+          });
+        }
+      } catch (err) {
+        try {
+          requestMethod.call(docEl);
+        } catch (e) {
+          console.warn('[Fullscreen] Synchronous fallback failed:', e);
+        }
+      }
+    } else {
+      // iOS Safari fallback (element requestFullscreen is unsupported on iPhone)
+      if (typeof window.scrollTo === 'function') {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }
+      const isIOS =
+        /iPad|iPhone|iPod/.test(window.navigator?.userAgent || '') ||
+        (window.navigator?.platform === 'MacIntel' && (window.navigator?.maxTouchPoints || 0) > 1);
+
+      if (isIOS) {
+        showMobileToast('📱 iOS Safari: Ketuk "Aa" di address bar ➔ "Hide Toolbar", atau Tambah ke Layar Utama (Add to Home Screen) untuk layar penuh!', 5000);
+      }
+    }
+
+    // 2. Lock to Landscape Orientation (Crucial for mobile action gaming!)
+    try {
+      const orientation =
+        window.screen?.orientation ||
+        window.screen?.mozOrientation ||
+        window.screen?.msOrientation;
+
+      if (orientation && typeof orientation.lock === 'function') {
+        await orientation.lock('landscape').catch(async () => {
+          try {
+            await orientation.lock('landscape-primary');
+          } catch (e) {}
+        });
+      } else if (window.screen?.lockOrientation) {
+        window.screen.lockOrientation('landscape');
+      }
+    } catch (err) {
+      // Orientation lock requires standalone mode or active user interaction on some platforms
+    }
+
+    updateFullscreenDOMState(true);
+    return true;
+  } else {
+    // Exit Fullscreen
+    const exitMethod =
+      doc.exitFullscreen ||
+      doc.webkitExitFullscreen ||
+      doc.mozCancelFullScreen ||
+      doc.msExitFullscreen;
+
+    if (exitMethod) {
+      try {
+        const p = exitMethod.call(doc);
+        if (p && typeof p.then === 'function') await p;
+      } catch (err) {
+        console.warn('[Fullscreen] Exit failed:', err);
+      }
+    }
+
+    try {
+      const orientation = window.screen?.orientation || window.screen?.mozOrientation;
+      if (orientation && typeof orientation.unlock === 'function') {
+        orientation.unlock();
+      } else if (window.screen?.unlockOrientation) {
+        window.screen.unlockOrientation();
+      }
+    } catch (e) {}
+
+    updateFullscreenDOMState(false);
+    return false;
+  }
+}
+
+/**
+ * Updates UI labels and active states for all fullscreen buttons across HUD, settings, and modal
+ * @param {boolean} [forcedState]
+ */
+export function updateFullscreenDOMState(forcedState) {
+  if (typeof document === 'undefined') return;
+
+  const active = typeof forcedState === 'boolean' ? forcedState : isFullscreen();
+
+  // 1. HUD Button
+  const hudBtn = document.getElementById('btn-hud-fullscreen');
+  if (hudBtn) {
+    hudBtn.textContent = active ? '⛶ EXIT' : '⛶ FULLSCREEN';
+    hudBtn.classList.toggle('active-fullscreen', active);
+  }
+
+  // 2. Settings Modal Button
+  const settingsBtn = document.getElementById('btn-settings-fullscreen');
+  if (settingsBtn) {
+    settingsBtn.textContent = active ? 'AKTIF ⛶' : 'AKTIFKAN ⛶';
+    settingsBtn.classList.toggle('active', active);
+  }
+
+  // 3. Orientation Modal Button
+  const modalBtn = document.getElementById('btn-fullscreen-toggle');
+  if (modalBtn) {
+    modalBtn.textContent = active ? '⛶ EXIT FULLSCREEN' : '⛶ ENTER FULLSCREEN';
+  }
+}
+
+/**
+ * Sets up listeners on all fullscreen triggers and browser fullscreenchange events
+ */
+export function setupFullscreenController() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const hudBtn = document.getElementById('btn-hud-fullscreen');
+  const settingsBtn = document.getElementById('btn-settings-fullscreen');
+  const modalBtn = document.getElementById('btn-fullscreen-toggle');
+  const dismissBtn = document.getElementById('btn-orientation-dismiss');
+  const orientationModal = document.getElementById('orientation-modal');
+
+  const onToggle = (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    toggleFullscreen();
+  };
+
+  if (hudBtn) {
+    hudBtn.onclick = onToggle;
+  }
+  if (settingsBtn) {
+    settingsBtn.onclick = onToggle;
+  }
+  if (modalBtn) {
+    modalBtn.onclick = () => {
+      onToggle();
+      setTimeout(() => {
+        if (orientationModal && window.innerWidth >= window.innerHeight) {
+          orientationModal.classList.add('hidden');
+        }
+      }, 300);
+    };
+  }
+
+  if (dismissBtn && orientationModal) {
+    dismissBtn.onclick = (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      orientationModal.classList.add('hidden');
+      if (orientationModal.dataset) {
+        orientationModal.dataset.manuallyDismissed = 'true';
+      }
+    };
+  }
+
+  // Listen for browser fullscreen change events
+  const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+  fsEvents.forEach((evtName) => {
+    document.addEventListener(evtName, () => {
+      updateFullscreenDOMState();
+    }, { passive: true });
+  });
+
+  updateFullscreenDOMState();
+}
+
 /**
  * Sets up landscape orientation detection and enforcement overlay (Phase 4)
  */
@@ -357,9 +591,14 @@ export function setupOrientationEnforcement() {
 
   const modal = document.getElementById('orientation-modal');
   const fullscreenBtn = document.getElementById('btn-fullscreen-toggle');
+  const dismissBtn = document.getElementById('btn-orientation-dismiss');
 
   const checkOrientation = () => {
     if (!modal) return;
+    if (modal.dataset?.manuallyDismissed === 'true') {
+      modal.classList.add('hidden');
+      return;
+    }
     const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 1024;
     if (isPortrait) {
       modal.classList.remove('hidden');
@@ -374,19 +613,16 @@ export function setupOrientationEnforcement() {
 
   if (fullscreenBtn) {
     fullscreenBtn.onclick = () => {
-      const doc = document;
-      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
-        if (doc.documentElement.requestFullscreen) {
-          doc.documentElement.requestFullscreen().catch(() => {});
-        } else if (doc.documentElement.webkitRequestFullscreen) {
-          doc.documentElement.webkitRequestFullscreen();
-        }
-      } else {
-        if (doc.exitFullscreen) {
-          doc.exitFullscreen().catch(() => {});
-        } else if (doc.webkitExitFullscreen) {
-          doc.webkitExitFullscreen();
-        }
+      toggleFullscreen();
+    };
+  }
+
+  if (dismissBtn && modal) {
+    dismissBtn.onclick = (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      modal.classList.add('hidden');
+      if (modal.dataset) {
+        modal.dataset.manuallyDismissed = 'true';
       }
     };
   }

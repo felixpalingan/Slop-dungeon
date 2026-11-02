@@ -25,7 +25,7 @@ import { ModalController } from './controllers/modalController.js';
 import { StationController } from './controllers/stationController.js';
 import { defaultEventBus } from './eventBus.js';
 import { initHudPresenter } from './presenters/hudPresenter.js';
-import { getNearbyInteractable, updateMobileClusterDOM, setupOrientationEnforcement, setupGestureHardening } from './mobileHUD.js';
+import { getNearbyInteractable, updateMobileClusterDOM, setupOrientationEnforcement, setupGestureHardening, setupFullscreenController, updateFullscreenDOMState } from './mobileHUD.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -35,8 +35,9 @@ const player = new Player(0, 0);
 // Initialize decoupled Presentation Adapter for Domain HUD events (ADR-001)
 initHudPresenter(defaultEventBus);
 
-// Initialize Mobile Landscape Orientation Enforcement & Gesture Hardening (Phase 4)
+// Initialize Mobile Landscape Orientation Enforcement, Fullscreen Controller & Gesture Hardening
 setupOrientationEnforcement();
+setupFullscreenController();
 setupGestureHardening();
 
 // Start with standard starter adventurer gear (clean roguelike progression)
@@ -4102,6 +4103,9 @@ function updateSettingsUIFromState() {
   if (hudBadge) {
     hudBadge.classList.toggle('hidden', !current.showFps);
   }
+
+  // Fullscreen State Sync
+  updateFullscreenDOMState();
 
   // Sliders
   const sliderMaster = document.getElementById('slider-master-vol');
