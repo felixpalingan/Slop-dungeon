@@ -6711,6 +6711,11 @@ function gameLoop(now) {
       }
     }
 
+    // Ground Decals (Floor craters, seismic fractures, scorched earth - below combat entities)
+    if (cinematics && typeof cinematics.drawGroundDecals === 'function') {
+      cinematics.drawGroundDecals(renderer.ctx);
+    }
+
     // Themed Anime Monsters (Fly Heads, Masked Ino, Cursed Brutes, Boss Finger Bearer)
     renderer.drawMonsters(monsterManager.monsters, now * 0.001);
   }

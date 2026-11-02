@@ -73,10 +73,12 @@ describe('Sukuna King of Curses Rework: World Cutting Slash Cone & Reality Freez
       expect(slash).toBeDefined();
       expect(slash.damage).toBe(380);
       expect(slash.piercesObstacles).toBe(true);
-      expect(slash.coneAngle).toBeGreaterThan(0.7); // wide cone angle (~47 deg half-angle)
+      expect(slash.coneAngle).toBeGreaterThan(0.7); // wide cone angle (~50 deg half-angle)
+      expect(slash.vx).toBe(0); // Anchored at caster origin, does not fly forward as whole cone
+      expect(slash.vy).toBe(0);
       expect(slash.width).toBeGreaterThanOrEqual(280);
-      expect(slash.maxWidth).toBe(640);
-      expect(slash.maxRadius).toBe(360);
+      expect(slash.maxWidth).toBe(1280);
+      expect(slash.maxRadius).toBe(820);
     });
 
     it('pierces straight through obstacles/pillars without getting blocked or destroyed', () => {
@@ -86,20 +88,20 @@ describe('Sukuna King of Curses Rework: World Cutting Slash Cone & Reality Freez
         type: 'world_cutting_slash',
         x: 100,
         y: 100,
-        vx: 960,
+        vx: 0,
         vy: 0,
         radius: 160,
-        maxRadius: 360,
-        width: 280,
-        maxWidth: 640,
+        maxRadius: 820,
+        width: 320,
+        maxWidth: 1280,
         damage: 380,
         piercesObstacles: true,
-        life: 0.65,
+        life: 0.75,
         angle: 0
       });
 
       let obstacleIntercepted = false;
-      // Advance projectile through pillar (0.15s = 144px movement -> from 100 to 244, passing 220)
+      // Advance projectile past obstacle (obstacle is within expanding cone radius)
       cinematics.update(0.15, [], null, [pillar], () => {
         obstacleIntercepted = true;
       });
@@ -108,21 +110,21 @@ describe('Sukuna King of Curses Rework: World Cutting Slash Cone & Reality Freez
       expect(cinematics.projectiles.some(p => p.type === 'world_cutting_slash')).toBe(true);
     });
 
-    it('hits targets in the forward cone arc and expands over flight', () => {
+    it('hits targets in the forward cone arc and expands outward from caster', () => {
       const slash = {
         type: 'world_cutting_slash',
         x: 100,
         y: 100,
-        vx: 800,
+        vx: 0,
         vy: 0,
         radius: 160,
-        maxRadius: 360,
-        width: 280,
-        maxWidth: 640,
+        maxRadius: 820,
+        width: 320,
+        maxWidth: 1280,
         damage: 380,
-        coneAngle: 0.82, // ~47 deg
-        life: 0.65,
-        maxLife: 0.65,
+        coneAngle: 0.88, // ~50.4 deg
+        life: 0.75,
+        maxLife: 0.75,
         angle: 0,
         caster: player
       };

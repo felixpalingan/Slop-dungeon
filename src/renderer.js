@@ -550,19 +550,24 @@ export class Renderer {
         ctx.lineTo(thrustReach - 10, 14);
         ctx.stroke();
       } else if (weapon?.visual === 'dragon_slayer') {
-        // Guts' Colossal Dragon Slayer: Massive dark iron cleave arc with crimson blood trim & debris sparks
+        // Guts' Colossal Dragon Slayer: Massive luminous crimson cleave arc with tempered white razor edge (semi-transparent, monsters remain visible!)
         const slashReach = radius + 64;
         const cleaveArc = -Math.PI * 0.55 + p * Math.PI * 1.5;
+
+        // 1. Translucent Crimson Cleave Wave
         ctx.beginPath();
         ctx.arc(0, 0, slashReach, cleaveArc - Math.PI * 0.65, cleaveArc);
-        ctx.strokeStyle = `rgba(15, 23, 42, ${1 - p * 0.6})`;
-        ctx.lineWidth = 12;
+        ctx.strokeStyle = `rgba(239, 68, 68, ${(1 - p) * 0.55})`;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 6;
         ctx.stroke();
 
-        ctx.strokeStyle = `rgba(239, 68, 68, ${1 - p})`;
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 24;
-        ctx.lineWidth = 5;
+        // 2. Razor-Sharp White Cutting Edge
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - p) * 0.9})`;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.arc(0, 0, slashReach, cleaveArc - Math.PI * 0.5, cleaveArc);
         ctx.stroke();
@@ -572,9 +577,9 @@ export class Renderer {
           const sparkAngle = cleaveArc - Math.PI * 0.18 * s;
           const sx = Math.cos(sparkAngle) * (slashReach + 6 + s * 8);
           const sy = Math.sin(sparkAngle) * (slashReach + 6 + s * 8);
-          ctx.fillStyle = '#f59e0b';
+          ctx.fillStyle = '#fca5a5';
           ctx.beginPath();
-          ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
           ctx.fill();
         }
       } else if (weapon?.visual === 'warhammer_2h') {

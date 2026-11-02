@@ -731,7 +731,6 @@ export class CinematicManager {
             this.audio.playWorldCuttingSlash();
           }
 
-          const speed = 960;
           const caster = c.caster;
           this.projectiles.push({
             type: 'world_cutting_slash',
@@ -739,18 +738,18 @@ export class CinematicManager {
             isRemote: c.isRemote,
             x: caster ? caster.x : c.x,
             y: caster ? caster.y : c.y,
-            vx: Math.cos(c.angle) * speed,
-            vy: Math.sin(c.angle) * speed,
-            coneAngle: Math.PI * 0.26, // ~47° half-angle -> ~94° total expanding cone!
-            radius: 160,
-            maxRadius: 360,
-            width: 280,
-            maxWidth: 640,
+            vx: 0, // STATIONARY CONE ORIGIN (Anchored at caster, not flying forward as a missile!)
+            vy: 0,
+            coneAngle: Math.PI * 0.28, // ~50.4° half-angle -> ~101° wide colossal cone!
+            radius: 80,
+            maxRadius: 820, // Expands all the way to 820px across the entire room!
+            width: 320,
+            maxWidth: 1280,
             damage: 380,
             knockback: 650,
             piercesObstacles: true, // Slices through the fabric of space itself!
-            life: 0.65,
-            maxLife: 0.65,
+            life: 0.75,
+            maxLife: 0.75,
             angle: c.angle
           });
         }
@@ -928,11 +927,11 @@ export class CinematicManager {
 
         // Expand projectile radius & width if applicable (Hollow Purple, Berserk Cleave, or World Cutting Slash Cone)
         if (proj.radius && proj.maxRadius) {
-          const expansionRate = proj.type === 'world_cutting_slash' ? 320 : (proj.type === 'berserk_cleave' ? 160 : (proj.type === 'hollow_purple' ? 85 : 45));
+          const expansionRate = proj.type === 'world_cutting_slash' ? 1150 : (proj.type === 'berserk_cleave' ? 160 : (proj.type === 'hollow_purple' ? 85 : 45));
           proj.radius = Math.min(proj.maxRadius, proj.radius + expansionRate * projDt);
         }
         if (proj.width && proj.maxWidth) {
-          const widthRate = proj.type === 'world_cutting_slash' ? 560 : 60;
+          const widthRate = proj.type === 'world_cutting_slash' ? 1500 : 60;
           proj.width = Math.min(proj.maxWidth, proj.width + widthRate * projDt);
         }
 
@@ -1038,7 +1037,7 @@ export class CinematicManager {
                 const targetAngle = Math.atan2(dy, dx);
                 let angleDiff = Math.abs(targetAngle - proj.angle);
                 while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
-                if (angleDiff <= (proj.coneAngle || 0.82) || dist <= (proj.radius * 0.75)) {
+                if (angleDiff <= (proj.coneAngle || 0.88)) {
                   isHit = true;
                 }
               }
@@ -1054,7 +1053,10 @@ export class CinematicManager {
                 proj.life = 0; // Pellet is consumed on hit
               }
               if (onHitCallback) {
-                onHitCallback(target, proj);
+                const hitProj = proj.type === 'world_cutting_slash'
+                  ? { ...proj, angle: Math.atan2(dy, dx) }
+                  : proj;
+                onHitCallback(target, hitProj);
               }
             }
           }
@@ -1063,6 +1065,53 @@ export class CinematicManager {
         if (proj.life <= 0) {
           this.projectiles.splice(i, 1);
         }
+      }
+    }
+  }
+
+  /**
+   * Draws ground-level decals (stone craters, floor rupture cracks, scorched earth)
+   * on the floor below monsters and players so they never obscure combat entities.
+   */
+  drawGroundDecals(ctx) {
+    for (const c of this.activeCinematics) {
+      if (c.type === 'berserker_rage' && c.rubbleCracks && c.rubbleCracks.length > 0) {
+        ctx.save();
+        for (const crack of c.rubbleCracks) {
+          ctx.save();
+          ctx.translate(crack.x, crack.y);
+          ctx.rotate(crack.angle || 0);
+          const cr = crack.radius || 56;
+
+          // Scorched stone crater base on floor
+          ctx.fillStyle = 'rgba(15, 6, 10, 0.35)';
+          ctx.beginPath();
+          ctx.arc(0, 0, cr * 0.72, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Radial seismic fissure lines
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+          ctx.lineWidth = 1.8;
+          for (let rIdx = 0; rIdx < 6; rIdx++) {
+            const fa = (rIdx / 6) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(fa) * cr * 0.5, Math.sin(fa) * cr * 0.5 + (rIdx % 2 === 0 ? 4 : -4));
+            ctx.lineTo(Math.cos(fa) * cr, Math.sin(fa) * cr);
+            ctx.stroke();
+          }
+
+          // Small stone rubble chunks around rim
+          ctx.fillStyle = '#44403c';
+          for (let b = 0; b < 5; b++) {
+            const ba = (b / 5) * Math.PI * 2 + 0.3;
+            const bx = Math.cos(ba) * (cr * 0.68);
+            const by = Math.sin(ba) * (cr * 0.68);
+            ctx.fillRect(bx - 3, by - 3, 6, 5);
+          }
+          ctx.restore();
+        }
+        ctx.restore();
       }
     }
   }
@@ -1164,84 +1213,159 @@ export class CinematicManager {
         ctx.arc(0, 0, r * 0.24, 0, Math.PI * 2);
         ctx.stroke();
       } else if (proj.type === 'world_cutting_slash') {
-        // Sukuna's World Cutting Slash: Colossal Reality-Bisecting Dimensional Cone
-        ctx.rotate(proj.angle);
-        const coneHalf = proj.coneAngle || 0.82;
-        const pulse = 1 + Math.sin(Date.now() * 0.04) * 0.12;
-
-        const curRadius = proj.radius || 180;
-        const curWidth = proj.width || 320;
-
-        // 1. Dimensional Void Cone Fill (Sheared Reality Rift)
+        // Sukuna's World Cutting Slash (世界を断つ斬撃):
+        // Colossal Room-Sized Cone Sector (Anchored at caster origin, expanding outward to room boundaries!)
         ctx.save();
-        ctx.fillStyle = 'rgba(255, 20, 70, 0.18)';
-        ctx.shadowColor = '#ff2a5f';
-        ctx.shadowBlur = 32;
+        ctx.rotate(proj.angle);
+        const coneHalf = proj.coneAngle || 0.88; // ~50.4° half angle (~101° total cone)
+        const curRadius = proj.radius || 80;
+        const maxRadius = proj.maxRadius || 820;
+        const lifeProgress = proj.maxLife ? (1 - Math.max(0, proj.life) / proj.maxLife) : 0.5;
+        const alphaFade = proj.life < 0.22 ? (proj.life / 0.22) : 1.0;
+
+        // 1. Dimensional Void Cone Ambient Shading (Light translucent crimson wash, never obscuring enemies!)
+        ctx.save();
+        const coneGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, curRadius);
+        coneGrad.addColorStop(0, `rgba(255, 42, 95, ${0.16 * alphaFade})`);
+        coneGrad.addColorStop(0.7, `rgba(220, 20, 60, ${0.08 * alphaFade})`);
+        coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = coneGrad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.arc(0, 0, curRadius * 1.05, -coneHalf, coneHalf);
+        ctx.arc(0, 0, curRadius, -coneHalf, coneHalf);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
 
-        // 2. Cascading Dimensional Cutting Arcs (Layered Crimson & Pure White Razor Edges)
-        for (let arcIdx = 0; arcIdx < 4; arcIdx++) {
-          const arcR = curRadius * (0.42 + arcIdx * 0.20) * pulse;
-          const arcSpread = coneHalf * (0.85 + arcIdx * 0.05);
-          const arcAlpha = Math.max(0.2, 1 - (arcIdx * 0.18));
+        // 2. Outer Cone Boundary Shear Lines (From inner point (0,0) expanding all the way to current wavefront!)
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 42, 95, ${0.85 * alphaFade})`;
+        ctx.shadowColor = '#ff2a5f';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 3;
+        // Left boundary ray
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(-coneHalf) * curRadius, Math.sin(-coneHalf) * curRadius);
+        ctx.stroke();
+        // Right boundary ray
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(coneHalf) * curRadius, Math.sin(coneHalf) * curRadius);
+        ctx.stroke();
 
-          // Outer Crimson Aura
-          ctx.strokeStyle = `rgba(255, 42, 95, ${arcAlpha})`;
+        // Pure white razor core along the boundary edges
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alphaFade})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(-coneHalf) * curRadius, Math.sin(-coneHalf) * curRadius);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(coneHalf) * curRadius, Math.sin(coneHalf) * curRadius);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Cascading Slash Waves that Start Narrow at Inner Point and Expand Outward!
+        // "garisnya mulai dari titik dalem dan melebar sampe diameter luar cone"
+        // Slash arc length = 2 * r * coneHalf, naturally widening from narrow at caster to >1200px at room edge!
+        const numArcs = 5;
+        for (let i = 0; i < numArcs; i++) {
+          const wavePhase = (lifeProgress * 1.5 - i * 0.18);
+          if (wavePhase <= 0 || wavePhase > 1.0) continue;
+
+          const arcR = Math.min(curRadius, wavePhase * maxRadius);
+          if (arcR < 15) continue;
+
+          // As the wave expands further, its arc spans the full cone width
+          const arcSpread = coneHalf * Math.min(1.0, 0.4 + (arcR / maxRadius) * 0.6);
+          const waveAlpha = Math.sin(wavePhase * Math.PI) * alphaFade;
+
+          // Outer Crimson Dimensional Rift Glow
+          ctx.save();
+          ctx.strokeStyle = `rgba(255, 30, 80, ${waveAlpha * 0.85})`;
           ctx.shadowColor = '#ff2a5f';
-          ctx.shadowBlur = 24 - arcIdx * 4;
-          ctx.lineWidth = 10 - arcIdx * 1.5;
+          ctx.shadowBlur = 24;
+          // Slash thickness increases as it propagates further out
+          ctx.lineWidth = 3 + (arcR / maxRadius) * 6;
           ctx.beginPath();
           ctx.arc(0, 0, arcR, -arcSpread, arcSpread);
           ctx.stroke();
 
-          // Pure White Razor Core (Infinite Sharpness)
-          ctx.strokeStyle = `rgba(255, 255, 255, ${arcAlpha * 1.1})`;
+          // Blazing Scarlet Od Edge
+          ctx.strokeStyle = `rgba(239, 68, 68, ${waveAlpha * 0.95})`;
+          ctx.lineWidth = 2 + (arcR / maxRadius) * 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, arcR, -arcSpread * 0.98, arcSpread * 0.98);
+          ctx.stroke();
+
+          // Pure White Razor Fissure Core (Infinite Sharpness slicing space itself)
+          ctx.strokeStyle = `rgba(255, 255, 255, ${waveAlpha})`;
           ctx.shadowColor = '#ffffff';
           ctx.shadowBlur = 12;
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(0, 0, arcR, -arcSpread * 0.95, arcSpread * 0.95);
           ctx.stroke();
+          ctx.restore();
         }
 
-        // 3. Dismantle Lattice Grid Cuts (Radial Cleaves Across Cone)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#ff2a5f';
-        ctx.shadowBlur = 16;
-        const gridLines = [-0.65, -0.32, 0, 0.32, 0.65];
-        for (const g of gridLines) {
-          const lineAngle = g * coneHalf;
-          const endDist = curRadius * (0.92 + Math.cos(g * 2) * 0.12);
+        // 4. Radiating Dismantle Fissure Rays (Originating at inner point and fanning out to diameter!)
+        const rayAngles = [-0.72, -0.48, -0.24, 0, 0.24, 0.48, 0.72];
+        ctx.save();
+        for (let rIdx = 0; rIdx < rayAngles.length; rIdx++) {
+          const rayAngle = rayAngles[rIdx] * coneHalf;
+          const rayReach = curRadius * (0.85 + ((rIdx * 7) % 5) * 0.035);
+          const rayAlpha = (0.55 + Math.sin(lifeProgress * 8 + rIdx) * 0.25) * alphaFade;
+
+          ctx.strokeStyle = `rgba(255, 255, 255, ${rayAlpha * 0.75})`;
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 14;
+          ctx.lineWidth = 1.8;
           ctx.beginPath();
           ctx.moveTo(0, 0);
-          ctx.lineTo(Math.cos(lineAngle) * endDist, Math.sin(lineAngle) * endDist);
+          ctx.lineTo(Math.cos(rayAngle) * rayReach, Math.sin(rayAngle) * rayReach);
           ctx.stroke();
         }
+        ctx.restore();
 
-        // 4. Cross-cleave bisecting slashes across the fan
-        for (let cross = -2; cross <= 2; cross++) {
-          const cy = cross * (curWidth * 0.16);
-          const cx = curRadius * (0.52 + Math.abs(cross) * 0.12);
-          ctx.strokeStyle = 'rgba(255, 42, 95, 0.88)';
-          ctx.lineWidth = 3.5;
+        // 5. Cross-Cutting Dimensional Dismantle Cleaves Scaling with Distance!
+        // Slashes get bigger as distance increases from caster
+        ctx.save();
+        const numCrossCuts = 7;
+        for (let cIdx = 0; cIdx < numCrossCuts; cIdx++) {
+          const cutFrac = 0.2 + (cIdx / numCrossCuts) * 0.75;
+          const cutDist = cutFrac * curRadius;
+          if (cutDist > curRadius) continue;
+
+          const cutAngle = (Math.sin(cIdx * 2.3 + lifeProgress * 5) * 0.75) * coneHalf;
+          const cutScale = 16 + cutFrac * 42; // Grows from 16px to 58px wide!
+          const cutX = Math.cos(cutAngle) * cutDist;
+          const cutY = Math.sin(cutAngle) * cutDist;
+          const cutRot = (cIdx % 2 === 0 ? 1 : -1) * 0.55;
+
+          ctx.save();
+          ctx.translate(cutX, cutY);
+          ctx.rotate(cutRot);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.85 * alphaFade})`;
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 12;
+          ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.moveTo(cx - 32, cy - 32);
-          ctx.lineTo(cx + 32, cy + 32);
+          ctx.moveTo(-cutScale * 0.5, -cutScale * 0.35);
+          ctx.lineTo(cutScale * 0.5, cutScale * 0.35);
           ctx.stroke();
-        }
 
-        // 5. Crackling Spatial Fracture Sparks & Red Lightning
-        ctx.fillStyle = '#ffffff';
-        for (let sp = 0; sp < 6; sp++) {
-          const spAngle = (Math.sin(Date.now() * 0.01 + sp) * 0.5) * 2 * coneHalf;
-          const spDist = (0.2 + (sp * 0.14)) * curRadius;
-          ctx.fillRect(Math.cos(spAngle) * spDist - 2, Math.sin(spAngle) * spDist - 2, 4, 4);
+          // Crossing scissor slash
+          if (cIdx % 2 === 1) {
+            ctx.beginPath();
+            ctx.moveTo(-cutScale * 0.5, cutScale * 0.35);
+            ctx.lineTo(cutScale * 0.5, -cutScale * 0.35);
+            ctx.stroke();
+          }
+          ctx.restore();
         }
+        ctx.restore();
+
         ctx.restore();
       } else if (proj.type === 'dismantle') {
         // Red curved wind blade
@@ -1614,45 +1738,48 @@ export class CinematicManager {
         }
       } else if (proj.type === 'berserk_cleave') {
         // Guts' Dragon Slayer 180° Crimson Cleaving Shockwave Arc
+        // Translucent energetic crescent: luminous and sharp, never obscuring enemies!
+        ctx.save();
         ctx.rotate(proj.angle || 0);
         const r = proj.radius || 90;
 
-        // 1. Abyssal Black-Iron Outer Crescent Wave
-        ctx.strokeStyle = 'rgba(15, 4, 8, 0.92)';
+        // 1. Subtle Translucent Od Energy Wave (Semi-transparent, monsters clearly visible!)
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
         ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 24;
-        ctx.lineWidth = 16;
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.arc(0, 0, r, -Math.PI * 0.48, Math.PI * 0.48);
         ctx.stroke();
 
-        // 2. Blazing Blood-Crimson Od Inner Arc
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 8;
+        // 2. Pure White-Hot Razor Steel Core (Sharp, thin cutting edge)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.94, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.arc(0, 0, r, -Math.PI * 0.45, Math.PI * 0.45);
         ctx.stroke();
 
-        // 3. White-Hot Tempered Steel Edge
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2.5;
+        // 3. Inner Od Bleed Trim (Soft translucent scarlet)
+        ctx.strokeStyle = 'rgba(220, 38, 38, 0.40)';
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, r * 1.02, -Math.PI * 0.42, Math.PI * 0.42);
+        ctx.arc(0, 0, r * 0.94, -Math.PI * 0.42, Math.PI * 0.42);
         ctx.stroke();
 
-        // 4. Flying Stone Rubble Shards
-        ctx.fillStyle = '#57534e';
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 1.5;
+        // 4. Flying Red-Hot Ember Sparks (Tiny glowing dots instead of opaque blocks)
+        ctx.fillStyle = '#fca5a5';
         for (let s = -2; s <= 2; s++) {
           const sa = s * 0.34;
-          const sx = Math.cos(sa) * (r * 0.85);
-          const sy = Math.sin(sa) * (r * 0.85);
+          const sx = Math.cos(sa) * (r * 0.88);
+          const sy = Math.sin(sa) * (r * 0.88);
           ctx.beginPath();
-          ctx.rect(sx - 5, sy - 5, 10, 8);
+          ctx.arc(sx, sy, 2.0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.stroke();
         }
+        ctx.restore();
       }
 
       ctx.restore();
@@ -1804,47 +1931,7 @@ export class CinematicManager {
         const posX = caster ? caster.x : c.x;
         const posY = caster ? caster.y : c.y;
 
-        // 1. Draw fractured floor stone rubble craters left by Dragon Slayer slams!
-        if (c.rubbleCracks && c.rubbleCracks.length > 0) {
-          ctx.save();
-          for (const crack of c.rubbleCracks) {
-            ctx.save();
-            ctx.translate(crack.x, crack.y);
-            ctx.rotate(crack.angle || 0);
-            const cr = crack.radius || 56;
-
-            // Scorched stone crater base
-            ctx.fillStyle = 'rgba(15, 6, 10, 0.55)';
-            ctx.beginPath();
-            ctx.arc(0, 0, cr * 0.72, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Radial seismic fissure lines
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
-            ctx.lineWidth = 2.2;
-            for (let rIdx = 0; rIdx < 6; rIdx++) {
-              const fa = (rIdx / 6) * Math.PI * 2;
-              ctx.beginPath();
-              ctx.moveTo(0, 0);
-              ctx.lineTo(Math.cos(fa) * cr * 0.5, Math.sin(fa) * cr * 0.5 + (rIdx % 2 === 0 ? 5 : -5));
-              ctx.lineTo(Math.cos(fa) * cr, Math.sin(fa) * cr);
-              ctx.stroke();
-            }
-
-            // Jagged stone rubble chunks around rim
-            ctx.fillStyle = '#44403c';
-            for (let b = 0; b < 5; b++) {
-              const ba = (b / 5) * Math.PI * 2 + 0.3;
-              const bx = Math.cos(ba) * (cr * 0.68);
-              const by = Math.sin(ba) * (cr * 0.68);
-              ctx.fillRect(bx - 4, by - 4, 8, 6);
-            }
-            ctx.restore();
-          }
-          ctx.restore();
-        }
-
-        // 2. Draw Beast of Darkness Dark-Od Aura & Crimson Eye Trail around Guts
+        // Draw Beast of Darkness Dark-Od Aura & Crimson Eye Trail around Guts (floor craters drawn in drawGroundDecals)
         ctx.save();
         ctx.translate(posX, posY);
         const pulse = 1 + Math.sin(Date.now() * 0.025) * 0.14;
