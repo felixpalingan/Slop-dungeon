@@ -2491,8 +2491,29 @@ function renderInventoryUI() {
         <span style="color:${rarity.color}">${item.name}</span>
         <button class="item-action-btn unequip-btn" data-slot="${slot}">UNEQUIP</button>
       `;
+      el.onclick = (e) => {
+        if (e.target && e.target.tagName === 'BUTTON') return;
+        openItemInspectionSheet({ ...item, rarityColor: rarity.color }, {
+          isEquipped: true,
+          slotKey: slot,
+          onUnequip: () => {
+            if (player.inventory.length >= player.maxInventorySize) {
+              alert('Backpack is full!');
+              return;
+            }
+            const unequipped = player.unequipSlot(slot);
+            if (unequipped) {
+              player.inventory.push(unequipped);
+              audio.playSwing();
+              renderInventoryUI();
+              broadcastMyState();
+            }
+          }
+        });
+      };
     } else {
       el.innerHTML = `<span style="color:#94a3b8;font-weight:500;">(Empty)</span>`;
+      el.onclick = null;
     }
   });
 
@@ -2527,6 +2548,45 @@ function renderInventoryUI() {
     const isConsumable = item.slot === 'consumable';
     const card = document.createElement('div');
     card.className = 'backpack-item-card';
+    card.onclick = (e) => {
+      if (e.target && e.target.tagName === 'BUTTON') return;
+      openItemInspectionSheet({ ...item, rarityColor: rarity.color }, {
+        isEquipped: false,
+        inventoryIndex: index,
+        onEquip: () => {
+          const itemToEquip = player.inventory.splice(index, 1)[0];
+          if (!itemToEquip) return;
+          const displaced = player.equipItem(itemToEquip);
+          if (displaced && displaced.length > 0) {
+            player.inventory.push(...displaced);
+          }
+          audio.playSwing();
+          renderInventoryUI();
+          broadcastMyState();
+        },
+        onUse: () => {
+          const itemToUse = player.inventory.splice(index, 1)[0];
+          if (!itemToUse) return;
+          if (itemToUse.id === 'health_flask' || itemToUse.healAmount) {
+            const heal = itemToUse.healAmount || 50;
+            player.hp = Math.min(player.maxHp, player.hp + heal);
+            player.syncHUD();
+            audio.playShopBuy?.();
+            particles.spawnComicText(player.x, player.y - 32, `+${heal} HP 💚 (FLASK)`, '#22c55e');
+          }
+          renderInventoryUI();
+          broadcastMyState();
+        },
+        onDrop: () => {
+          const dropped = player.inventory.splice(index, 1)[0];
+          if (dropped) {
+            dropItemOnGround(dropped, player.x, player.y);
+            renderInventoryUI();
+            broadcastMyState();
+          }
+        }
+      });
+    };
     card.innerHTML = `
       <div>
         <strong style="color:${rarity.color}">${item.name}</strong>

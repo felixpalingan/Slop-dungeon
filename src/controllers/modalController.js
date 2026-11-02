@@ -1,5 +1,6 @@
 import { checkSetBonus, ItemRarity } from '../items.js';
 import { sanitizePlayerName } from '../security.js';
+import { openItemInspectionSheet } from '../mobileHUD.js';
 
 /**
  * ModalController
@@ -88,8 +89,29 @@ export class ModalController {
           <span style="color:${rarity.color}">${item.name}</span>
           <button class="item-action-btn unequip-btn" data-slot="${slot}">UNEQUIP</button>
         `;
+        el.onclick = (e) => {
+          if (e.target && e.target.tagName === 'BUTTON') return;
+          openItemInspectionSheet({ ...item, rarityColor: rarity.color }, {
+            isEquipped: true,
+            slotKey: slot,
+            onUnequip: () => {
+              if (this.player.inventory.length >= this.player.maxInventorySize) {
+                alert('Backpack is full!');
+                return;
+              }
+              const unequipped = this.player.unequipSlot(slot);
+              if (unequipped) {
+                this.player.inventory.push(unequipped);
+                if (this.audio) this.audio.playSwing();
+                this.renderInventoryUI();
+                this.broadcastMyState();
+              }
+            }
+          });
+        };
       } else {
         el.innerHTML = `<span style="color:#94a3b8;font-weight:500;">(Empty)</span>`;
+        el.onclick = null;
       }
     });
 
@@ -128,6 +150,44 @@ export class ModalController {
       const isConsumable = item.slot === 'consumable';
       const card = document.createElement('div');
       card.className = 'backpack-item-card';
+      card.onclick = (e) => {
+        if (e.target && e.target.tagName === 'BUTTON') return;
+        openItemInspectionSheet({ ...item, rarityColor: rarity.color }, {
+          isEquipped: false,
+          inventoryIndex: index,
+          onEquip: () => {
+            const itemToEquip = this.player.inventory.splice(index, 1)[0];
+            if (!itemToEquip) return;
+            const oldItem = this.player.equipItem(itemToEquip);
+            if (oldItem) this.player.inventory.push(oldItem);
+            if (this.audio) this.audio.playSwing();
+            this.renderInventoryUI();
+            this.broadcastMyState();
+          },
+          onUse: () => {
+            const itemToUse = this.player.inventory.splice(index, 1)[0];
+            if (!itemToUse) return;
+            if (itemToUse.id === 'health_flask' || itemToUse.healAmount) {
+              const heal = itemToUse.healAmount || 50;
+              this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+              this.player.syncHUD();
+              if (this.audio) this.audio.playShopBuy?.();
+              if (this.particles) {
+                this.particles.spawnComicText(this.player.x, this.player.y - 32, `+${heal} HP 💚 (FLASK)`, '#22c55e');
+              }
+            }
+            this.renderInventoryUI();
+            this.broadcastMyState();
+          },
+          onDrop: () => {
+            const dropped = this.player.inventory.splice(index, 1)[0];
+            if (dropped) {
+              this.renderInventoryUI();
+              this.broadcastMyState();
+            }
+          }
+        });
+      };
       card.innerHTML = `
         <div>
           <strong style="color:${rarity.color}">${item.name}</strong>

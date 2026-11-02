@@ -251,3 +251,101 @@ export function updateMobileClusterDOM({
     }
   }
 }
+
+/**
+ * Opens the mobile item inspection bottom sheet (Phase 3 Tap-to-Inspect)
+ * @param {Object} item
+ * @param {Object} options
+ */
+export function openItemInspectionSheet(item, options = {}) {
+  if (typeof document === 'undefined' || !item) return;
+
+  const sheet = document.getElementById('mobile-item-sheet');
+  if (!sheet) return;
+
+  const nameEl = document.getElementById('sheet-item-name');
+  const slotEl = document.getElementById('sheet-item-slot');
+  const descEl = document.getElementById('sheet-item-desc');
+  const valEl = document.getElementById('sheet-item-value');
+  const setEl = document.getElementById('sheet-item-set');
+  const actionBtn = document.getElementById('sheet-btn-action');
+  const dropBtn = document.getElementById('sheet-btn-drop');
+  const closeBtn = document.getElementById('sheet-btn-close');
+  const backdrop = sheet.querySelector ? sheet.querySelector('.sheet-backdrop') : null;
+
+  const rarityColor = item.rarityColor || '#ffffff';
+  if (nameEl) {
+    nameEl.textContent = item.name || 'Unknown Item';
+    nameEl.style.color = rarityColor;
+  }
+  if (slotEl) {
+    slotEl.textContent = `[${(item.slot || 'ITEM').toUpperCase()}]`;
+  }
+  if (descEl) {
+    descEl.textContent = item.desc || 'No description available.';
+  }
+  if (valEl) {
+    const price = item.value || item.price || 15;
+    valEl.textContent = `🪙 ${price} Slops`;
+  }
+  if (setEl) {
+    if (item.setName || item.setKey) {
+      setEl.style.display = 'inline-block';
+      setEl.textContent = `✨ ${(item.setName || item.setKey).toUpperCase()} SET`;
+    } else {
+      setEl.style.display = 'none';
+    }
+  }
+
+  const closeSheet = () => {
+    sheet.classList.add('hidden');
+  };
+
+  if (closeBtn) closeBtn.onclick = closeSheet;
+  if (backdrop) backdrop.onclick = closeSheet;
+
+  if (actionBtn) {
+    actionBtn.className = 'sheet-btn-action';
+    if (options.isEquipped) {
+      actionBtn.classList.add('unequip-action');
+      actionBtn.textContent = 'UNEQUIP';
+      actionBtn.onclick = () => {
+        closeSheet();
+        if (typeof options.onUnequip === 'function') options.onUnequip();
+      };
+    } else if (item.slot === 'consumable') {
+      actionBtn.classList.add('use-action');
+      actionBtn.textContent = 'USE';
+      actionBtn.onclick = () => {
+        closeSheet();
+        if (typeof options.onUse === 'function') options.onUse();
+      };
+    } else {
+      actionBtn.classList.add('primary-action');
+      actionBtn.textContent = 'EQUIP';
+      actionBtn.onclick = () => {
+        closeSheet();
+        if (typeof options.onEquip === 'function') options.onEquip();
+      };
+    }
+  }
+
+  if (dropBtn) {
+    dropBtn.onclick = () => {
+      closeSheet();
+      if (typeof options.onDrop === 'function') options.onDrop();
+    };
+  }
+
+  sheet.classList.remove('hidden');
+}
+
+/**
+ * Closes the mobile item inspection sheet
+ */
+export function closeItemInspectionSheet() {
+  if (typeof document === 'undefined') return;
+  const sheet = document.getElementById('mobile-item-sheet');
+  if (sheet) sheet.classList.add('hidden');
+}
+

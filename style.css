@@ -3654,3 +3654,379 @@ kbd {
   0%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
   50% { transform: translate(-50%, -50%) scale(1.04); box-shadow: 0 0 30px rgba(56, 189, 248, 0.85); }
 }
+
+/* ==========================================================================
+   MOBILE ITEM INSPECTION BOTTOM SHEET (PHASE 3)
+   ========================================================================== */
+.mobile-item-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.mobile-item-sheet.hidden {
+  display: none !important;
+}
+
+.mobile-item-sheet .sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.mobile-item-sheet .sheet-panel {
+  position: relative;
+  background: linear-gradient(180deg, #182030 0%, #0d121c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 20px max(18px, env(safe-area-inset-bottom));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 540px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  animation: slideUpSheet 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  margin: 0 auto 4px auto;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sheet-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-item-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.sheet-item-slot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.sheet-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.sheet-item-desc {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sheet-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sheet-item-value {
+  color: #facc15;
+}
+
+.sheet-item-set {
+  color: #c084fc;
+}
+
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sheet-btn-action {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+
+.sheet-btn-action:active {
+  transform: scale(0.96);
+}
+
+.sheet-btn-action.primary-action {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+}
+
+.sheet-btn-action.use-action {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.sheet-btn-action.unequip-action {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.sheet-btn-action.drop-action {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE OVERRIDES (PHASE 3)
+   ========================================================================== */
+@media (max-width: 900px), (max-height: 550px) {
+  /* Safe area insets */
+  .hud-top-left {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+  }
+
+  .hud-top-right {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    right: max(12px, env(safe-area-inset-right)) !important;
+    gap: 6px !important;
+  }
+
+  .player-badge {
+    padding: 6px 10px !important;
+    min-width: 130px !important;
+  }
+
+  .player-avatar-preview {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .player-status {
+    min-width: 120px !important;
+  }
+
+  .player-name {
+    font-size: 0.78rem !important;
+  }
+
+  .bar-container {
+    height: 9px !important;
+  }
+
+  .lobby-btn {
+    min-height: 32px !important;
+    padding: 6px 10px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .network-badge {
+    padding: 4px 8px !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* Hide verbose keyboard shortcuts hints on mobile */
+  .hud-controls-hint {
+    display: none !important;
+  }
+
+  /* Universal Fluid Modal Card Scaling */
+  .modal-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  .modal-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    min-height: unset !important;
+    height: auto !important;
+    padding: 12px 16px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-title {
+    font-size: 1.15rem !important;
+  }
+
+  .modal-subtitle {
+    font-size: 0.72rem !important;
+  }
+
+  /* Inventory Modal */
+  .inventory-card {
+    max-width: 96vw !important;
+    padding: 10px 14px !important;
+  }
+
+  .equipment-slots-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .equip-slot-box {
+    padding: 4px 8px !important;
+  }
+
+  .slot-label {
+    font-size: 0.62rem !important;
+  }
+
+  .slot-content {
+    font-size: 0.76rem !important;
+  }
+
+  .backpack-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 6px !important;
+    max-height: 120px !important;
+  }
+
+  .backpack-item-card {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Slop Merchant Modal */
+  .merchant-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+    min-height: unset !important;
+    padding: 10px 14px !important;
+  }
+
+  .merchant-header {
+    padding-bottom: 8px !important;
+  }
+
+  .merchant-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 1.1rem !important;
+  }
+
+  .merchant-wallet-badge {
+    padding: 4px 8px !important;
+  }
+
+  .merchant-tabs {
+    gap: 6px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+  }
+
+  .merchant-tab-btn {
+    padding: 6px 10px !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+  }
+
+  .shop-grid, .sell-grid, .forge-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 8px !important;
+    max-height: 48vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Dev Armory Modal */
+  .dev-armory-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 10px 14px !important;
+  }
+
+  .armory-set-grid, .armory-items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  /* Floor Selection Gateway Modal */
+  .floor-card {
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 10px 14px !important;
+  }
+
+  .floor-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  /* Blackjack Casino Modal */
+  .blackjack-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Wheel Altar Modal */
+  .wheel-altar-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 10px 12px !important;
+  }
+}

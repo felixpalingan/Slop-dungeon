@@ -839,6 +839,30 @@
           ⛺ TAP TO RESPAWN AT BASE CAMP
         </button>
       </div>
+
+      <!-- Mobile Item Detail Bottom Sheet (Phase 3 Tap-to-Inspect) -->
+      <div id="mobile-item-sheet" class="mobile-item-sheet hidden">
+        <div class="sheet-backdrop"></div>
+        <div class="sheet-panel">
+          <div class="sheet-drag-handle"></div>
+          <div class="sheet-header">
+            <div class="sheet-title-group">
+              <h3 id="sheet-item-name" class="sheet-item-name">Item Name</h3>
+              <span id="sheet-item-slot" class="sheet-item-slot">[SLOT]</span>
+            </div>
+            <button id="sheet-btn-close" class="sheet-close-btn" aria-label="Close sheet">✕</button>
+          </div>
+          <p id="sheet-item-desc" class="sheet-item-desc">Item description and combat stats</p>
+          <div class="sheet-meta">
+            <span id="sheet-item-value" class="sheet-item-value">🪙 25 Slops</span>
+            <span id="sheet-item-set" class="sheet-item-set" style="display:none;">✨ Set Bonus</span>
+          </div>
+          <div class="sheet-actions">
+            <button id="sheet-btn-action" class="sheet-btn-action primary-action">EQUIP</button>
+            <button id="sheet-btn-drop" class="sheet-btn-action drop-action">DROP</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
