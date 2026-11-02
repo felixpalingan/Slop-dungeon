@@ -25,6 +25,7 @@ import { ModalController } from './controllers/modalController.js';
 import { StationController } from './controllers/stationController.js';
 import { defaultEventBus } from './eventBus.js';
 import { initHudPresenter } from './presenters/hudPresenter.js';
+import { getNearbyInteractable, updateMobileClusterDOM } from './mobileHUD.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -5789,6 +5790,26 @@ function gameLoop(now) {
       player.odmOverdriveTimer = 0;
     }
   }
+
+  // Update Mobile Touch Controls HUD Cluster (Phase 2)
+  const nearbyInteractable = getNearbyInteractable({
+    player,
+    currentFloor,
+    groundItems,
+    remotePlayers: network?.remotePlayers,
+    slopMerchant,
+    wheelAltar,
+    blackjackTable,
+    floorStation,
+    wardrobeStation,
+    devArmoryChest
+  });
+  updateMobileClusterDOM({
+    player,
+    activeSet,
+    interactable: nearbyInteractable,
+    currentFloor
+  });
 
   // --- LEVI ODM AIRBORNE PASS-THROUGH SLICING (HE ONLY SPINS ONCE HE HITS AN ENEMY!) ---
   if (player.isAirborne && (player.activeCables.length > 0 || Math.hypot(player.vx, player.vy) > 180)) {

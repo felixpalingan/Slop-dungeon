@@ -472,6 +472,30 @@ export class InputManager {
     bindTouchBtn('touch-btn-bag',
       () => { this.justPressedI = true; this.justPressedTab = true; }
     );
+    bindTouchBtn('touch-btn-ult',
+      () => { this.keys.q = true; this.justPressedQ = true; },
+      () => { this.keys.q = false; }
+    );
+    bindTouchBtn('touch-btn-interact',
+      () => { this.keys.e = true; this.justPressedE = true; },
+      () => { this.keys.e = false; }
+    );
+    bindTouchBtn('touch-btn-reload',
+      () => { this.keys.r = true; this.justPressedR = true; },
+      () => { this.keys.r = false; }
+    );
+    bindTouchBtn('touch-respawn-btn',
+      () => {
+        this.keys.space = true;
+        this.justPressedSpace = true;
+        this.keys.r = true;
+        this.justPressedR = true;
+      },
+      () => {
+        this.keys.space = false;
+        this.keys.r = false;
+      }
+    );
   }
 
   /**

@@ -785,7 +785,7 @@
         </div>
       </div>
 
-      <!-- Mobile & Tablet Touch Controls Layer (Phase 7.3) -->
+      <!-- Mobile & Tablet Touch Controls Layer (Phase 7.3 & Mobile Overhaul) -->
       <div id="touch-controls" class="touch-layer" style="display: none;">
         <!-- Virtual Movement Joystick (Bottom-Left) -->
         <div id="virtual-joystick-zone" class="joystick-zone">
@@ -796,11 +796,48 @@
 
         <!-- Action Buttons Cluster (Bottom-Right) -->
         <div class="touch-actions-cluster">
-          <button id="touch-btn-bag" class="touch-action-btn bag-btn" title="Open Inventory">🎒</button>
-          <button id="touch-btn-block" class="touch-action-btn block-btn" title="Shield Block / Slap">🛡️</button>
-          <button id="touch-btn-roll" class="touch-action-btn roll-btn" title="Dodge Roll">💨</button>
-          <button id="touch-btn-attack" class="touch-action-btn attack-btn primary-touch" title="Weapon Attack">⚔️</button>
+          <!-- Top Utility & Ability Row -->
+          <div class="touch-sub-row top-row">
+            <button id="touch-btn-bag" class="touch-action-btn bag-btn" title="Open Inventory">
+              <span class="btn-icon">🎒</span>
+              <span class="btn-label">BAG</span>
+            </button>
+            <button id="touch-btn-reload" class="touch-action-btn reload-btn" title="Reload Shotgun" style="display: none;">
+              <span class="btn-icon">🔄</span>
+              <span class="btn-label" id="touch-reload-ammo">4/4</span>
+            </button>
+            <button id="touch-btn-ult" class="touch-action-btn ult-btn" title="Cast Ultimate Ability">
+              <span class="btn-icon" id="touch-ult-icon">⚡</span>
+              <span class="btn-label" id="touch-ult-label">ULT</span>
+              <div class="ult-cd-overlay" id="touch-ult-cd" style="display: none;"></div>
+            </button>
+          </div>
+
+          <!-- Main Combat & Interaction Row -->
+          <div class="touch-sub-row main-row">
+            <button id="touch-btn-interact" class="touch-action-btn interact-btn interact-idle" title="Contextual Interact">
+              <span class="btn-icon" id="touch-interact-icon">✋</span>
+              <span class="btn-label" id="touch-interact-label">INTERACT</span>
+            </button>
+            <button id="touch-btn-block" class="touch-action-btn block-btn" title="Shield Block / Slap">
+              <span class="btn-icon">🛡️</span>
+              <span class="btn-label">BLOCK</span>
+            </button>
+            <button id="touch-btn-roll" class="touch-action-btn roll-btn" title="Dodge Roll">
+              <span class="btn-icon">💨</span>
+              <span class="btn-label">ROLL</span>
+            </button>
+            <button id="touch-btn-attack" class="touch-action-btn attack-btn primary-touch" title="Weapon Attack">
+              <span class="btn-icon">⚔️</span>
+              <span class="btn-label">ATTACK</span>
+            </button>
+          </div>
         </div>
+
+        <!-- Center Screen Respawn Tap Banner (Lobby Dead State) -->
+        <button id="touch-respawn-btn" class="touch-respawn-banner" style="display: none;">
+          ⛺ TAP TO RESPAWN AT BASE CAMP
+        </button>
       </div>
     </div>
   </div>
