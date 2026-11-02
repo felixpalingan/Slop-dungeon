@@ -6,6 +6,14 @@
 
 import { defaultEventBus } from './eventBus.js';
 
+export const BOSS_TYPES = new Set([
+  'finger_bearer',
+  'adam_smasher_prototype',
+  'armored_titan',
+  'nosferatu_zodd',
+  'carnage_kabuto'
+]);
+
 export class Monster {
   constructor(options = {}, eventBus = null) {
     this.eventBus = eventBus || (options?.emit ? options : (options?.eventBus || defaultEventBus));
@@ -13,7 +21,7 @@ export class Monster {
     this.type = options.type || 'generic_swarmer';
     this.name = options.name || 'Dungeon Creature';
     this.theme = options.theme || 'jjk';
-    this.archetype = options.archetype || 'swarmer'; // 'swarmer', 'ranged', 'brute', 'boss'
+    this.archetype = options.archetype || (BOSS_TYPES.has(this.type) ? 'boss' : 'swarmer'); // 'swarmer', 'ranged', 'brute', 'boss'
 
     this.x = options.x || 0;
     this.y = options.y || 0;
@@ -109,6 +117,10 @@ export class Monster {
     this.isActive = options.isActive !== undefined ? options.isActive : true;
   }
 
+  takeDamage(damage = 10, hitAngle = 0, knockback = 280, isCrit = false, attacker = null) {
+    return this.takeHit(damage, hitAngle, knockback, isCrit, attacker);
+  }
+
   takeHit(damage = 10, hitAngle = 0, knockback = 280, isCrit = false, attacker = null) {
     if (this.isDead || this.isDying) return { damage: 0, isDead: this.isDead };
 
@@ -147,6 +159,7 @@ export class Monster {
       }
       if (this.eventBus) {
         this.eventBus.emit('monster:phase2', { monster: this });
+        this.eventBus.emit('boss:phase2', { monster: this, boss: this });
       }
     }
 
@@ -630,6 +643,19 @@ export class Monster {
       if (this.onBossWindup) {
         this.onBossWindup(nextAttack, this.phase, this.windupTimer, this);
       }
+      if (this.eventBus) {
+        this.eventBus.emit('boss:windup', {
+          boss: this,
+          attackIndex: nextAttack,
+          phase: this.phase,
+          telegraphType: this.telegraphType,
+          telegraphAngle: this.telegraphAngle,
+          telegraphRange: this.telegraphRange,
+          telegraphWidth: this.telegraphWidth,
+          telegraphSpread: this.telegraphSpread,
+          duration: this.windupTimer
+        });
+      }
       return;
     }
 
@@ -662,7 +688,16 @@ export class Monster {
       this.windupTimer > 0 ? 1 : 0,
       Math.round(this.wardHp || 0),
       this.isPriming ? 1 : (this.isBuffing ? 2 : 0),
-      Math.round((this.fuseTimer || 0) * 100) / 100
+      Math.round((this.fuseTimer || 0) * 100) / 100,
+      Math.round(this.maxHp || this.hp || 100),
+      this.phase || 1,
+      this.telegraphType || 0,
+      Math.round((this.telegraphAngle || 0) * 100) / 100,
+      Math.round(this.telegraphRange || 0),
+      Math.round(this.telegraphWidth || 0),
+      Math.round((this.telegraphSpread || 0) * 100) / 100,
+      Math.round((this.windupTimer || 0) * 100) / 100,
+      Math.round((this.maxWindupTimer || 0) * 100) / 100
     ];
   }
 
@@ -670,7 +705,10 @@ export class Monster {
    * Applies network update on client peers
    */
   applyNetworkState(stateArray) {
-    const [id, type, x, y, angle, hp, isDead, isStunned, isWindingUp, wardHp, specialState, fuseTimer] = stateArray;
+    const [
+      id, type, x, y, angle, hp, isDead, isStunned, isWindingUp, wardHp, specialState, fuseTimer,
+      maxHp, phase, telegraphType, telegraphAngle, telegraphRange, telegraphWidth, telegraphSpread, windupTimer, maxWindupTimer
+    ] = stateArray;
     // Interpolate towards received position
     this.x += (x - this.x) * 0.45;
     this.y += (y - this.y) * 0.45;
@@ -685,6 +723,22 @@ export class Monster {
       this.isBuffing = specialState === 2;
     }
     if (fuseTimer !== undefined) this.fuseTimer = fuseTimer;
+    if (maxHp !== undefined && maxHp > 0) this.maxHp = maxHp;
+    if (phase !== undefined && phase > this.phase) this.phase = phase;
+
+    // Synchronize ground danger telegraphs to client
+    if (isWindingUp === 1 && telegraphType && telegraphType !== 0) {
+      this.telegraphType = telegraphType;
+      this.telegraphAngle = telegraphAngle !== undefined ? telegraphAngle : this.angle;
+      this.telegraphRange = telegraphRange || 300;
+      this.telegraphWidth = telegraphWidth || 80;
+      this.telegraphSpread = telegraphSpread || 0.6;
+      this.windupTimer = windupTimer || 0.5;
+      this.maxWindupTimer = maxWindupTimer || 0.5;
+    } else if (isWindingUp === 0) {
+      this.telegraphType = null;
+      this.windupTimer = 0;
+    }
 
     // Remote peer boss phase 2 trigger check
     if (this.archetype === 'boss' && this.hp <= this.maxHp * 0.5 && !this.phaseTransitionTriggered && this.hp > 0) {
@@ -697,6 +751,7 @@ export class Monster {
       }
       if (this.eventBus) {
         this.eventBus.emit('monster:phase2', { monster: this });
+        this.eventBus.emit('boss:phase2', { monster: this, boss: this });
       }
     }
   }
@@ -847,9 +902,11 @@ export class MonsterManager {
         monster = new Monster({
           id: state[0],
           type: state[1],
+          archetype: BOSS_TYPES.has(state[1]) ? 'boss' : 'swarmer',
           x: state[2],
           y: state[3],
-          hp: state[5]
+          hp: state[5],
+          maxHp: state[12] || state[5]
         });
         monster.applyNetworkState(state);
         this.addMonster(monster);

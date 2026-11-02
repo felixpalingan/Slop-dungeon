@@ -508,5 +508,121 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
       }).not.toThrow();
     });
   });
+
+  describe('Phase 4: Boss Ultimate Attacks & Combat Mechanics Integration', () => {
+    it('emits boss:phase2 on eventBus when boss takes damage below 50% HP', () => {
+      const mockEventBus = {
+        emit: vi.fn(),
+        on: vi.fn()
+      };
+
+      const boss = new Monster({
+        id: 'smasher-phase2-bus',
+        type: 'adam_smasher_prototype',
+        archetype: 'boss',
+        hp: 1000,
+        eventBus: mockEventBus
+      });
+
+      // Damage from 1000 -> 600 (> 500) -> should not trigger Phase 2
+      boss.takeDamage(400);
+      expect(boss.phase).toBe(1);
+      expect(mockEventBus.emit).not.toHaveBeenCalledWith('boss:phase2', expect.anything());
+
+      // Damage from 600 -> 450 (<= 500) -> triggers Phase 2
+      boss.takeDamage(150);
+      expect(boss.phase).toBe(2);
+      expect(mockEventBus.emit).toHaveBeenCalledWith('monster:phase2', { monster: boss });
+      expect(mockEventBus.emit).toHaveBeenCalledWith('boss:phase2', { monster: boss, boss });
+    });
+
+    it('emits boss:windup on eventBus with telegraph geometry during boss attack preparation', () => {
+      const mockEventBus = {
+        emit: vi.fn(),
+        on: vi.fn()
+      };
+
+      const boss = new Monster({
+        id: 'zodd-windup-bus',
+        type: 'nosferatu_zodd',
+        archetype: 'boss',
+        hp: 1200,
+        eventBus: mockEventBus
+      });
+
+      const player = { x: 200, y: 100 };
+      boss.bossActionCooldown = 0;
+      boss.bossAttackIndex = 1; // Attack 2 (Cone)
+      boss.updateBoss(0.016, player);
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'boss:windup',
+        expect.objectContaining({
+          boss,
+          attackIndex: 2,
+          telegraphType: 'cone',
+          telegraphRange: expect.any(Number),
+          telegraphSpread: expect.any(Number)
+        })
+      );
+    });
+
+    it('synchronizes ground danger telegraph data and phase over WebRTC getNetworkState/applyNetworkState', () => {
+      const hostBoss = new Monster({
+        id: 'kabuto-net',
+        type: 'carnage_kabuto',
+        archetype: 'boss',
+        hp: 1500,
+        x: 100,
+        y: 120
+      });
+
+      // Simulate host preparing Attack 1 (Corridor rush) in Phase 2
+      hostBoss.phase = 2;
+      hostBoss.windupTimer = 0.45;
+      hostBoss.maxWindupTimer = 0.45;
+      hostBoss.telegraphType = 'corridor';
+      hostBoss.telegraphAngle = 0.75;
+      hostBoss.telegraphRange = 320;
+      hostBoss.telegraphWidth = 96;
+
+      const networkPacket = hostBoss.getNetworkState();
+      expect(networkPacket).toBeDefined();
+      expect(networkPacket.length).toBeGreaterThanOrEqual(15);
+
+      // Client peer receives packet
+      const clientBoss = new Monster({
+        id: 'kabuto-net',
+        type: 'carnage_kabuto',
+        archetype: 'boss',
+        hp: 1500
+      });
+
+      clientBoss.applyNetworkState(networkPacket);
+
+      expect(clientBoss.phase).toBe(2);
+      expect(clientBoss.isWindingUp).toBe(true);
+      expect(clientBoss.telegraphType).toBe('corridor');
+      expect(clientBoss.telegraphAngle).toBeCloseTo(0.75, 2);
+      expect(clientBoss.telegraphRange).toBe(320);
+      expect(clientBoss.telegraphWidth).toBe(96);
+      expect(clientBoss.windupTimer).toBeCloseTo(0.45, 2);
+    });
+
+    it('auto-identifies all 5 Floor Guardian Boss types as boss archetype in constructor', () => {
+      const types = [
+        'finger_bearer',
+        'adam_smasher_prototype',
+        'armored_titan',
+        'nosferatu_zodd',
+        'carnage_kabuto'
+      ];
+
+      for (const t of types) {
+        const m = new Monster({ type: t });
+        expect(m.archetype).toBe('boss');
+      }
+    });
+  });
 });
 

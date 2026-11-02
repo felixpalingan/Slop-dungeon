@@ -68,6 +68,23 @@ const combat = new CombatSystem(audio, particles);
 const cinematics = new CinematicManager(settings);
 cinematics.audio = audio;
 
+// Global Boss Awakening Phase 2 Event Listener
+defaultEventBus.on('boss:phase2', ({ boss }) => {
+  if (boss && !cinematics.isBossPhase2Freezing()) {
+    cinematics.triggerBossPhase2(boss);
+  }
+  if (network && network.isHost && network.isConnected && boss) {
+    network.broadcast({
+      type: 'BOSS_PHASE2_TRIGGER',
+      bossId: boss.id,
+      bossType: boss.type,
+      bossName: boss.name,
+      x: boss.x,
+      y: boss.y
+    });
+  }
+});
+
 // Lobby entities
 const dummy = new Dummy(0, -180);
 const readyCircle = new ReadyCircle(0, 160, 75);
@@ -1044,9 +1061,21 @@ function populateFloorMonsters(dungeon) {
       boss.onPhase2Trigger = (b) => {
         cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(20);
+        cinematics.addScreenShake(24);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: SANDEVISTAN OVERCLOCK! ⚡', '#00ff88');
         particles.spawnDashBurst(b.x, b.y, 0, '#00ff88');
+        b.baseSpeed = 115;
+        defaultEventBus.emit('boss:phase2', { boss: b, monster: b });
+        if (network.isHost && network.isConnected) {
+          network.broadcast({
+            type: 'BOSS_PHASE2_TRIGGER',
+            bossId: b.id,
+            bossType: b.type,
+            bossName: b.name,
+            x: b.x,
+            y: b.y
+          });
+        }
       };
 
       boss.onBossStartDying = (b) => {
@@ -1056,7 +1085,7 @@ function populateFloorMonsters(dungeon) {
       };
 
       // Boss Windup Telegraph Callbacks
-      boss.onBossWindup = (attackIndex, phase, duration) => {
+      boss.onBossWindup = (attackIndex, phase, duration, b) => {
         if (attackIndex === 1) {
           const text = phase === 2 ? '⚡ SANDEVISTAN BLINK SLAM! 🚨' : '⚠️ HYDRAULIC SLAM WINDUP!';
           const col = phase === 2 ? '#00ff88' : '#f59e0b';
@@ -1252,9 +1281,21 @@ function populateFloorMonsters(dungeon) {
         cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
         audio.playTitanRoar();
-        cinematics.addScreenShake(22);
+        cinematics.addScreenShake(24);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: ARMOR SHED & UNSTOPPABLE BLITZ! ⚠️', '#eab308');
         particles.spawnDashBurst(b.x, b.y, 0, '#f59e0b');
+        b.baseSpeed = 110;
+        defaultEventBus.emit('boss:phase2', { boss: b, monster: b });
+        if (network.isHost && network.isConnected) {
+          network.broadcast({
+            type: 'BOSS_PHASE2_TRIGGER',
+            bossId: b.id,
+            bossType: b.type,
+            bossName: b.name,
+            x: b.x,
+            y: b.y
+          });
+        }
       };
 
       boss.onBossStartDying = (b) => {
@@ -1265,7 +1306,7 @@ function populateFloorMonsters(dungeon) {
       };
 
       // Boss Windup Telegraph Callbacks
-      boss.onBossWindup = (attackIndex, phase, duration) => {
+      boss.onBossWindup = (attackIndex, phase, duration, b) => {
         if (attackIndex === 1) {
           const text = phase === 2 ? '⚡ DUAL CRYSTAL CROSS-SMASH! 💥' : '⚠️ HARDENED IRON FIST!';
           const col = phase === 2 ? '#eab308' : '#f59e0b';
@@ -1481,11 +1522,22 @@ function populateFloorMonsters(dungeon) {
         cinematics.triggerBossPhase2(b);
         audio.playBerserkRoar();
         audio.playClang();
-        cinematics.addScreenShake(22);
+        cinematics.addScreenShake(24);
         particles.spawnComicText(b.x, b.y - 55, 'APOSTLE AWAKENING: BEAST OF DARKNESS! 🦇🩸', '#ef4444');
         particles.spawnDashBurst(b.x, b.y, 0, '#dc2626');
         b.radius = 58;
         b.baseSpeed = 115;
+        defaultEventBus.emit('boss:phase2', { boss: b, monster: b });
+        if (network.isHost && network.isConnected) {
+          network.broadcast({
+            type: 'BOSS_PHASE2_TRIGGER',
+            bossId: b.id,
+            bossType: b.type,
+            bossName: b.name,
+            x: b.x,
+            y: b.y
+          });
+        }
       };
 
       boss.onBossStartDying = (b) => {
@@ -1495,7 +1547,7 @@ function populateFloorMonsters(dungeon) {
       };
 
       // Boss Windup Telegraph Callbacks
-      boss.onBossWindup = (attackIndex, phase, duration) => {
+      boss.onBossWindup = (attackIndex, phase, duration, b) => {
         if (attackIndex === 1) {
           const text = phase === 2 ? '🦇 SUPERSONIC APOSTLE DIVE! 🩸' : '⚠️ SCIMITAR HEAVY CLEAVE!';
           const col = phase === 2 ? '#dc2626' : '#f97316';
@@ -1700,11 +1752,22 @@ function populateFloorMonsters(dungeon) {
       boss.onPhase2Trigger = (b) => {
         cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(24);
+        cinematics.addScreenShake(26);
         particles.spawnComicText(b.x, b.y - 55, '💥 CARNAGE MODE UNLEASHED! UNTIL NEXT SATURDAY! 🪲', '#facc15');
         particles.spawnDashBurst(b.x, b.y, 0, '#eab308');
         b.radius = 54;
         b.baseSpeed = 160;
+        defaultEventBus.emit('boss:phase2', { boss: b, monster: b });
+        if (network.isHost && network.isConnected) {
+          network.broadcast({
+            type: 'BOSS_PHASE2_TRIGGER',
+            bossId: b.id,
+            bossType: b.type,
+            bossName: b.name,
+            x: b.x,
+            y: b.y
+          });
+        }
       };
 
       boss.onBossStartDying = (b) => {
@@ -1714,7 +1777,7 @@ function populateFloorMonsters(dungeon) {
       };
 
       // Boss Windup Telegraph Callbacks
-      boss.onBossWindup = (attackIndex, phase, duration) => {
+      boss.onBossWindup = (attackIndex, phase, duration, b) => {
         if (attackIndex === 1) {
           const text = phase === 2 ? '💥 CARNAGE BLITZ 8-DIRECTIONAL RAMPAGE! ⚡' : '⚠️ HYPERSONIC BEETLE DASH! 🪲';
           const col = phase === 2 ? '#ef4444' : '#facc15';
@@ -1886,9 +1949,21 @@ function populateFloorMonsters(dungeon) {
       boss.onPhase2Trigger = (b) => {
         cinematics.triggerBossPhase2(b);
         audio.playEnrageRoar();
-        cinematics.addScreenShake(20);
+        cinematics.addScreenShake(22);
         particles.spawnComicText(b.x, b.y - 50, 'PHASE 2: DOMAIN AWAKENING! ⚠️', '#c084fc');
         particles.spawnDashBurst(b.x, b.y, 0, '#a855f7');
+        b.baseSpeed = 135;
+        defaultEventBus.emit('boss:phase2', { boss: b, monster: b });
+        if (network.isHost && network.isConnected) {
+          network.broadcast({
+            type: 'BOSS_PHASE2_TRIGGER',
+            bossId: b.id,
+            bossType: b.type,
+            bossName: b.name,
+            x: b.x,
+            y: b.y
+          });
+        }
       };
 
       boss.onBossStartDying = (b) => {
@@ -1898,7 +1973,7 @@ function populateFloorMonsters(dungeon) {
       };
 
       // Boss Windup Telegraph Callbacks
-      boss.onBossWindup = (attackIndex, phase, duration) => {
+      boss.onBossWindup = (attackIndex, phase, duration, b) => {
         if (attackIndex === 1) {
           const text = phase === 2 ? '⚡ BLACK FLASH TWIN CLAWS! 🩸' : '⚠️ CURSE CLAW WINDUP!';
           const col = phase === 2 ? '#dc2626' : '#ef4444';
@@ -5015,6 +5090,19 @@ network.onMessageReceived = (fromPeerId, msg) => {
     if (!network.isHost) {
       monsterManager.applyBatchNetworkState(msg.batch);
     }
+  } else if (msg.type === 'BOSS_PHASE2_TRIGGER') {
+    const boss = monsterManager.getMonsterById(msg.bossId) || {
+      id: msg.bossId,
+      type: msg.bossType,
+      name: msg.bossName,
+      x: msg.x,
+      y: msg.y
+    };
+    if (!cinematics.isBossPhase2Freezing()) {
+      cinematics.triggerBossPhase2(boss, true);
+    }
+    audio.playEnrageRoar();
+    particles.spawnComicText(boss.x, boss.y - 50, 'PHASE 2 AWAKENING! ⚠️', '#ff003c');
   } else if (msg.type === 'MONSTER_HIT') {
     const sanitizedDamage = validateCombatDamage(msg.damage, 2500);
     if (sanitizedDamage !== null) {
