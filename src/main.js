@@ -25,7 +25,7 @@ import { ModalController } from './controllers/modalController.js';
 import { StationController } from './controllers/stationController.js';
 import { defaultEventBus } from './eventBus.js';
 import { initHudPresenter } from './presenters/hudPresenter.js';
-import { getNearbyInteractable, updateMobileClusterDOM, setupOrientationEnforcement, setupGestureHardening, setupFullscreenController, updateFullscreenDOMState } from './mobileHUD.js';
+import { getNearbyInteractable, updateMobileClusterDOM, setupOrientationEnforcement, setupGestureHardening, setupFullscreenController, updateFullscreenDOMState, updateControlsHintVisibility } from './mobileHUD.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -39,6 +39,10 @@ initHudPresenter(defaultEventBus);
 setupOrientationEnforcement();
 setupFullscreenController();
 setupGestureHardening();
+
+// Initialize Controls Guide (Only on desktop/laptop in lobby floor 0)
+updateControlsHintVisibility(0);
+window.addEventListener('resize', () => updateControlsHintVisibility(currentFloor), { passive: true });
 
 // Start with standard starter adventurer gear (clean roguelike progression)
 player.equipItem(ITEM_CATALOG['rusty_sword']);
@@ -2300,6 +2304,9 @@ function startFloorDescent(floorNumber, broadcast = true) {
     hudDevHint.classList.add('hidden');
   }
 
+  // Hide keyboard controls guide inside the dungeon
+  updateControlsHintVisibility(currentFloor);
+
   updateFloorBgm();
   particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
 }
@@ -2387,6 +2394,9 @@ function returnToLobby(broadcast = true) {
   if (hudDevHint) {
     hudDevHint.classList.remove('hidden');
   }
+
+  // Restore keyboard controls guide at Base Camp (desktop/laptop only)
+  updateControlsHintVisibility(0);
 
   audio.playDescentFanfare();
   audio.updateBgmTrack('lobby');
@@ -4929,6 +4939,9 @@ network.onMessageReceived = (fromPeerId, msg) => {
     if (hudDevHint) {
       hudDevHint.classList.add('hidden');
     }
+
+    // Hide keyboard controls guide inside the dungeon
+    updateControlsHintVisibility(currentFloor);
 
     particles.spawnComicText(player.x, player.y - 40, `FLOOR ${currentFloor} - ${currentDungeon.theme.shortName}`, currentDungeon.theme.torchColor);
   } else if (msg.type === 'RETURN_TO_LOBBY') {

@@ -929,6 +929,12 @@ html, body {
   border-radius: 24px;
   font-size: 0.78rem;
   color: var(--text-dim);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.controls-hint.hidden,
+#hud-controls-hint.hidden {
+  display: none !important;
 }
 
 kbd {
@@ -3923,8 +3929,10 @@ kbd {
     font-size: 0.65rem !important;
   }
 
-  /* Hide verbose keyboard shortcuts hints on mobile */
-  .hud-controls-hint {
+  /* Hide verbose keyboard shortcuts hints on mobile & touch */
+  .hud-controls-hint,
+  .controls-hint,
+  #hud-controls-hint {
     display: none !important;
   }
 

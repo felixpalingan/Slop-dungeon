@@ -250,6 +250,36 @@ export function updateMobileClusterDOM({
       respawnBtn.style.display = 'none';
     }
   }
+
+  // 5. Controls Guide Visibility (Laptop/Desktop + Lobby only!)
+  updateControlsHintVisibility(currentFloor);
+}
+
+/**
+ * Toggles controls guide visibility:
+ * Shown ONLY on laptop/desktop (not mobile) AND when in the Lobby (currentFloor === 0).
+ * Hidden when in-game (dungeon, currentFloor >= 1) or on mobile devices.
+ * @param {number} [currentFloor=0]
+ */
+export function updateControlsHintVisibility(currentFloor = 0) {
+  if (typeof document === 'undefined') return;
+  const hint = document.getElementById('hud-controls-hint');
+  if (!hint) return;
+
+  const isMobile = typeof window !== 'undefined' && (
+    window.innerWidth <= 900 ||
+    window.innerHeight <= 550 ||
+    ('ontouchstart' in window && window.innerWidth <= 1024)
+  );
+
+  // Show ONLY if on desktop/laptop AND in the safe lobby base camp (floor 0)
+  if (currentFloor === 0 && !isMobile) {
+    hint.classList.remove('hidden');
+    hint.style.display = 'flex';
+  } else {
+    hint.classList.add('hidden');
+    hint.style.display = 'none';
+  }
 }
 
 /**

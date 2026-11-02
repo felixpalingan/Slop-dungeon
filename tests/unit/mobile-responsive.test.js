@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { openItemInspectionSheet, closeItemInspectionSheet } from '../../src/mobileHUD.js';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { openItemInspectionSheet, closeItemInspectionSheet, updateControlsHintVisibility } from '../../src/mobileHUD.js';
 
 describe('Phase 3: Responsive UI & Tap-to-Inspect Sheet', () => {
   let elements;
@@ -141,6 +141,83 @@ describe('Phase 3: Responsive UI & Tap-to-Inspect Sheet', () => {
     it('can be dismissed via closeItemInspectionSheet', () => {
       closeItemInspectionSheet();
       expect(elements['mobile-item-sheet'].classList.add).toHaveBeenCalledWith('hidden');
+    });
+  });
+
+  describe('updateControlsHintVisibility (Laptop Lobby vs Ingame / Mobile)', () => {
+    let hintEl;
+
+    beforeEach(() => {
+      hintEl = {
+        id: 'hud-controls-hint',
+        classList: {
+          add: vi.fn(),
+          remove: vi.fn()
+        },
+        style: {}
+      };
+
+      global.document = {
+        getElementById: vi.fn((id) => {
+          if (id === 'hud-controls-hint') return hintEl;
+          return null;
+        })
+      };
+    });
+
+    afterEach(() => {
+      delete global.window;
+      delete global.document;
+    });
+
+    it('shows controls guide on desktop/laptop when at base camp lobby (floor 0)', () => {
+      global.window = {
+        innerWidth: 1440,
+        innerHeight: 900
+      };
+
+      updateControlsHintVisibility(0);
+
+      expect(hintEl.classList.remove).toHaveBeenCalledWith('hidden');
+      expect(hintEl.style.display).toBe('flex');
+    });
+
+    it('hides controls guide when in-game inside a dungeon floor (floor >= 1)', () => {
+      global.window = {
+        innerWidth: 1440,
+        innerHeight: 900
+      };
+
+      updateControlsHintVisibility(1);
+
+      expect(hintEl.classList.add).toHaveBeenCalledWith('hidden');
+      expect(hintEl.style.display).toBe('none');
+    });
+
+    it('hides controls guide on mobile devices even when in the lobby', () => {
+      global.window = {
+        innerWidth: 844,
+        innerHeight: 390,
+        ontouchstart: null
+      };
+
+      updateControlsHintVisibility(0);
+
+      expect(hintEl.classList.add).toHaveBeenCalledWith('hidden');
+      expect(hintEl.style.display).toBe('none');
+    });
+
+    it('hides controls guide on mobile devices when in a dungeon floor', () => {
+      global.window = {
+        innerWidth: 390,
+        innerHeight: 844,
+        ontouchstart: null
+      };
+
+      updateControlsHintVisibility(2);
+
+      expect(hintEl.classList.add).toHaveBeenCalledWith('hidden');
+      expect(hintEl.style.display).toBe('none');
     });
   });
 });
