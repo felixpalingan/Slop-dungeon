@@ -3407,17 +3407,59 @@ export class Renderer {
       // Frustum Culling: skip rendering monsters that are offscreen
       if (!this.isEntityVisible(m.x, m.y, (m.radius || 24) + 60)) continue;
 
-      // Draw monster after-images (e.g. Adam Smasher Sandevistan trail)
+      // Draw monster after-images (e.g. Adam Smasher Sandevistan trail, Carnage Kabuto hypersonic blurs)
       if (m.afterImages && m.afterImages.length > 0) {
         for (const img of m.afterImages) {
           ctx.save();
           ctx.translate(img.x, img.y);
           ctx.rotate(img.angle);
           ctx.globalAlpha = Math.max(0, img.alpha * 0.7);
-          ctx.fillStyle = img.color || '#00ff88';
-          ctx.beginPath();
-          ctx.arc(0, 0, m.radius * 0.95, 0, Math.PI * 2);
-          ctx.fill();
+
+          if (m.type === 'adam_smasher_prototype') {
+            // Sandevistan Cybernetic Glitch Silhouette
+            ctx.fillStyle = img.color || '#00ff88';
+            ctx.beginPath();
+            ctx.arc(0, 0, m.radius * 0.95, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cyber Scanlines across silhouette
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 1.5;
+            for (let sl = -m.radius * 0.7; sl <= m.radius * 0.7; sl += 8) {
+              ctx.beginPath();
+              ctx.moveTo(-m.radius * 0.8, sl);
+              ctx.lineTo(m.radius * 0.8, sl);
+              ctx.stroke();
+            }
+
+            // Outer Glitch Ring
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, m.radius * 1.05, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (m.type === 'carnage_kabuto') {
+            // Hypersonic Motion Blur Phantom
+            ctx.fillStyle = img.color || '#ef4444';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, m.radius * 1.1, m.radius * 0.85, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sonic Speed Streaks
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-m.radius * 1.2, -m.radius * 0.4);
+            ctx.lineTo(m.radius * 0.8, -m.radius * 0.4);
+            ctx.moveTo(-m.radius * 1.2, m.radius * 0.4);
+            ctx.lineTo(m.radius * 0.8, m.radius * 0.4);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = img.color || '#00ff88';
+            ctx.beginPath();
+            ctx.arc(0, 0, m.radius * 0.95, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.restore();
         }
       }
@@ -3759,36 +3801,91 @@ export class Renderer {
           }
         }
 
-        // Cursed energy aura (expands aggressively in Phase 2)
-        const auraColor = isPhase2 ? 'rgba(126, 34, 206, 0.38)' : 'rgba(168, 85, 247, 0.22)';
-        ctx.fillStyle = auraColor;
+        // Cursed Domain Mire (Swirling occult floor pool beneath Finger Bearer)
+        const mireRadius = m.radius * (isPhase2 ? 1.75 : 1.35) + pulse * 0.5;
+        ctx.save();
+        ctx.fillStyle = isPhase2 ? 'rgba(26, 11, 46, 0.75)' : 'rgba(46, 16, 77, 0.55)';
         ctx.beginPath();
-        ctx.arc(0, 0, m.radius + (isPhase2 ? 22 : 12) + pulse, 0, Math.PI * 2);
+        ctx.ellipse(0, m.radius * 0.4, mireRadius, mireRadius * 0.55, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Phase 2: Black Flash Lightning Arcs
+        // Swirling cursed energy tendrils in mire
+        ctx.strokeStyle = isPhase2 ? 'rgba(168, 85, 247, 0.65)' : 'rgba(126, 34, 206, 0.45)';
+        ctx.lineWidth = 2;
+        for (let t = 0; t < 5; t++) {
+          const tAng = m.animTime * (isPhase2 ? 2.5 : 1.5) + (t / 5) * Math.PI * 2;
+          const tR = mireRadius * (0.35 + (t % 3) * 0.25);
+          ctx.beginPath();
+          ctx.arc(Math.cos(tAng) * tR, m.radius * 0.4 + Math.sin(tAng) * (tR * 0.5), 3 + (t % 2) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // Cursed energy aura (expands aggressively in Phase 2)
+        const auraColor = isPhase2 ? 'rgba(126, 34, 206, 0.42)' : 'rgba(168, 85, 247, 0.22)';
+        ctx.fillStyle = auraColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 24 : 12) + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Phase 2: Black Flash (Kokusen) Jagged Lightning Arcs
         if (isPhase2 && !m.isDying) {
+          ctx.save();
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 3.5;
           ctx.shadowColor = '#dc2626';
-          ctx.shadowBlur = 14;
-          ctx.beginPath();
-          for (let bf = 0; bf < 4; bf++) {
-            const bAng = (bf / 4) * Math.PI * 2 + Math.sin(m.animTime * 15 + bf) * 0.6;
-            ctx.moveTo(Math.cos(bAng) * (m.radius * 0.7), Math.sin(bAng) * (m.radius * 0.7));
-            ctx.lineTo(Math.cos(bAng) * (m.radius * 1.45), Math.sin(bAng) * (m.radius * 1.45));
-          }
-          ctx.stroke();
-          ctx.shadowBlur = 0;
+          ctx.shadowBlur = 16;
+          for (let bf = 0; bf < 5; bf++) {
+            const bAng = (bf / 5) * Math.PI * 2 + Math.sin(m.animTime * 18 + bf) * 0.5;
+            const r1 = m.radius * 0.6;
+            const r2 = m.radius * 1.5;
+            const midR = (r1 + r2) * 0.5;
+            const perpAng = bAng + Math.PI / 2;
+            const zig = (Math.sin(m.animTime * 35 + bf * 2) > 0 ? 1 : -1) * 8;
 
-          // Domain Expansion Windup Circle
-          if (m.windupTimer > 0) {
-            ctx.strokeStyle = '#c084fc';
-            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.arc(0, 0, m.radius * 2.8 * (1 - m.windupTimer / 0.85), 0, Math.PI * 2);
+            ctx.moveTo(Math.cos(bAng) * r1, Math.sin(bAng) * r1);
+            ctx.lineTo(Math.cos(bAng) * midR + Math.cos(perpAng) * zig, Math.sin(bAng) * midR + Math.sin(perpAng) * zig);
+            ctx.lineTo(Math.cos(bAng) * r2, Math.sin(bAng) * r2);
+            ctx.stroke();
+
+            // Black Flash Crimson Spark
+            ctx.fillStyle = '#ff003c';
+            ctx.beginPath();
+            ctx.arc(Math.cos(bAng) * r2, Math.sin(bAng) * r2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // Windup Cursed Singularity Core
+        if (m.windupTimer > 0 && !m.isDying) {
+          const maxW = m.maxWindupTimer || 1.0;
+          const wProg = Math.max(0, Math.min(1, 1 - (m.windupTimer / maxW)));
+          ctx.save();
+          // Singularity sphere
+          ctx.fillStyle = '#09090b';
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#c084fc';
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.arc(0, 0, 10 + wProg * 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Inward swirling particle streaks
+          for (let sp = 0; sp < 4; sp++) {
+            const spAng = m.animTime * 12 + (sp / 4) * Math.PI * 2;
+            const spDist = (1 - wProg) * 35 + 12;
+            ctx.strokeStyle = '#ff003c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(spAng) * spDist, Math.sin(spAng) * spDist);
+            ctx.lineTo(Math.cos(spAng + 0.5) * (spDist * 0.5), Math.sin(spAng + 0.5) * (spDist * 0.5));
             ctx.stroke();
           }
+          ctx.restore();
         }
 
         // Pale demonic body
@@ -3801,23 +3898,48 @@ export class Renderer {
         ctx.lineWidth = isPhase2 ? 5 : 4;
         ctx.stroke();
 
-        // Wide Jagged Grin
-        ctx.strokeStyle = '#1e1b4b';
-        ctx.lineWidth = 3;
+        // Wide Demonic Jagged Grin & Needle Teeth
+        ctx.save();
+        ctx.fillStyle = '#0a0a0a';
         ctx.beginPath();
-        ctx.arc(0, 6, 18, 0, Math.PI);
+        ctx.ellipse(0, 7, 20, 10, 0, 0, Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        // 4 Glowing Red Eyes
+        // Sharp white needle teeth
+        ctx.fillStyle = '#f8fafc';
+        for (let t = -16; t <= 16; t += 4) {
+          ctx.beginPath();
+          ctx.moveTo(t - 1.5, 7);
+          ctx.lineTo(t, 12);
+          ctx.lineTo(t + 1.5, 7);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // 4 Glowing Red Demonic Eyes
         ctx.fillStyle = isPhase2 ? '#ff003c' : '#dc2626';
         ctx.shadowColor = isPhase2 ? '#ff003c' : '#dc2626';
-        ctx.shadowBlur = isPhase2 ? 14 : 6;
-        ctx.beginPath();
-        ctx.arc(-12, -8, 4, 0, Math.PI * 2);
-        ctx.arc(-4, -14, 4, 0, Math.PI * 2);
-        ctx.arc(4, -14, 4, 0, Math.PI * 2);
-        ctx.arc(12, -8, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.shadowBlur = isPhase2 ? 18 : 8;
+        const eyeCoords = [
+          [-14, -8],
+          [-5, -15],
+          [5, -15],
+          [14, -8]
+        ];
+        for (const [ex, ey] of eyeCoords) {
+          ctx.beginPath();
+          ctx.arc(ex, ey, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Black slit pupil
+          ctx.fillStyle = '#09090b';
+          ctx.fillRect(ex - 0.75, ey - 3.5, 1.5, 7);
+          ctx.fillStyle = isPhase2 ? '#ff003c' : '#dc2626';
+        }
         ctx.shadowBlur = 0;
       } else if (m.type === 'arasaka_drone') {
         // Cyberpunk Swarmer: Arasaka Security Drone (quad-rotor hovering drone)
@@ -4152,26 +4274,103 @@ export class Renderer {
         }
 
         // Sandevistan Electric Cyber-Aura (Neon green in Phase 2!)
-        const auraBorder = isPhase2 ? 'rgba(0, 255, 136, 0.65)' : 'rgba(6, 182, 212, 0.4)';
-        const auraFill = isPhase2 ? 'rgba(0, 255, 136, 0.18)' : 'rgba(6, 182, 212, 0.12)';
+        const auraBorder = isPhase2 ? 'rgba(0, 255, 136, 0.75)' : 'rgba(6, 182, 212, 0.4)';
+        const auraFill = isPhase2 ? 'rgba(0, 255, 136, 0.2)' : 'rgba(6, 182, 212, 0.12)';
         ctx.strokeStyle = auraBorder;
         ctx.fillStyle = auraFill;
         ctx.lineWidth = isPhase2 ? 3.5 : 2.5;
         ctx.beginPath();
-        ctx.arc(0, 0, m.radius + (isPhase2 ? 22 : 14) + pulse, 0, Math.PI * 2);
+        ctx.arc(0, 0, m.radius + (isPhase2 ? 24 : 14) + pulse, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // If winding up attack or special
-        if (m.windupTimer > 0 && !m.isDying) {
-          ctx.strokeStyle = isPhase2 ? '#00ff88' : '#ef4444';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.2 : 2.5), 0, Math.PI * 2);
-          ctx.stroke();
+        // Phase 2 Sandevistan Electric Overclock Sparks
+        if (isPhase2 && !m.isDying) {
+          ctx.save();
+          ctx.strokeStyle = '#00ff88';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#00ff88';
+          ctx.shadowBlur = 12;
+          for (let s = 0; s < 4; s++) {
+            const sAng = (s / 4) * Math.PI * 2 + Math.sin(m.animTime * 16 + s) * 0.7;
+            const r1 = m.radius * 0.5;
+            const r2 = m.radius * 1.3;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(sAng) * r1, Math.sin(sAng) * r1);
+            ctx.lineTo(Math.cos(sAng + 0.3) * ((r1 + r2) * 0.5), Math.sin(sAng + 0.3) * ((r1 + r2) * 0.5));
+            ctx.lineTo(Math.cos(sAng) * r2, Math.sin(sAng) * r2);
+            ctx.stroke();
+          }
+          ctx.restore();
         }
 
-        // Heavy industrial titanium shoulder missile pods
+        // Optical Targeting Red Laser Beam & Holographic Lock-On during Windup
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.save();
+          const targetAngle = m.telegraphAngle !== undefined ? m.telegraphAngle : m.angle;
+          const laserDist = m.telegraphRange || 360;
+          const lx = Math.cos(targetAngle) * laserDist;
+          const ly = Math.sin(targetAngle) * laserDist;
+
+          // High-intensity red laser beam
+          ctx.strokeStyle = '#ff003c';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#ff003c';
+          ctx.shadowBlur = 12;
+          ctx.setLineDash([10, 5]);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(lx, ly);
+          ctx.stroke();
+
+          // Outer secondary laser glow
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+          ctx.lineWidth = 6;
+          ctx.stroke();
+
+          // Holographic Target Lock Reticle at laser endpoint
+          ctx.setLineDash([]);
+          const rSize = 13 + Math.sin(m.animTime * 18) * 3;
+          ctx.strokeStyle = isPhase2 ? '#00ff88' : '#ff003c';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = isPhase2 ? '#00ff88' : '#ff003c';
+          ctx.shadowBlur = 10;
+
+          // Corner brackets
+          const cb = 5;
+          ctx.beginPath();
+          // Top-left
+          ctx.moveTo(lx - rSize, ly - rSize + cb);
+          ctx.lineTo(lx - rSize, ly - rSize);
+          ctx.lineTo(lx - rSize + cb, ly - rSize);
+          // Top-right
+          ctx.moveTo(lx + rSize - cb, ly - rSize);
+          ctx.lineTo(lx + rSize, ly - rSize);
+          ctx.lineTo(lx + rSize, ly - rSize + cb);
+          // Bottom-right
+          ctx.moveTo(lx + rSize, ly + rSize - cb);
+          ctx.lineTo(lx + rSize, ly + rSize);
+          ctx.lineTo(lx + rSize - cb, ly + rSize);
+          // Bottom-left
+          ctx.moveTo(lx - rSize + cb, ly + rSize);
+          ctx.lineTo(lx - rSize, ly + rSize);
+          ctx.lineTo(lx - rSize, ly + rSize - cb);
+          ctx.stroke();
+
+          // Center crosshair
+          ctx.beginPath();
+          ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Holographic readout text
+          ctx.font = 'bold 9px monospace';
+          ctx.fillStyle = isPhase2 ? '#00ff88' : '#ff003c';
+          ctx.textAlign = 'center';
+          ctx.fillText('TARGET LOCKED', lx, ly - rSize - 5);
+          ctx.restore();
+        }
+
+        // Heavy Industrial Titanium Shoulder Missile Pods
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(-m.radius * 0.95, -m.radius * 0.95, 18, 22);
         ctx.fillRect(m.radius * 0.95 - 18, -m.radius * 0.95, 18, 22);
@@ -4180,8 +4379,53 @@ export class Renderer {
         ctx.strokeRect(-m.radius * 0.95, -m.radius * 0.95, 18, 22);
         ctx.strokeRect(m.radius * 0.95 - 18, -m.radius * 0.95, 18, 22);
 
-        // Missile tube holes (Phase 2 glows hotter with open rocket tips)
-        const tubeColor = isPhase2 ? '#facc15' : '#ef4444';
+        // Open missile hatches & exhaust venting smoke during windup
+        const isWindup = m.windupTimer > 0 && !m.isDying;
+        if (isWindup) {
+          ctx.save();
+          // Open hatch doors tilted outwards
+          ctx.fillStyle = '#1e293b';
+          ctx.strokeStyle = isPhase2 ? '#00ff88' : '#f97316';
+          ctx.lineWidth = 2;
+          // Left hatch open
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 0.95, -m.radius * 0.95);
+          ctx.lineTo(-m.radius * 0.95 - 10, -m.radius * 0.95 - 12);
+          ctx.lineTo(-m.radius * 0.95 - 10 + 16, -m.radius * 0.95 - 12);
+          ctx.stroke();
+          // Right hatch open
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.95, -m.radius * 0.95);
+          ctx.lineTo(m.radius * 0.95 + 10, -m.radius * 0.95 - 12);
+          ctx.lineTo(m.radius * 0.95 + 10 - 16, -m.radius * 0.95 - 12);
+          ctx.stroke();
+
+          // Exhaust venting smoke puffs billowing backwards
+          for (let sm = 0; sm < 4; sm++) {
+            const smY = -m.radius * 0.95 - 8 - sm * 7;
+            const smL = -m.radius * 0.95 + 8 + Math.sin(m.animTime * 12 + sm) * 4;
+            const smR = m.radius * 0.95 - 8 - Math.sin(m.animTime * 12 + sm) * 4;
+            const smRsize = 5 + sm * 3;
+            // Smoke puff
+            ctx.fillStyle = `rgba(148, 163, 184, ${0.45 - sm * 0.1})`;
+            ctx.beginPath();
+            ctx.arc(smL, smY, smRsize, 0, Math.PI * 2);
+            ctx.arc(smR, smY, smRsize, 0, Math.PI * 2);
+            ctx.fill();
+            // Ignition flame spark
+            if (sm === 0) {
+              ctx.fillStyle = '#f97316';
+              ctx.beginPath();
+              ctx.arc(smL, smY + 4, 4, 0, Math.PI * 2);
+              ctx.arc(smR, smY + 4, 4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          ctx.restore();
+        }
+
+        // Missile tube holes (glows molten during windup/phase 2)
+        const tubeColor = isWindup ? '#f97316' : (isPhase2 ? '#facc15' : '#ef4444');
         ctx.fillStyle = tubeColor;
         for (let row = 0; row < 3; row++) {
           for (let col = 0; col < 2; col++) {
@@ -4206,6 +4450,15 @@ export class Renderer {
         ctx.strokeStyle = isPhase2 ? '#00ff88' : '#06b6d4';
         ctx.lineWidth = 2;
         ctx.strokeRect(-m.radius * 0.5, -m.radius * 0.4, m.radius, m.radius * 0.8);
+
+        // Cyber Power Core (Glows neon green in Phase 2)
+        ctx.fillStyle = isPhase2 ? '#00ff88' : '#06b6d4';
+        ctx.shadowColor = isPhase2 ? '#00ff88' : '#06b6d4';
+        ctx.shadowBlur = isPhase2 ? 16 : 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
 
         // Skull Faceplate (Cybernetic Skull)
         ctx.fillStyle = '#e2e8f0';
@@ -4594,32 +4847,68 @@ export class Renderer {
           }
         }
 
-        // Scalding Steam Cloud Puffs around Titan (Continuous passive aura)
-        ctx.fillStyle = isPhase2 ? 'rgba(254, 240, 138, 0.22)' : 'rgba(255, 255, 255, 0.16)';
-        for (let s = 0; s < 5; s++) {
-          const sAng = (s / 5) * Math.PI * 2 + m.animTime * 1.2;
-          const sRad = m.radius + 8 + Math.sin(m.animTime * 4 + s) * 6;
+        // Scalding Steam Cloud Puffs around Titan (Continuous massive thermal steam reactor)
+        const steamCount = isPhase2 ? 9 : 6;
+        for (let s = 0; s < steamCount; s++) {
+          const sAng = (s / steamCount) * Math.PI * 2 + m.animTime * 1.5;
+          const sRad = m.radius + 10 + Math.sin(m.animTime * 5 + s) * 8;
+          const sYOffset = -((m.animTime * 25 + s * 14) % 36);
+          const sSize = 12 + (s % 3) * 5;
+          ctx.fillStyle = isPhase2 ? `rgba(254, 240, 138, ${0.28 - (Math.abs(sYOffset) / 36) * 0.15})` : `rgba(255, 255, 255, ${0.22 - (Math.abs(sYOffset) / 36) * 0.12})`;
           ctx.beginPath();
-          ctx.arc(Math.cos(sAng) * sRad, Math.sin(sAng) * sRad, 12, 0, Math.PI * 2);
+          ctx.arc(Math.cos(sAng) * sRad, Math.sin(sAng) * (sRad * 0.7) + sYOffset, sSize, 0, Math.PI * 2);
           ctx.fill();
         }
 
         // Phase 2 Molten Amber Aura
         if (isPhase2 && !m.isDying) {
-          ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.75)';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 14;
           ctx.beginPath();
-          ctx.arc(0, 0, m.radius + 16 + pulse, 0, Math.PI * 2);
+          ctx.arc(0, 0, m.radius + 18 + pulse, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.shadowBlur = 0;
         }
 
-        // If winding up attack
+        // Hardening Crystal Fists on Windup (Annie / Reiner Armored Crystalization)
         if (m.windupTimer > 0 && !m.isDying) {
-          ctx.strokeStyle = isPhase2 ? '#ef4444' : '#f59e0b';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.0 : 2.4), 0, Math.PI * 2);
-          ctx.stroke();
+          ctx.save();
+          ctx.rotate(m.angle);
+          // Left & Right Fist Hardening Crystals
+          for (const fistY of [-m.radius * 0.85, m.radius * 0.85]) {
+            const fistX = m.radius * 0.55;
+            // Crystal diamond encasing
+            ctx.fillStyle = 'rgba(224, 242, 254, 0.9)';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.moveTo(fistX - 10, fistY);
+            ctx.lineTo(fistX, fistY - 12);
+            ctx.lineTo(fistX + 16, fistY);
+            ctx.lineTo(fistX, fistY + 12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner faceted glints
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(fistX - 5, fistY);
+            ctx.lineTo(fistX + 10, fistY);
+            ctx.stroke();
+
+            // Hardening sparkle star
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(fistX + 4, fistY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
         }
 
         // Exposed striated scarlet muscle core
@@ -4660,6 +4949,35 @@ export class Renderer {
         ctx.strokeRect(-m.radius * 0.98, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
         ctx.fillRect(m.radius * 0.53, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
         ctx.strokeRect(m.radius * 0.53, -m.radius * 0.8, m.radius * 0.45, m.radius * 0.5);
+
+        // Phase 2: Cracked Gold Armor Fissures & Molten Magma Veins
+        if (isPhase2) {
+          ctx.save();
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.2;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          // Chest cracks
+          ctx.moveTo(-m.radius * 0.5, -m.radius * 0.35);
+          ctx.lineTo(-m.radius * 0.25, -m.radius * 0.15);
+          ctx.lineTo(-m.radius * 0.05, -m.radius * 0.35);
+          ctx.moveTo(m.radius * 0.15, -m.radius * 0.35);
+          ctx.lineTo(m.radius * 0.4, -m.radius * 0.2);
+          ctx.lineTo(m.radius * 0.6, -m.radius * 0.35);
+          // Abdomen cracks
+          ctx.moveTo(-m.radius * 0.3, m.radius * 0.15);
+          ctx.lineTo(0, m.radius * 0.3);
+          ctx.lineTo(m.radius * 0.3, m.radius * 0.15);
+          // Left shoulder crack
+          ctx.moveTo(-m.radius * 0.85, -m.radius * 0.65);
+          ctx.lineTo(-m.radius * 0.65, -m.radius * 0.45);
+          // Right shoulder crack
+          ctx.moveTo(m.radius * 0.85, -m.radius * 0.65);
+          ctx.lineTo(m.radius * 0.65, -m.radius * 0.45);
+          ctx.stroke();
+          ctx.restore();
+        }
 
         // Armored Lower Jaw Visor
         ctx.fillStyle = '#b45309';
@@ -4977,29 +5295,61 @@ export class Renderer {
           ctx.rotate(m.angle);
 
           // Giant Bat Wings unfolding and flapping with animTime
-          const wingFlap = Math.sin(m.animTime * 12) * 16;
+          const wingFlap = Math.sin(m.animTime * 12) * 20;
+          const wingSpread = Math.cos(m.animTime * 12) * 8;
           ctx.fillStyle = '#140507';
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 2.5;
 
-          // Left Wing
+          // Articulated Left Wing
           ctx.beginPath();
           ctx.moveTo(-m.radius * 0.3, -m.radius * 0.4);
-          ctx.lineTo(-m.radius * 1.6, -m.radius * 1.5 + wingFlap); // Upper wing joint
-          ctx.lineTo(-m.radius * 1.1, -m.radius * 0.6 + wingFlap * 0.6);
+          ctx.lineTo(-m.radius * 1.6, -m.radius * 1.6 + wingFlap); // Upper elbow joint
+          ctx.lineTo(-m.radius * 2.1, -m.radius * 1.3 + wingFlap * 1.1 + wingSpread); // Outer wing tip 1
+          ctx.lineTo(-m.radius * 1.6, -m.radius * 0.8 + wingFlap * 0.7); // Scalloped dip 1
+          ctx.lineTo(-m.radius * 1.3, -m.radius * 0.5 + wingFlap * 0.4); // Scalloped dip 2
           ctx.lineTo(-m.radius * 0.4, -m.radius * 0.2);
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
 
-          // Right Wing
+          // Left wing skeletal ribbed finger struts
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 1.6, -m.radius * 1.6 + wingFlap);
+          ctx.lineTo(-m.radius * 2.1, -m.radius * 1.3 + wingFlap * 1.1 + wingSpread);
+          ctx.moveTo(-m.radius * 1.6, -m.radius * 1.6 + wingFlap);
+          ctx.lineTo(-m.radius * 1.6, -m.radius * 0.8 + wingFlap * 0.7);
+          ctx.moveTo(-m.radius * 1.6, -m.radius * 1.6 + wingFlap);
+          ctx.lineTo(-m.radius * 1.3, -m.radius * 0.5 + wingFlap * 0.4);
+          ctx.stroke();
+
+          // Articulated Right Wing
+          ctx.fillStyle = '#140507';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.moveTo(-m.radius * 0.3, m.radius * 0.4);
-          ctx.lineTo(-m.radius * 1.6, m.radius * 1.5 - wingFlap); // Upper wing joint
-          ctx.lineTo(-m.radius * 1.1, m.radius * 0.6 - wingFlap * 0.6);
+          ctx.lineTo(-m.radius * 1.6, m.radius * 1.6 - wingFlap); // Upper elbow joint
+          ctx.lineTo(-m.radius * 2.1, m.radius * 1.3 - wingFlap * 1.1 - wingSpread); // Outer wing tip 1
+          ctx.lineTo(-m.radius * 1.6, m.radius * 0.8 - wingFlap * 0.7); // Scalloped dip 1
+          ctx.lineTo(-m.radius * 1.3, m.radius * 0.5 - wingFlap * 0.4); // Scalloped dip 2
           ctx.lineTo(-m.radius * 0.4, m.radius * 0.2);
           ctx.closePath();
           ctx.fill();
+          ctx.stroke();
+
+          // Right wing skeletal ribbed finger struts
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-m.radius * 1.6, m.radius * 1.6 - wingFlap);
+          ctx.lineTo(-m.radius * 2.1, m.radius * 1.3 - wingFlap * 1.1 - wingSpread);
+          ctx.moveTo(-m.radius * 1.6, m.radius * 1.6 - wingFlap);
+          ctx.lineTo(-m.radius * 1.6, m.radius * 0.8 - wingFlap * 0.7);
+          ctx.moveTo(-m.radius * 1.6, m.radius * 1.6 - wingFlap);
+          ctx.lineTo(-m.radius * 1.3, m.radius * 0.5 - wingFlap * 0.4);
           ctx.stroke();
 
           // Massive Demonic Minotaur Torso (Pitch Black Hide)
@@ -5021,24 +5371,26 @@ export class Renderer {
           }
           ctx.stroke();
 
-          // Twin Swept-Back Curved Ram/Bull Horns
+          // Twin Swept-Back Curved Ram/Bull Horns (with serrations & burning embers)
           ctx.strokeStyle = '#27272a';
           ctx.lineWidth = 6;
           ctx.beginPath();
           ctx.moveTo(m.radius * 0.3, -m.radius * 0.6);
-          ctx.quadraticCurveTo(-m.radius * 0.4, -m.radius * 1.4, -m.radius * 0.9, -m.radius * 0.9);
+          ctx.quadraticCurveTo(-m.radius * 0.4, -m.radius * 1.4, -m.radius * 0.95, -m.radius * 0.95);
           ctx.moveTo(m.radius * 0.3, m.radius * 0.6);
-          ctx.quadraticCurveTo(-m.radius * 0.4, m.radius * 1.4, -m.radius * 0.9, m.radius * 0.9);
+          ctx.quadraticCurveTo(-m.radius * 0.4, m.radius * 1.4, -m.radius * 0.95, m.radius * 0.95);
           ctx.stroke();
 
-          ctx.strokeStyle = '#71717a';
-          ctx.lineWidth = 3;
+          // Horn ridge serrations & glowing embers at tips
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 10;
           ctx.beginPath();
-          ctx.moveTo(m.radius * 0.3, -m.radius * 0.6);
-          ctx.quadraticCurveTo(-m.radius * 0.4, -m.radius * 1.4, -m.radius * 0.9, -m.radius * 0.9);
-          ctx.moveTo(m.radius * 0.3, m.radius * 0.6);
-          ctx.quadraticCurveTo(-m.radius * 0.4, m.radius * 1.4, -m.radius * 0.9, m.radius * 0.9);
-          ctx.stroke();
+          ctx.arc(-m.radius * 0.95, -m.radius * 0.95, 3.5, 0, Math.PI * 2);
+          ctx.arc(-m.radius * 0.95, m.radius * 0.95, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
 
           // Snarling Demonic Snout & Jaw
           ctx.fillStyle = '#180407';
@@ -5060,22 +5412,42 @@ export class Renderer {
           ctx.lineTo(m.radius * 0.75, 6);
           ctx.fill();
 
-          // Blazing Crimson Neon Eyes
+          // Blazing Crimson Neon Eyes with Trailing Blood Smoke Mist
           ctx.fillStyle = '#ef4444';
           ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 20;
+          ctx.shadowBlur = 22;
           ctx.beginPath();
           ctx.arc(m.radius * 0.4, -8, 4.5, 0, Math.PI * 2);
           ctx.arc(m.radius * 0.4, 8, 4.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.shadowBlur = 0;
 
-          // Razor-sharp beast claws in front
+          // Trailing Blood Smoke Mist behind eyes
+          for (let smk = 0; smk < 4; smk++) {
+            const smkX = m.radius * 0.4 - 10 - smk * 8;
+            const smkYTop = -8 - Math.sin(m.animTime * 14 + smk) * 5;
+            const smkYBot = 8 + Math.sin(m.animTime * 14 + smk) * 5;
+            ctx.fillStyle = `rgba(239, 68, 68, ${0.45 - smk * 0.1})`;
+            ctx.beginPath();
+            ctx.arc(smkX, smkYTop, 4 + smk * 2, 0, Math.PI * 2);
+            ctx.arc(smkX, smkYBot, 4 + smk * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Razor-sharp beast claws dripping blood
           ctx.fillStyle = '#1c1917';
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 2;
           ctx.fillRect(m.radius * 0.4, -m.radius * 0.9, 14, 8);
           ctx.fillRect(m.radius * 0.4, m.radius * 0.9 - 8, 14, 8);
+
+          // Blood drip drops on claws
+          ctx.fillStyle = '#dc2626';
+          const clawDrip = (m.animTime * 20) % 12;
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.4 + 14 + clawDrip, -m.radius * 0.9 + 4, 2.5, 0, Math.PI * 2);
+          ctx.arc(m.radius * 0.4 + 14 + clawDrip, m.radius * 0.9 - 4, 2.5, 0, Math.PI * 2);
+          ctx.fill();
 
           ctx.restore();
         } else {
@@ -5145,7 +5517,7 @@ export class Renderer {
           ctx.fillRect(m.radius * 0.6, -3, 3, 2);
           ctx.fillRect(m.radius * 0.6, 2, 3, 2);
 
-          // Right Hand: Colossal Curved Scimitar
+          // Right Hand: Colossal Curved Scimitar (Blood-soaked edge & dripping gore)
           ctx.fillStyle = '#475569';
           ctx.strokeStyle = '#cbd5e1';
           ctx.lineWidth = 2;
@@ -5157,7 +5529,22 @@ export class Renderer {
           ctx.fill();
           ctx.stroke();
 
-          // Left Hand: Heavy Iron Battleaxe
+          // Blood soaked serrated blade edge
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.4 + 10, m.radius * 0.6 + 2);
+          ctx.lineTo(m.radius * 0.4 + 36, m.radius * 0.6 + 8);
+          ctx.stroke();
+
+          // Animated blood dripping from blade tip
+          const bladeDrip = (m.animTime * 18) % 10;
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(m.radius * 0.4 + 36 + bladeDrip, m.radius * 0.6 + 8 + bladeDrip * 0.5, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Left Hand: Heavy Iron Battleaxe (Chipped with dried blood)
           ctx.fillStyle = '#334155';
           ctx.strokeStyle = '#64748b';
           ctx.lineWidth = 1.8;
@@ -5168,6 +5555,15 @@ export class Renderer {
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
+
+          // Axe dried gore streak
+          ctx.strokeStyle = '#991b1b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 0.4 + 14, -m.radius * 0.6 - 8);
+          ctx.lineTo(m.radius * 0.4 + 22, -m.radius * 0.6 - 4);
+          ctx.stroke();
+
           ctx.restore();
         }
       } else if (m.type === 'black_sperm') {
@@ -5427,17 +5823,15 @@ export class Renderer {
         ctx.arc(0, 0, m.radius + (isPhase2 ? 26 : 14) + pulse, 0, Math.PI * 2);
         ctx.fill();
 
-        // Telegraph Attack Ring
-        if (m.windupTimer > 0 && !m.isDying) {
-          ctx.strokeStyle = isPhase2 ? '#dc2626' : '#facc15';
-          ctx.lineWidth = 3.5;
-          ctx.beginPath();
-          ctx.arc(0, 0, m.radius * (isPhase2 ? 3.4 : 2.5), 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
         ctx.save();
         ctx.rotate(m.angle);
+
+        // Phase 2: High-Velocity Hypersonic Motion Jitter
+        if (isPhase2 && !m.isDying) {
+          const jitterX = Math.sin(m.animTime * 52) * 2.8;
+          const jitterY = Math.cos(m.animTime * 46) * 2.8;
+          ctx.translate(jitterX, jitterY);
+        }
 
         // 4 Spiked Insectoid Beetle Legs
         ctx.strokeStyle = isPhase2 ? '#7f1d1d' : '#3b0764';
@@ -5463,7 +5857,7 @@ export class Renderer {
         ctx.lineWidth = isPhase2 ? 4.5 : 3.5;
         ctx.stroke();
 
-        // Phase 2 Carnage Mode Bio-Hazard Green Stripes
+        // Phase 2 Carnage Mode Bio-Hazard Green Tiger Stripes
         if (isPhase2) {
           ctx.fillStyle = '#22c55e';
           for (let s = -m.radius * 0.6; s <= m.radius * 0.6; s += 16) {
@@ -5475,6 +5869,15 @@ export class Renderer {
             ctx.closePath();
             ctx.fill();
           }
+
+          // Electric bio-arcs snapping across carapace
+          ctx.strokeStyle = '#4ade80';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          const sparkAng = m.animTime * 20;
+          ctx.moveTo(Math.cos(sparkAng) * (m.radius * 0.5), Math.sin(sparkAng) * (m.radius * 0.5));
+          ctx.lineTo(Math.cos(sparkAng + 1.2) * (m.radius * 0.8), Math.sin(sparkAng + 1.2) * (m.radius * 0.8));
+          ctx.stroke();
         }
 
         // Colossal Rhinoceros Beetle Trident Horn
@@ -5497,11 +5900,41 @@ export class Renderer {
         ctx.lineTo(m.radius * 1.5, 20);
         ctx.stroke();
 
+        // Air Pressure Cyclone Swirls on Trident Horn (Windup & Attack Sonic Booms)
+        if (m.windupTimer > 0 && !m.isDying) {
+          ctx.save();
+          // Expanding sonic pressure shockwave rings around horn shaft
+          for (let sw = 0; sw < 4; sw++) {
+            const swProg = ((m.animTime * 8 + sw * 0.25) % 1.0);
+            const swX = m.radius * 0.6 + swProg * (m.radius * 1.2);
+            const swRadiusY = 8 + swProg * 16;
+            ctx.strokeStyle = isPhase2 ? `rgba(34, 197, 94, ${0.8 - swProg * 0.6})` : `rgba(255, 255, 255, ${0.75 - swProg * 0.55})`;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(swX, 0, 5, swRadiusY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Sonic spearhead blast cone at horn tip
+          ctx.fillStyle = isPhase2 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255, 255, 255, 0.35)';
+          ctx.strokeStyle = isPhase2 ? '#22c55e' : '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(m.radius * 1.85, 0);
+          ctx.lineTo(m.radius * 2.3, -16);
+          ctx.lineTo(m.radius * 2.1, 0);
+          ctx.lineTo(m.radius * 2.3, 16);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
         // Blazing Compound Faceted Eyes
         const eyeColor = isPhase2 ? '#ff003c' : '#facc15';
         ctx.fillStyle = eyeColor;
         ctx.shadowColor = eyeColor;
-        ctx.shadowBlur = isPhase2 ? 20 : 10;
+        ctx.shadowBlur = isPhase2 ? 22 : 10;
         ctx.beginPath();
         ctx.arc(m.radius * 0.5, -10, 6, 0, Math.PI * 2);
         ctx.arc(m.radius * 0.5, 10, 6, 0, Math.PI * 2);

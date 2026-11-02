@@ -17,6 +17,7 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
     restore: vi.fn(),
     rotate: vi.fn(),
     translate: vi.fn(),
+    scale: vi.fn(),
     closePath: vi.fn(),
     setLineDash: vi.fn(),
     fillRect: vi.fn(),
@@ -26,10 +27,13 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
     ellipse: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
     stroke: vi.fn(),
     fill: vi.fn(),
     fillText: vi.fn(),
     strokeText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 50 })),
     createRadialGradient: vi.fn(() => ({
       addColorStop: vi.fn()
     })),
@@ -335,6 +339,172 @@ describe('Phase 1: Boss Cinematic Awakening Engine & Phase 2 Freeze', () => {
       testMonster.telegraphRange = 200;
       expect(() => {
         renderer.drawBossTelegraphZone(ctx, testMonster);
+      }).not.toThrow();
+    });
+  });
+
+  describe('Phase 3: Visual Evolutions & Boss Animation Overhaul', () => {
+    it('renders all 5 floor bosses in Phase 1 and Phase 2 without errors', async () => {
+      const { Renderer } = await import('../../src/renderer.js');
+      const ctx = createMockCtx();
+      const mockCanvas = {
+        getContext: () => ctx,
+        width: 1280,
+        height: 720
+      };
+      const renderer = new Renderer(mockCanvas);
+
+      const bossTypes = [
+        'finger_bearer',
+        'adam_smasher_prototype',
+        'armored_titan',
+        'nosferatu_zodd',
+        'carnage_kabuto'
+      ];
+
+      for (const bType of bossTypes) {
+        for (const phase of [1, 2]) {
+          const boss = {
+            type: bType,
+            archetype: 'boss',
+            phase,
+            x: 200,
+            y: 200,
+            radius: 48,
+            angle: 0.8,
+            animTime: 3.5,
+            hp: 800,
+            maxHp: 1000,
+            windupTimer: 0,
+            isDying: false
+          };
+
+          expect(() => {
+            renderer.drawMonsters([boss], 3.5);
+          }).not.toThrow();
+        }
+      }
+    });
+
+    it('renders attack windup visual evolutions (laser lock-on, crystal fists, cyclone horn, missile exhaust) across all bosses', async () => {
+      const { Renderer } = await import('../../src/renderer.js');
+      const ctx = createMockCtx();
+      const mockCanvas = {
+        getContext: () => ctx,
+        width: 1280,
+        height: 720
+      };
+      const renderer = new Renderer(mockCanvas);
+
+      const bossWindupConfigs = [
+        {
+          type: 'adam_smasher_prototype',
+          phase: 2,
+          windupTimer: 0.4,
+          maxWindupTimer: 0.8,
+          telegraphAngle: 0.5,
+          telegraphRange: 350
+        },
+        {
+          type: 'armored_titan',
+          phase: 2,
+          windupTimer: 0.5,
+          maxWindupTimer: 0.9,
+          telegraphAngle: 0,
+          telegraphRange: 280
+        },
+        {
+          type: 'carnage_kabuto',
+          phase: 2,
+          windupTimer: 0.3,
+          maxWindupTimer: 0.6,
+          telegraphAngle: -0.5,
+          telegraphRange: 300
+        },
+        {
+          type: 'finger_bearer',
+          phase: 2,
+          windupTimer: 0.45,
+          maxWindupTimer: 0.75,
+          telegraphAngle: 1.2,
+          telegraphRange: 220
+        },
+        {
+          type: 'nosferatu_zodd',
+          phase: 2,
+          windupTimer: 0.35,
+          maxWindupTimer: 0.7,
+          telegraphAngle: 0.2,
+          telegraphRange: 260
+        }
+      ];
+
+      for (const config of bossWindupConfigs) {
+        const boss = {
+          archetype: 'boss',
+          x: 300,
+          y: 300,
+          radius: 48,
+          angle: 0.3,
+          animTime: 4.2,
+          hp: 400,
+          maxHp: 1000,
+          isDying: false,
+          ...config
+        };
+
+        expect(() => {
+          renderer.drawMonsters([boss], 4.2);
+        }).not.toThrow();
+      }
+    });
+
+    it('renders Sandevistan and hypersonic after-images seamlessly', async () => {
+      const { Renderer } = await import('../../src/renderer.js');
+      const ctx = createMockCtx();
+      const mockCanvas = {
+        getContext: () => ctx,
+        width: 1280,
+        height: 720
+      };
+      const renderer = new Renderer(mockCanvas);
+
+      const smasherWithTrail = {
+        type: 'adam_smasher_prototype',
+        archetype: 'boss',
+        phase: 2,
+        x: 400,
+        y: 400,
+        radius: 48,
+        angle: 0.5,
+        animTime: 2.0,
+        hp: 500,
+        maxHp: 1200,
+        afterImages: [
+          { x: 380, y: 380, angle: 0.45, alpha: 0.6, color: '#00ff88' },
+          { x: 360, y: 360, angle: 0.40, alpha: 0.3, color: '#00ff88' }
+        ]
+      };
+
+      const kabutoWithTrail = {
+        type: 'carnage_kabuto',
+        archetype: 'boss',
+        phase: 2,
+        x: 500,
+        y: 500,
+        radius: 50,
+        angle: -0.2,
+        animTime: 2.5,
+        hp: 400,
+        maxHp: 1500,
+        afterImages: [
+          { x: 480, y: 490, angle: -0.2, alpha: 0.7, color: '#ef4444' },
+          { x: 460, y: 480, angle: -0.2, alpha: 0.4, color: '#22c55e' }
+        ]
+      };
+
+      expect(() => {
+        renderer.drawMonsters([smasherWithTrail, kabutoWithTrail], 2.5);
       }).not.toThrow();
     });
   });
