@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/Multiplayer-WebRTC%20P2P-cyan.svg?style=flat-square" alt="WebRTC P2P" />
     <img src="https://img.shields.io/badge/Cross--Play-PC%20%26%20Mobile-00f0ff.svg?style=flat-square" alt="Cross-Play PC & Mobile" />
     <img src="https://img.shields.io/badge/Mobile-Touch%20HUD%20Ready-38bdf8.svg?style=flat-square" alt="Mobile Touch HUD" />
-    <img src="https://img.shields.io/badge/Tests-234%20passed%20(Vitest)-emerald.svg?style=flat-square" alt="Vitest Tests Passing" />
+    <img src="https://img.shields.io/badge/Tests-235%20passed%20(Vitest)-emerald.svg?style=flat-square" alt="Vitest Tests Passing" />
     <img src="https://img.shields.io/badge/Graphics-HTML5%20Canvas%202D-violet.svg?style=flat-square" alt="HTML5 Canvas" />
     <img src="https://img.shields.io/badge/Audio-Web%20Audio%20API-emerald.svg?style=flat-square" alt="Web Audio API" />
     <img src="https://img.shields.io/badge/Bundler-Vite%205-purple.svg?style=flat-square" alt="Vite 5" />
@@ -181,7 +181,7 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
    ```bash
    npm test
    ```
-   Executes the full Vitest suite covering 234 unit and integration tests across 28 test files (network protocols, domain combat math, mobile responsiveness, boss cinematics, combat testing lab, and anime cinematics).
+   Executes the full Vitest suite covering 235 unit and integration tests across 28 test files (network protocols, domain combat math, mobile responsiveness, boss cinematics, combat testing lab, and anime cinematics).
 
 ---
 

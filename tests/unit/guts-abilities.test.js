@@ -99,5 +99,42 @@ describe('The Black Swordsman (Guts) — Berserker Rage Overhaul (Phase 4)', () 
     expect(triggerSpy).toHaveBeenCalledWith('berserker_rage', player);
     expect(cinematics.isBerserkerRageFreezing()).toBe(true);
   });
+
+  it('renders demonic beast jaws along screen borders with crimson glow and outline during Phase 2', () => {
+    cinematics.trigger('berserker_rage', player, false);
+    // Advance past freeze phase (progress >= 0.07) into the 6.0s continuous Berserk state
+    cinematics.update(0.50, [], () => {});
+
+    const mockCtx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      fillRect: vi.fn(),
+      strokeText: vi.fn(),
+      fillText: vi.fn(),
+      createRadialGradient: vi.fn(() => ({
+        addColorStop: vi.fn()
+      }))
+    };
+
+    expect(() => {
+      cinematics.drawScreenOverlay(mockCtx, 1280, 720);
+    }).not.toThrow();
+
+    // Verify jagged teeth border paths were drawn and stroked with red outline
+    expect(mockCtx.beginPath).toHaveBeenCalled();
+    expect(mockCtx.stroke).toHaveBeenCalled();
+    expect(mockCtx.fill).toHaveBeenCalled();
+    expect(mockCtx.fillText).toHaveBeenCalledWith(
+      expect.stringContaining('BERSERKER ARMOR'),
+      640,
+      42
+    );
+  });
 });
 

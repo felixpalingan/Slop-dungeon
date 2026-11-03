@@ -2536,25 +2536,61 @@ export class CinematicManager {
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, width, height);
 
-          // Jagged Miura black-ink spikes along left/right borders
-          ctx.fillStyle = `rgba(10, 2, 5, ${0.55 + heartBeat * 0.25})`;
+          // Jagged Miura demonic beast jaws along left/right borders with Crimson Glow & Outline
+          ctx.save();
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 16 + heartBeat * 14;
+          ctx.strokeStyle = `rgba(239, 68, 68, ${0.85 + heartBeat * 0.15})`;
+          ctx.lineWidth = 2.5;
+          ctx.fillStyle = `rgba(14, 2, 6, ${0.75 + heartBeat * 0.20})`;
+
           const numSpikes = 14;
           const spikeH = height / numSpikes;
           for (let s = 0; s < numSpikes; s++) {
             const sy = s * spikeH;
-            const spikeLen = 22 + ((s * 19) % 28) + heartBeat * 18;
+            const spikeLen = 28 + ((s * 19) % 32) + heartBeat * 22;
+
+            // Left beast teeth (closing in from left border)
             ctx.beginPath();
             ctx.moveTo(0, sy);
             ctx.lineTo(spikeLen, sy + spikeH * 0.5);
             ctx.lineTo(0, sy + spikeH);
+            ctx.closePath();
             ctx.fill();
+            ctx.stroke();
 
+            // Right beast teeth (closing in from right border)
             ctx.beginPath();
             ctx.moveTo(width, sy);
             ctx.lineTo(width - spikeLen, sy + spikeH * 0.5);
             ctx.lineTo(width, sy + spikeH);
+            ctx.closePath();
             ctx.fill();
+            ctx.stroke();
           }
+
+          // Inner glowing crimson spine ridges for menacing Beast of Darkness definition
+          ctx.strokeStyle = `rgba(255, 120, 120, ${0.65 + heartBeat * 0.35})`;
+          ctx.lineWidth = 1.5;
+          ctx.shadowBlur = 8;
+          for (let s = 0; s < numSpikes; s++) {
+            const sy = s * spikeH;
+            const spikeLen = 28 + ((s * 19) % 32) + heartBeat * 22;
+            const innerLen = spikeLen * 0.65;
+
+            // Left inner red spine
+            ctx.beginPath();
+            ctx.moveTo(0, sy + spikeH * 0.5);
+            ctx.lineTo(innerLen, sy + spikeH * 0.5);
+            ctx.stroke();
+
+            // Right inner red spine
+            ctx.beginPath();
+            ctx.moveTo(width, sy + spikeH * 0.5);
+            ctx.lineTo(width - innerLen, sy + spikeH * 0.5);
+            ctx.stroke();
+          }
+          ctx.restore();
 
           // Top Berserker Status Banner
           const timeRemaining = Math.max(0, c.timer).toFixed(1);
