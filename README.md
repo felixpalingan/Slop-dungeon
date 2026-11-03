@@ -16,6 +16,9 @@
     <img src="https://img.shields.io/badge/Bundler-Vite%205-purple.svg?style=flat-square" alt="Vite 5" />
     <img src="https://img.shields.io/badge/Deployment-Vercel%20Ready-black.svg?style=flat-square" alt="Vercel Ready" />
   </p>
+  <p align="center">
+    <img src="./assets/image.png" alt="Slop Dungeon In-Game Base Camp Lobby Preview" width="100%" style="border-radius: 14px; border: 1px solid rgba(0, 240, 255, 0.25); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.75);" />
+  </p>
 </p>
 
 ---
