@@ -1,0 +1,32 @@
+# Universal Search Engine Crawlers
+User-agent: *
+Allow: /
+
+# Googlebot Optimized Directives
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# AI Recommendation & Answer Engines (AEO / GEO)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# Sitemap Declaration
+Sitemap: https://slop-dungeon.vercel.app/sitemap.xml

@@ -8,8 +8,19 @@
   <meta name="apple-mobile-web-app-title" content="Slop Dungeon" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0a0a0f" />
-  <meta name="robots" content="index, follow" />
-  <meta name="author" content="Felix Palingan" />
+  <!-- Google Search Console Verification -->
+  <meta name="google-site-verification" content="u4LJw861Sd1D-bEjorhvvNzYhsOaDRd8unleA61RqHg" />
+
+  <!-- Search Engine & Crawler Directives -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+  <!-- Author Identity & E-E-A-T Sourcing -->
+  <meta name="author" content="Almakius Felix Bariq Hekopung" />
+  <meta name="creator" content="Almakius Felix Bariq Hekopung" />
+  <meta name="publisher" content="Almakius Felix Bariq Hekopung" />
+  <link rel="author" href="https://portfolio-felix-bariq.vercel.app/" />
+
   <meta name="description" content="Play Slop Dungeon free in your browser! A chaotic 1–6 player cooperative roguelike dungeon crawler with peer-to-peer WebRTC multiplayer, mobile and desktop cross-play, 5 themed floors, and anime boss encounters." />
   <meta name="keywords" content="slop dungeon, co-op browser game, multiplayer roguelike, cross-play game, webrtc game, html5 canvas game, mobile browser game, free online roguelike, anime boss fight, procedural dungeon crawler" />
   <link rel="canonical" href="https://slop-dungeon.vercel.app/" />
@@ -20,8 +31,11 @@
   <meta property="og:title" content="Slop Dungeon — Co-op Roguelike Browser Game | Cross-Play Multiplayer" />
   <meta property="og:description" content="A chaotic 1–6 player cooperative roguelike dungeon crawler built with pure HTML5 Canvas & WebRTC P2P multiplayer. Seamless cross-play on desktop and mobile!" />
   <meta property="og:image" content="https://slop-dungeon.vercel.app/preview.png" />
+  <meta property="og:image:width" content="1920" />
+  <meta property="og:image:height" content="1080" />
   <meta property="og:image:alt" content="Slop Dungeon In-Game Base Camp Lobby Preview" />
   <meta property="og:site_name" content="Slop Dungeon" />
+  <meta property="og:locale" content="en_US" />
 
   <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -31,37 +45,71 @@
   <meta name="twitter:image" content="https://slop-dungeon.vercel.app/preview.png" />
   <meta name="twitter:creator" content="@felixpalingan" />
 
-  <!-- Structured Data: Schema.org VideoGame / WebApplication -->
+  <!-- Structured Data: Schema.org Knowledge Graph (Person + WebSite + VideoGame) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "VideoGame",
-    "name": "Slop Dungeon",
-    "url": "https://slop-dungeon.vercel.app/",
-    "image": "https://slop-dungeon.vercel.app/preview.png",
-    "screenshot": "https://slop-dungeon.vercel.app/preview.png",
-    "description": "A chaotic 1–6 player cooperative roguelike dungeon crawler web game with real-time WebRTC peer-to-peer multiplayer, cross-play between mobile and desktop, procedural HTML5 canvas graphics, and anime-inspired boss encounters.",
-    "genre": ["Roguelike", "Action RPG", "Co-op", "Dungeon Crawler"],
-    "gamePlatform": ["Web Browser", "Desktop (Windows, macOS, Linux)", "Mobile (Android, iOS)", "Tablet"],
-    "applicationCategory": "Game",
-    "operatingSystem": "Any (Modern Web Browser)",
-    "playMode": ["SinglePlayer", "MultiPlayer", "CoOp"],
-    "numberOfPlayers": {
-      "@type": "QuantitativeValue",
-      "minValue": 1,
-      "maxValue": 6
-    },
-    "author": {
-      "@type": "Person",
-      "name": "Felix Palingan",
-      "url": "https://github.com/felixpalingan"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-      "availability": "https://schema.org/InStock"
-    }
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": "https://portfolio-felix-bariq.vercel.app/#person",
+        "name": "Almakius Felix Bariq Hekopung",
+        "alternateName": ["Felix Palingan", "Felix", "V_NETRUNNER"],
+        "url": "https://portfolio-felix-bariq.vercel.app/",
+        "jobTitle": "Full Stack Web Developer & Creative Engineer",
+        "sameAs": [
+          "https://github.com/felixpalingan",
+          "https://www.linkedin.com/in/almakius-felix-bariq-hekopung/",
+          "https://id.linkedin.com/in/almakius-felix-bariq-hekopung-a59695394",
+          "https://portfolio-felix-bariq.vercel.app",
+          "https://iron-pixels.vercel.app",
+          "https://oit-seven.vercel.app",
+          "https://slop-dungeon.vercel.app"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://slop-dungeon.vercel.app/#website",
+        "url": "https://slop-dungeon.vercel.app/",
+        "name": "Slop Dungeon",
+        "description": "Co-op Roguelike Browser Game with Serverless WebRTC Multiplayer & Cross-Play",
+        "publisher": {
+          "@id": "https://portfolio-felix-bariq.vercel.app/#person"
+        },
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "VideoGame",
+        "@id": "https://slop-dungeon.vercel.app/#game",
+        "name": "Slop Dungeon",
+        "url": "https://slop-dungeon.vercel.app/",
+        "image": "https://slop-dungeon.vercel.app/preview.png",
+        "screenshot": "https://slop-dungeon.vercel.app/preview.png",
+        "description": "A chaotic 1–6 player cooperative roguelike dungeon crawler web game with real-time WebRTC peer-to-peer multiplayer, cross-play between mobile and desktop, procedural HTML5 canvas graphics, and anime-inspired boss encounters.",
+        "genre": ["Roguelike", "Action RPG", "Co-op", "Dungeon Crawler"],
+        "gamePlatform": ["Web Browser", "Desktop (Windows, macOS, Linux)", "Mobile (Android, iOS)", "Tablet"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any (Modern Web Browser)",
+        "playMode": ["SinglePlayer", "MultiPlayer", "CoOp"],
+        "numberOfPlayers": {
+          "@type": "QuantitativeValue",
+          "minValue": 1,
+          "maxValue": 6
+        },
+        "author": {
+          "@id": "https://portfolio-felix-bariq.vercel.app/#person"
+        },
+        "creator": {
+          "@id": "https://portfolio-felix-bariq.vercel.app/#person"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    ]
   }
   </script>
 
