@@ -8,8 +8,9 @@
     <a href="https://slop-dungeon.vercel.app"><img src="https://img.shields.io/badge/Play_Live-slop--dungeon.vercel.app-00f0ff.svg?style=flat-square&logo=vercel" alt="Play Live" /></a>
     <a href="https://github.com/felixpalingan/Slop-dungeon/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/Multiplayer-WebRTC%20P2P-cyan.svg?style=flat-square" alt="WebRTC P2P" />
+    <img src="https://img.shields.io/badge/Cross--Play-PC%20%26%20Mobile-00f0ff.svg?style=flat-square" alt="Cross-Play PC & Mobile" />
     <img src="https://img.shields.io/badge/Mobile-Touch%20HUD%20Ready-38bdf8.svg?style=flat-square" alt="Mobile Touch HUD" />
-    <img src="https://img.shields.io/badge/Tests-203%20passed%20(Vitest)-emerald.svg?style=flat-square" alt="Vitest Tests Passing" />
+    <img src="https://img.shields.io/badge/Tests-234%20passed%20(Vitest)-emerald.svg?style=flat-square" alt="Vitest Tests Passing" />
     <img src="https://img.shields.io/badge/Graphics-HTML5%20Canvas%202D-violet.svg?style=flat-square" alt="HTML5 Canvas" />
     <img src="https://img.shields.io/badge/Audio-Web%20Audio%20API-emerald.svg?style=flat-square" alt="Web Audio API" />
     <img src="https://img.shields.io/badge/Bundler-Vite%205-purple.svg?style=flat-square" alt="Vite 5" />
@@ -21,11 +22,11 @@
 
 ## 📖 Overview
 
-**Slop Dungeon** is a lightweight, zero-install, serverless roguelike dungeon crawler engineered for high-energy friend-group sessions. Jump straight into procedural chamber floors directly in any modern desktop, tablet, or mobile web browser. 
+**Slop Dungeon** is a lightweight, zero-install, serverless roguelike dungeon crawler engineered for high-energy friend-group sessions. Jump straight into procedural chamber floors directly in any modern desktop, tablet, or mobile web browser with full **Mobile & Desktop Cross-Play**. 
 
 🎮 **Live Production Deployment**: [https://slop-dungeon.vercel.app](https://slop-dungeon.vercel.app)
 
-Players coordinate via ephemeral **6-character room codes** (`SLOP-XXXXXX`), equip over 60 distinct procedural items inspired by iconic anime archetypes, unleash screen-shattering cinematic ultimates, manage a shared party wallet of **Slops**, gamble items at the **Slop Merchant's Gacha Altar** (or Blackjack Table), explore 5 themed procedural floors with distinct mob rosters, and face multi-phase room-filling bosses with telegraphed attack phases. Complete with a responsive mobile touch HUD featuring dynamic analog joysticks, auto-aim assistance, and fullscreen landscape orientation lock.
+Players coordinate via ephemeral **6-character room codes** (`SLOP-XXXXXX`), equip 60 unique procedural items across 7 iconic anime sets (67 catalog definitions), unleash screen-shattering cinematic ultimates, manage a shared party wallet of **Slops**, gamble items at the **Slop Merchant's Gacha Altar** (or Blackjack Table), explore 5 themed procedural floors with distinct mob rosters, and face multi-phase room-filling bosses with telegraphed attack phases. Featuring seamless cross-platform co-op between PC/Mac/Linux and Android/iOS, a dedicated mobile touch HUD with analog joystick and auto-aim assistance, and a specialized **Combat Testing Lab** for immediate endgame trial runs.
 
 ---
 
@@ -56,7 +57,7 @@ flowchart TD
 
     PS <-->|"Room Code Handshake<br/>(ICE / SDP Exchange)"| HostNet
     PS <-->|"Room Code Handshake<br/>(ICE / SDP Exchange)"| PeerNet
-    HostNet <===>|"Direct WebRTC DataChannel<br/>(60Hz State Broadcast, Actions, Hits)"| PeerNet
+    HostNet <===>|"Direct WebRTC DataChannel<br/>(20Hz State Broadcast + Event-Driven Actions)"| PeerNet
 
     HostInput --> HostEngine
     HostEngine --> HostNet
@@ -103,10 +104,11 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
 
 *Full equipment details are available in the [Item Encyclopedia](ANIME_EQUIPMENT.md).*
 
-### 3. 📱 Mobile & Tablet Touch HUD
+### 3. 📱 Mobile & Tablet Touch HUD with Seamless Cross-Play
+- **Universal P2P Cross-Play**: Zero platform segregation. Android/iOS phone and tablet players can host rooms or join desktop PC/Mac/Linux hosts with full synchronization of physics, abilities, items, and downed/revive interactions.
 - **Virtual Dual-Ring Movement Joystick**: Floating or fixed virtual joystick with deadzone filtering, smooth 360° analog clamping, and zero-latency movement vectors.
 - **Ergonomic Action Cluster**: Dedicated touch buttons for Primary Attack, Comic Slap, Shield Block, Dodge Roll, Proximity Interact (`[E]`), Ultimate (`[Q]`), Dev Armory (`[G]`), and Inventory Bag.
-- **Auto-Aim & Drag Aiming**: Proximity target-assist lock for mobile players alongside directional touch drag aiming.
+- **Auto-Aim & Drag Aiming**: Proximity target-assist lock for mobile players alongside directional touch drag aiming against nearby foes.
 - **Dedicated Fullscreen Controller**: One-tap fullscreen toggle (`#btn-hud-fullscreen` & Settings modal) supporting standard, webkit, and moz APIs, integrated with `screen.orientation.lock('landscape')`.
 - **Intelligent Controls Guide**: Help banner only renders on desktop/laptop in the Base Camp lobby, automatically hiding during dungeon runs and on all touch devices.
 
@@ -123,15 +125,21 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
 - **Spin-a-Wheel Gacha Altar**: Wager any equipment piece (50% Shatter into ash, 45% Upgrade rarity tier, 5% Jackpot Secret Mythic).
 - **In-Lobby Blackjack Table**: Sit at the green felt table in Base Camp to wager Slops in a complete dealer blackjack game.
 
-### 6. 🏕️ Base Camp Lobby & Dev Tools
+### 6. 🏕️ Base Camp Lobby & Combat Testing Lab
 - **Interactive Wardrobe Mirror**: Customize player avatar color hex code and multiplayer display name.
-- **Dev Armory Chest (`[G]`)**: Interactive sandbox chest allowing instant one-click equipping of any anime set or item.
-- **Floor Selector Terminal (`[F]`)**: Teleport straight to any themed floor:
-  - Floor 1: JJK Detention Center (*Finger Bearer Boss*)
-  - Floor 2: Cyberpunk Arasaka Sublevel (*Adam Smasher Prototype*)
-  - Floor 3: AoT Wall Maria Crypts (*Armored Titan*)
-  - Floor 4: Berserk Eclipse Ruins (*Nosferatu Zodd Apostle*)
-  - Floor 5: OPM House of Evolution (*Carnage Kabuto Artificial God*)
+- **Dev Armory Chest (`[G]`)**: Interactive sandbox chest allowing instant one-click equipping of any individual anime item or set.
+- **🧪 Combat Testing Lab Altar (`[E]` / `[F]`)**:
+  - Overhauled Floor Terminal into a comprehensive live QA and combat testing facility.
+  - **Instant Fullset Loadout Selector**: Choose full anime equipment sets before descending (*⚡ Thematic Auto*, *🥊 Saitama*, *🗡️ Sukuna*, *♾️ Gojo*, *⚔️ Guts*, *🌪️ Levi*, *⚡ David*).
+  - *Thematic Auto Mode*: Dynamically equips the canon counter-set for each floor (Floor 1 $\rightarrow$ Sukuna, Floor 2 $\rightarrow$ David, Floor 3 $\rightarrow$ Levi, Floor 4 $\rightarrow$ Guts, Floor 5 $\rightarrow$ Saitama).
+  - **Zero Starter-Gear Reset**: Descending via the test lab keeps all equipped high-tier anime gear intact, refills player HP to 100%, and resets ultimate cooldowns for immediate testing.
+  - **Instant Lobby Escape Routes**: One-click return to Base Camp via `#btn-hud-return-lobby` in the HUD (visible on floors $\ge 1$) or `#btn-settings-return-lobby` inside the Settings modal.
+  - Explore all 5 themed procedural floors with distinct boss encounters:
+    - Floor 1: JJK Detention Center (*Finger Bearer Boss*)
+    - Floor 2: Cyberpunk Arasaka Sublevel (*Adam Smasher Prototype*)
+    - Floor 3: AoT Wall Maria Crypts (*Armored Titan*)
+    - Floor 4: Berserk Eclipse Ruins (*Nosferatu Zodd Apostle*)
+    - Floor 5: OPM House of Evolution (*Carnage Kabuto Artificial God*)
 
 ---
 
@@ -170,7 +178,7 @@ Collect 6-slot modular gear (*Helmet*, *Chest*, *Pants*, *Boots*, *Weapon*, *Off
    ```bash
    npm test
    ```
-   Executes the full Vitest suite covering 203 unit and integration tests across 25 test files (network protocols, domain combat math, mobile responsiveness, and anime cinematics).
+   Executes the full Vitest suite covering 234 unit and integration tests across 28 test files (network protocols, domain combat math, mobile responsiveness, boss cinematics, combat testing lab, and anime cinematics).
 
 ---
 
@@ -193,7 +201,7 @@ Because Slop Dungeon utilizes client-side WebRTC P2P for networking, it can be d
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Coding conventions, pull request workflows, and issue reporting standards.
 - **[SECURITY.md](SECURITY.md)**: Vulnerability disclosure policies and maintainer contact points.
 - **[ROADMAP.md](ROADMAP.md)**: Phased engineering roadmap and multi-discipline architecture plan.
-- **[ANIME_EQUIPMENT.md](ANIME_EQUIPMENT.md)**: Comprehensive master catalog of all 54 items, stats, and set bonus mechanics.
+- **[ANIME_EQUIPMENT.md](ANIME_EQUIPMENT.md)**: Comprehensive master catalog of all 60 unique items across 7 iconic anime sets (67 catalog definitions), stats, and set bonus mechanics.
 
 ---
 

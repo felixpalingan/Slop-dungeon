@@ -73,6 +73,13 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
 │    ├── Step 9.2: Ground Telegraph Danger Zones (Cone/Corridor/Nova) [COMPLETED ✅]
 │    ├── Step 9.3: Boss Visual Evolutions & Anime Sprite Overhaul [COMPLETED ✅] │
 │    └── Step 9.4: Boss Audio Stingers & Multiplayer Sync [COMPLETED ✅]         │
+│      ▼                                                                     │
+│  Phase 10: Combat Testing Lab & Instant Fullset Loadouts [COMPLETED ✅]    │
+│    ├── Step 10.1: Interactive Combat Testing Lab Altar [COMPLETED ✅]      │
+│    ├── Step 10.2: Anime Fullset Loadout Selector (Auto/Anime) [COMPLETED ✅]│
+│    ├── Step 10.3: Zero-Penalty Floor Warping & HP/CD Refills [COMPLETED ✅]│
+│    ├── Step 10.4: Instant In-Game Lobby Escape Routes (HUD/Settings) [COMPLETED ✅]│
+│    └── Step 10.5: Automated Verification & Unit Tests (234 Tests) [COMPLETED ✅]│
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -272,6 +279,10 @@ All visuals are **100% procedural 2D shapes** (zero sprite art needed), networki
   - Controls keyboard guide (`#hud-controls-hint`) only shows on desktop/laptop in the Base Camp lobby (`currentFloor === 0`).
   - Automatically hidden during dungeon floor descent (`currentFloor >= 1`) and completely hidden on all touch/mobile viewports.
   - Covered by 5 dedicated mobile unit test suites (`mobile-responsive.test.js`, `mobile-touch.test.js`, `mobile-action-cluster.test.js`, `mobile-phase4.test.js`, `mobile-e2e-integration.test.js`).
+- **Step 8.6: Mobile & Desktop Cross-Play Parity** `[COMPLETED ✅]`:
+  - Platform-agnostic packet schemas: virtual touch joystick vectors and touch action taps are normalized into identical `PLAYER_STATE` payloads as desktop keyboard/mouse inputs.
+  - Universal WebRTC P2P multiplayer: Android/iOS mobile devices seamlessly host rooms or join desktop PC/Mac/Linux hosts with 20 Hz synchronization.
+  - 100% mechanic parity: mobile players actively participate in downed/revive interactions, shared party Slops economy, equipment inventory management, and anime ultimate triggers alongside desktop peers.
 
 ---
 
