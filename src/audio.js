@@ -678,6 +678,113 @@ export class AudioManager {
   }
 
   /**
+   * Toji's Thousand-Mile Chain: Fast metallic whoosh followed by iron link rattle & whip snap
+   */
+  playChainWhip() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // 1. Rapid iron link rattle
+      for (let i = 0; i < 4; i++) {
+        const t = now + i * 0.03;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800 + i * 180, t);
+        osc.frequency.exponentialRampToValueAtTime(260, t + 0.06);
+        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.06);
+      }
+
+      // 2. High-speed whip crack
+      const crack = this.ctx.createOscillator();
+      const crackGain = this.ctx.createGain();
+      crack.type = 'sine';
+      crack.frequency.setValueAtTime(1200, now + 0.08);
+      crack.frequency.exponentialRampToValueAtTime(220, now + 0.22);
+      crackGain.gain.setValueAtTime(0.35, now + 0.08);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      crack.connect(crackGain);
+      crackGain.connect(this.ctx.destination);
+      crack.start(now + 0.08);
+      crack.stop(now + 0.22);
+    } catch (e) {
+      console.warn('Audio error:', e);
+    }
+  }
+
+  /**
+   * Toji's Tactical Glock: Snappy 9mm ballistic report with mechanical slide action
+   */
+  playPistolShot() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Explosive noise crack
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.08);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(1400, now);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.45, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      noise.start(now);
+
+      // 2. Heavy punch transient
+      const punch = this.ctx.createOscillator();
+      const punchGain = this.ctx.createGain();
+      punch.type = 'triangle';
+      punch.frequency.setValueAtTime(420, now);
+      punch.frequency.exponentialRampToValueAtTime(55, now + 0.12);
+      punchGain.gain.setValueAtTime(0.4, now);
+      punchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      punch.connect(punchGain);
+      punchGain.connect(this.ctx.destination);
+      punch.start(now);
+      punch.stop(now + 0.12);
+
+      // 3. Crisp mechanical slide click
+      const slide = this.ctx.createOscillator();
+      const slideGain = this.ctx.createGain();
+      slide.type = 'square';
+      slide.frequency.setValueAtTime(1800, now + 0.07);
+      slide.frequency.exponentialRampToValueAtTime(900, now + 0.11);
+      slideGain.gain.setValueAtTime(0.12, now + 0.07);
+      slideGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+      slide.connect(slideGain);
+      slideGain.connect(this.ctx.destination);
+      slide.start(now + 0.07);
+      slide.stop(now + 0.11);
+    } catch (e) {
+      console.warn('Audio error:', e);
+    }
+  }
+
+  /**
    * Guts' Dragon Slayer: Colossal heavy iron wind roar
    */
   playHeavyGreatswordSwing() {

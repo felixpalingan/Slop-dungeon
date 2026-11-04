@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CinematicManager } from '../../src/cinematics.js';
 import { CombatSystem } from '../../src/combat.js';
+import { checkSetBonus, ITEM_CATALOG } from '../../src/items.js';
 
 describe('Toji (Inverted Chain Rampage) & David (Sandevistan) Overhaul (Phase 5)', () => {
   let cinematics;
@@ -82,6 +83,137 @@ describe('Toji (Inverted Chain Rampage) & David (Sandevistan) Overhaul (Phase 5)
       cinematics.update(0.1, [], () => {});
       const c = cinematics.activeCinematics[0];
       expect(c.shockwaves.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('Toji Fushiguro — Option B Modular Weapon Revamp (ISoH + Chain / Glock)', () => {
+    let combat;
+
+    beforeEach(() => {
+      combat = new CombatSystem();
+    });
+
+    it('activates set bonus with modular loadouts: ISoH + Chain, ISoH + Glock, and backward-compatible inverted_spear_chain', () => {
+      const baseTojiArmor = {
+        helmet: ITEM_CATALOG['toji_worm'],
+        chest: ITEM_CATALOG['toji_shirt'],
+        pants: ITEM_CATALOG['toji_pants'],
+        boots: ITEM_CATALOG['toji_slippers']
+      };
+
+      // 1. ISoH + Thousand-Mile Chain
+      const setIsohChain = checkSetBonus({
+        ...baseTojiArmor,
+        weapon: ITEM_CATALOG['toji_isoh'],
+        offhand: ITEM_CATALOG['toji_chain']
+      });
+      expect(setIsohChain).not.toBeNull();
+      expect(setIsohChain.setKey).toBe('toji');
+
+      // 2. ISoH + Tactical Glock
+      const setIsohGlock = checkSetBonus({
+        ...baseTojiArmor,
+        weapon: ITEM_CATALOG['toji_isoh'],
+        offhand: ITEM_CATALOG['toji_glock']
+      });
+      expect(setIsohGlock).not.toBeNull();
+      expect(setIsohGlock.setKey).toBe('toji');
+
+      // 3. Backward compatibility: Legacy 2H Inverted Spear of Heaven & Chain
+      const setLegacy = checkSetBonus({
+        ...baseTojiArmor,
+        weapon: ITEM_CATALOG['inverted_spear_chain']
+      });
+      expect(setLegacy).not.toBeNull();
+      expect(setLegacy.setKey).toBe('toji');
+
+      // 4. Mismatch offhand should not trigger set bonus
+      const setInvalid = checkSetBonus({
+        ...baseTojiArmor,
+        weapon: ITEM_CATALOG['toji_isoh'],
+        offhand: ITEM_CATALOG['wooden_buckler']
+      });
+      expect(setInvalid).toBeNull();
+    });
+
+    it('transforms main attack into Long Whipping Attack (reach 155, 124° arc, whip momentum) when paired with Thousand-Mile Chain', () => {
+      const toji = {
+        id: 'toji-modular',
+        x: 100,
+        y: 100,
+        angle: 0,
+        radius: 22,
+        equipment: {
+          weapon: ITEM_CATALOG['toji_isoh'],
+          offhand: ITEM_CATALOG['toji_chain']
+        }
+      };
+
+      // Target at 145px away (beyond normal 62px dagger reach, within 155px whip reach)
+      const distantEnemy = { id: 'dummy-far', x: 245, y: 100, radius: 24, hp: 100 };
+      const hits = combat.performWeaponAttack(toji, [distantEnemy]);
+
+      expect(hits.length).toBe(1);
+      expect(hits[0].isWhip).toBe(true);
+      expect(hits[0].knockback).toBe(560);
+      expect(hits[0].damage).toBeGreaterThanOrEqual(75); // 65 + 20 damageBuff
+    });
+
+    it('reverts to fast jitte dagger slash (reach 62) and pierces shield when paired with Glock or solo', () => {
+      const toji = {
+        id: 'toji-glock-loadout',
+        x: 100,
+        y: 100,
+        angle: 0,
+        radius: 22,
+        equipment: {
+          weapon: ITEM_CATALOG['toji_isoh'],
+          offhand: ITEM_CATALOG['toji_glock']
+        }
+      };
+
+      // Distant target cannot be reached by dagger
+      const distantEnemy = { id: 'dummy-far', x: 245, y: 100, radius: 24, hp: 100 };
+      expect(combat.performWeaponAttack(toji, [distantEnemy]).length).toBe(0);
+
+      // Close blocking enemy within 60px: ISoH pierces and breaks block!
+      const blockingEnemy = { id: 'dummy-close', x: 155, y: 100, radius: 24, hp: 100, isBlocking: true };
+      const hits = combat.performWeaponAttack(toji, [blockingEnemy]);
+
+      expect(hits.length).toBe(1);
+      expect(hits[0].isWhip).toBe(false);
+      expect(hits[0].isShieldNullifying).toBe(true);
+      expect(hits[0].isBlocked).toBe(false);
+      expect(blockingEnemy.isBlocking).toBe(false); // Shield shattered/nullified
+    });
+
+    it('fires ballistic glock bullet on offhand attack (reach 220) and breaks Limitless sensory barriers', () => {
+      const toji = {
+        id: 'toji-gunner',
+        x: 100,
+        y: 100,
+        angle: 0,
+        radius: 22,
+        equipment: {
+          weapon: ITEM_CATALOG['toji_isoh'],
+          offhand: ITEM_CATALOG['toji_glock']
+        }
+      };
+
+      const distantGojo = {
+        id: 'gojo-barrier',
+        x: 310,
+        y: 100,
+        radius: 24,
+        hp: 200,
+        isLimitlessBarrier: true
+      };
+
+      const offhandHits = combat.performOffhandAttack(toji, [distantGojo]);
+      expect(offhandHits.length).toBe(1);
+      expect(offhandHits[0].attackType).toBe('toji_glock_shot');
+      expect(offhandHits[0].knockback).toBe(440);
+      expect(distantGojo.isLimitlessBarrier).toBe(false); // Non-cursed bullet bypasses barrier!
     });
   });
 });

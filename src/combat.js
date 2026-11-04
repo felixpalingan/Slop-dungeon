@@ -65,6 +65,19 @@ export class CombatSystem {
     } else if (weapon.visual === 'saitama_glove') {
       reach = Math.max(reach, 74);
       arcHalfAngle = Math.PI * 0.52; // explosive forward punch cleave
+    } else if (weapon.visual === 'toji_isoh' || weapon.id === 'toji_isoh') {
+      const offhandVisual = attacker.equipment?.offhand?.visual;
+      const hasTojiChain = offhandVisual === 'toji_chain' || attacker.equipment?.offhand?.id === 'toji_chain';
+      if (hasTojiChain) {
+        // Dual wield ISoH + Thousand-Mile Chain: Long sweeping whipping attack
+        reach = Math.max(reach, 155);
+        arcHalfAngle = Math.PI * 0.62; // wide 124° whip arc
+        baseDamage += (attacker.equipment?.offhand?.damageBuff || 20);
+      } else {
+        // Modular ISoH dagger slash (e.g. paired with tactical Glock or solo)
+        reach = Math.max(reach, 62);
+        arcHalfAngle = Math.PI * 0.40;
+      }
     }
 
     const isShotgun = weapon.visual === 'david_shotgun';
@@ -167,14 +180,28 @@ export class CombatSystem {
           const isCrit = Math.random() < (0.08 + critBonus);
           const finalDamage = Math.round(baseDamage * (isCrit ? 1.85 : (0.9 + Math.random() * 0.2)));
 
-          const isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
+          const isTojiIsoh = weapon.visual === 'toji_isoh' || weapon.id === 'toji_isoh';
+          const isNullifying = isTojiIsoh || weapon.visual === 'inverted_spear_chain' || weapon.id === 'inverted_spear_chain';
+          let isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
+          if (isNullifying && target.isBlocking) {
+            isBlocked = false;
+            target.isBlocking = false;
+          }
+          if (isNullifying && target.isLimitlessBarrier) {
+            target.isLimitlessBarrier = false;
+          }
+
           const damageTaken = isBlocked
             ? Math.round(finalDamage * (1 - (target.equipment?.offhand?.blockMitigation || 0.6)))
             : finalDamage;
 
+          const offhandVisual = attacker.equipment?.offhand?.visual;
+          const hasTojiChain = offhandVisual === 'toji_chain' || attacker.equipment?.offhand?.id === 'toji_chain';
           let knockback = weapon.hands === 2 ? 520 : (weapon.visual === 'saitama_glove' ? 620 : 340);
           if (isBlue) {
             knockback = -480;
+          } else if (isTojiIsoh && hasTojiChain) {
+            knockback = 560;
           } else if (attacker.isBerserk) {
             knockback = 650;
           }
@@ -185,6 +212,8 @@ export class CombatSystem {
             isCrit,
             isBlocked,
             isPull: isBlue,
+            isShieldNullifying: isNullifying,
+            isWhip: isTojiIsoh && hasTojiChain,
             angle: attacker.angle,
             knockback
           });
@@ -257,6 +286,18 @@ export class CombatSystem {
       baseDamage = 35;
       knockback = 540; // Heavy crinkly supermarket bag smack!
       attackType = 'grocery_smack';
+    } else if (offhandVisual === 'toji_glock') {
+      reach = 220;
+      arcHalfAngle = Math.PI * 0.16; // narrow ballistic trajectory
+      baseDamage = 58;
+      knockback = 440;
+      attackType = 'toji_glock_shot';
+    } else if (offhandVisual === 'toji_chain') {
+      reach = 145;
+      arcHalfAngle = Math.PI * 0.58; // wide flail whip sweep
+      baseDamage = 45;
+      knockback = 520;
+      attackType = 'toji_chain_whip';
     }
 
     if (attacker.isBerserk) {
@@ -284,7 +325,10 @@ export class CombatSystem {
           const isCrit = Math.random() < (attacker.equipment?.helmet?.critChance || 0.08);
           const finalDamage = Math.round(baseDamage * (isCrit ? 1.85 : (0.9 + Math.random() * 0.2)));
 
-          const isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
+          let isBlocked = target.isBlocking && Math.abs(angleDiff) > Math.PI * 0.5;
+          if (attackType === 'toji_glock_shot' && target.isLimitlessBarrier) {
+            target.isLimitlessBarrier = false;
+          }
           const damageTaken = isBlocked
             ? Math.round(finalDamage * (1 - (target.equipment?.offhand?.blockMitigation || 0.6)))
             : finalDamage;

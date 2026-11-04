@@ -39,6 +39,12 @@ describe('Item Catalog & Economy Logic', () => {
           expect(ITEM_CATALOG[weaponId], `Set ${setId} alternative weapon ${weaponId} must exist`).toBeDefined();
         }
       }
+
+      if (setDef.requiredOffhandOneOf) {
+        for (const offhandId of setDef.requiredOffhandOneOf) {
+          expect(ITEM_CATALOG[offhandId], `Set ${setId} alternative offhand ${offhandId} must exist`).toBeDefined();
+        }
+      }
     }
   });
 

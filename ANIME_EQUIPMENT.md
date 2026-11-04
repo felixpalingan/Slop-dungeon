@@ -68,7 +68,10 @@ Summary table of all 60 active items registered in `ITEM_CATALOG`:
 | 16 | `toji_shirt` | Compression Combat Shirt | Chest | 1H | EPIC | Sorcerer Killer | HP +45, Armor +14, Base Q: Spartan Kick | 35 🪙 |
 | 17 | `toji_pants` | Baggy Gi Training Pants | Pants | 1H | EPIC | Sorcerer Killer | HP +25, Armor +10, Stamina Regen +12/s | 35 🪙 |
 | 18 | `toji_slippers` | Heavenly Restriction Slippers | Boots | 1H | EPIC | Sorcerer Killer | Sprint Speed +35, Silent Steps | 35 🪙 |
-| 19 | `inverted_spear_chain` | Inverted Spear & 1000-Mile Chain | Weapon | **2H** | MYTHIC | Sorcerer Killer | Dmg 75, Spd 0.95, Shield Nullifier, 360° Spin | 150 🪙 |
+| 19 | `toji_isoh` | Inverted Spear of Heaven | Weapon | 1H | MYTHIC | Sorcerer Killer | Dmg 65, Spd 1.45, Reach 62, Shield/Barrier Nullifier | 150 🪙 |
+| 20 | `toji_chain` | Thousand-Mile Chain | Off-Hand | 1H | MYTHIC | Sorcerer Killer | Dmg Buff +20, Reach +95 (Turns ISoH into 155px Long Whip!), Chain Flail | 150 🪙 |
+| 21 | `toji_glock` | Tactical Glock Handgun | Off-Hand | 1H | MYTHIC | Sorcerer Killer | Dmg 58, Range 220, Ballistic Gunshot with Muzzle Flash, Bypasses Limitless | 150 🪙 |
+| 22 | `inverted_spear_chain` | Inverted Spear & 1000-Mile Chain | Weapon | **2H** | MYTHIC | Sorcerer Killer | Dmg 75, Spd 0.95, Shield Nullifier, 360° Spin (Legacy) | 150 🪙 |
 | 20 | `guts_beast_helm` | Berserker Beast Helm | Helmet | 1H | MYTHIC | The Black Swordsman | HP +40, Armor +16, Crit Chance +18% | 150 🪙 |
 | 21 | `guts_berserker_plate`| Berserker Armor Plate | Chest | 1H | MYTHIC | The Black Swordsman | HP +85, Armor +28, Base Q: Cannon Arm | 150 🪙 |
 | 22 | `guts_greaves` | Black Iron Greaves | Pants | 1H | LEGENDARY | The Black Swordsman | HP +35, Armor +18, Knockback Resistance | 75 🪙 |
@@ -158,18 +161,24 @@ Summary table of all 60 active items registered in `ITEM_CATALOG`:
 ### 3. The Sorcerer Killer (Heavenly Restriction)
 > *"Zero cursed energy. Pure physical perfection."*
 
-* **Visual Theme**: Fitted black compression shirt, coiled inventory curse wrapped over the shoulder, and a thousand-mile iron chain.
-* **Set Components (5 Pieces)**:
+* **Visual Theme**: Fitted black compression shirt, coiled inventory curse wrapped over the shoulder, dual-wielded Inverted Spear of Heaven, coiled Thousand-Mile iron chain, and tactical firearm sidearm.
+* **Set Components (Modular Loadout)**:
   1. **Helmet**: `Coiled Inventory Curse` (`toji_worm`, Epic) — HP +20, Armor +8.
   2. **Chest**: `Compression Combat Shirt` (`toji_shirt`, Epic) — HP +45, Armor +14.
      - *Base Q*: **Spartan Kick** — Heavy forward boot launch that sends targets flying with extreme knockback and stun.
   3. **Pants**: `Baggy Gi Training Pants` (`toji_pants`, Epic) — HP +25, Armor +10, Stamina Regen +12/s.
   4. **Boots**: `Heavenly Restriction Slippers` (`toji_slippers`, Epic) — Sprint Speed +35, silent footsteps.
-  5. **Weapon (2H)**: `Inverted Spear of Heaven & Thousand-Mile Chain` (`inverted_spear_chain`, Mythic) — Two-handed special grade cursed weapon (occupies both hand slots).
-     - Left-Click: Long piercing spear thrust that nullifies enemy shields (75 Dmg).
-     - Right-Click: Sweeps the heavy iron chain in a full 360° circle.
+  5. **Weapon & Off-Hand Arsenal**:
+     - **Main Weapon (1H)**: `Inverted Spear of Heaven` (`toji_isoh`, Mythic) — Special Grade anti-curse jitte dagger (Dmg 65, Spd 1.45, Reach 62). Pierces shields and nullifies magical barriers.
+     - **Off-Hand Option A**: `Thousand-Mile Chain` (`toji_chain`, Mythic) — Coiled endless chain (+20 Dmg Buff, +95 Reach Bonus).
+       - **Dual-Wield Synergy (ISoH + Chain)**: Main attack transforms into **Long Whipping Attack**! Sweeps in a colossal 155px reach, 124° arc with 85 base damage, chain link curve trail, and 560 knockback!
+       - **Right-Click**: Sweeping iron chain flail whip (45 Dmg, 520 knockback).
+     - **Off-Hand Option B**: `Tactical Glock Handgun` (`toji_glock`, Mythic) — Non-cursed semi-automatic sidearm (Dmg 58).
+       - **Dual-Wield Synergy (ISoH + Glock)**: Main attack stays fast piercing ISoH jitte dagger slash (62px reach, bypasses/destroys enemy shields).
+       - **Right-Click**: High-velocity ballistic gunshot with bright yellow muzzle flash, bullet sparks, 220px range, and bypasses Gojo's Limitless sensory barriers!
+     - **Legacy 2H Weapon**: `Inverted Spear of Heaven & Thousand-Mile Chain` (`inverted_spear_chain`, Mythic) — Two-handed version (occupies both hands, 75 Dmg, 85 Reach).
 * ⛓️ **FULL SET BONUS — Inverted Chain Rampage**:
-  - Replaces `[Q]` with a high-velocity rotating chain storm that shreds all surrounding foes and deflects incoming attacks.
+  - Replaces `[Q]` with a high-velocity rotating chain storm (天逆鉾・万浬の鎖) that shreds all surrounding foes in a 240px radius, nullifies Limitless barriers, and deflects enemy projectiles!
 
 ---
 

@@ -4573,7 +4573,7 @@ function equipFullSet(setName) {
     bannerText = '🗡️ EQUIPPED KING OF CURSES SET!';
     bannerColor = '#ff2a5f';
   } else if (setName === 'toji') {
-    itemsToEquip = ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain'];
+    itemsToEquip = ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'toji_isoh', 'toji_chain'];
     bannerText = '⛓️ EQUIPPED SORCERER KILLER SET!';
     bannerColor = '#38bdf8';
   } else if (setName === 'guts') {
@@ -4630,7 +4630,7 @@ function renderArmoryItems(filter = 'all') {
   const animeIds = [
     'gojo_blindfold', 'gojo_tunic', 'gojo_slacks', 'gojo_loafers', 'lapse_blue', 'reversal_red',
     'sukuna_crown', 'sukuna_robe', 'sukuna_hakama', 'sukuna_zori', 'sukuna_kamutoke', 'sukuna_cleaver', 'sukuna_finger', 'sukuna_hiten',
-    'toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain',
+    'toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'toji_isoh', 'toji_chain', 'toji_glock', 'inverted_spear_chain',
     'guts_beast_helm', 'guts_berserker_plate', 'guts_greaves', 'guts_sollerets', 'dragon_slayer',
     'scout_hood', 'odm_harness', 'scout_trousers', 'scout_boots', 'dual_snap_blades',
     'david_kiroshi', 'david_jacket', 'david_pants', 'david_sneakers', 'david_shotgun', 'david_gorilla_arms'
@@ -5297,6 +5297,14 @@ function playWeaponAttackSound(weapon) {
     case 'inverted_spear_chain':
       audio.playChainThrust();
       break;
+    case 'toji_isoh':
+      if (player.equipment?.offhand?.visual === 'toji_chain') {
+        if (audio.playChainWhip) audio.playChainWhip();
+        else audio.playChainThrust();
+      } else {
+        audio.playChainThrust();
+      }
+      break;
     case 'dragon_slayer':
       audio.playHeavyGreatswordSwing();
       break;
@@ -5415,6 +5423,14 @@ function handleAttacks() {
         audio.playGravitationalSurge();
       } else if (weaponVisual === 'inverted_spear_chain') {
         audio.playChainThrust();
+      } else if (weaponVisual === 'toji_isoh') {
+        if (hit.isWhip) {
+          if (audio.playChainWhip) audio.playChainWhip();
+          else audio.playChainThrust();
+          cinematics.addScreenShake(7);
+        } else {
+          audio.playChainThrust();
+        }
       } else if (weaponVisual === 'crystal_blade') {
         audio.playCrystalSlash();
       } else if (weaponVisual === 'dual_snap_blades') {
@@ -5439,6 +5455,11 @@ function handleAttacks() {
         const pellets = hit.pelletsHit || 6;
         popupText = hit.isCrit ? `CRIT [${pellets}/6]! -${hit.damage} 💥` : `BLAST [${pellets}/6]! -${hit.damage} 💥`;
         popupColor = hit.isCrit ? '#ff0055' : (pellets >= 5 ? '#00ff88' : '#fbbf24');
+      } else if (weaponVisual === 'toji_isoh') {
+        popupText = hit.isCrit
+          ? (hit.isWhip ? `CRIT CHAIN WHIP! -${hit.damage} ⛓️` : `CRIT ISOH SLASH! -${hit.damage} 🗡️`)
+          : (hit.isWhip ? `CHAIN WHIP! -${hit.damage} ⛓️` : `ISOH SLASH! -${hit.damage} 🗡️`);
+        popupColor = '#38bdf8';
       }
       particles.spawnComicText(dummy.x, dummy.y - 24, popupText, popupColor);
 
@@ -5481,6 +5502,14 @@ function handleAttacks() {
         const shake = Math.min(14, 6 + (hit.pelletsHit || 1) * 1.4);
         cinematics.addScreenShake(shake);
         particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#f59e0b');
+      } else if (weaponVisual === 'toji_isoh') {
+        if (hit.isWhip) {
+          if (audio.playChainWhip) audio.playChainWhip();
+          else audio.playChainThrust();
+          cinematics.addScreenShake(7);
+        } else {
+          audio.playChainThrust();
+        }
       } else {
         audio.playBonk();
       }
@@ -5494,6 +5523,11 @@ function handleAttacks() {
         const pellets = hit.pelletsHit || 6;
         popupText = hit.isCrit ? `CRIT [${pellets}/6]! -${hit.damage} 💥` : `BLAST [${pellets}/6]! -${hit.damage} 💥`;
         popupColor = hit.isCrit ? '#ff0055' : (pellets >= 5 ? '#00ff88' : '#fbbf24');
+      } else if (weaponVisual === 'toji_isoh') {
+        popupText = hit.isCrit
+          ? (hit.isWhip ? `CRIT CHAIN WHIP! -${hit.damage} ⛓️` : `CRIT ISOH SLASH! -${hit.damage} 🗡️`)
+          : (hit.isWhip ? `CHAIN WHIP! -${hit.damage} ⛓️` : `ISOH SLASH! -${hit.damage} 🗡️`);
+        popupColor = '#38bdf8';
       }
       particles.spawnComicText(hit.target.x, hit.target.y - 24, popupText, popupColor);
 
@@ -5581,6 +5615,16 @@ function handleOffhandAttack() {
       } else if (hit.attackType === 'shield_bash') {
         audio.playHammerSmash();
         particles.spawnComicText(dummy.x, dummy.y - 24, `SHIELD BASH! -${hit.damage}`, '#38bdf8');
+      } else if (hit.attackType === 'toji_glock_shot') {
+        if (audio.playPistolShot) audio.playPistolShot();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(dummy.x, dummy.y - 24, `GLOCK SHOT! -${hit.damage} 💥`, '#facc15');
+        particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#facc15');
+      } else if (hit.attackType === 'toji_chain_whip') {
+        if (audio.playChainWhip) audio.playChainWhip();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(dummy.x, dummy.y - 24, `CHAIN FLAIL! -${hit.damage} ⛓️`, '#38bdf8');
+        particles.spawnDashBurst(dummy.x, dummy.y, hit.angle, '#38bdf8');
       } else {
         audio.playBonk();
         particles.spawnComicText(dummy.x, dummy.y - 24, `WHACK! -${hit.damage}`, '#ff3366');
@@ -5611,6 +5655,16 @@ function handleOffhandAttack() {
       } else if (hit.attackType === 'shield_bash') {
         audio.playHammerSmash();
         particles.spawnComicText(hit.target.x, hit.target.y - 24, `SHIELD BASH! -${hit.damage}`, '#38bdf8');
+      } else if (hit.attackType === 'toji_glock_shot') {
+        if (audio.playPistolShot) audio.playPistolShot();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `GLOCK SHOT! -${hit.damage} 💥`, '#facc15');
+        particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#facc15');
+      } else if (hit.attackType === 'toji_chain_whip') {
+        if (audio.playChainWhip) audio.playChainWhip();
+        cinematics.addScreenShake(6);
+        particles.spawnComicText(hit.target.x, hit.target.y - 24, `CHAIN FLAIL! -${hit.damage} ⛓️`, '#38bdf8');
+        particles.spawnDashBurst(hit.target.x, hit.target.y, hit.angle, '#38bdf8');
       } else {
         audio.playBonk();
         particles.spawnComicText(hit.target.x, hit.target.y - 24, `WHACK! -${hit.damage}`, '#ff3366');
@@ -6817,6 +6871,26 @@ function gameLoop(now) {
             '#00ff88'
           );
           particles.spawnDashBurst(player.x, player.y, player.angle, '#00ff88');
+        } else if (offhandVisual === 'toji_glock') {
+          if (audio.playPistolShot) audio.playPistolShot();
+          cinematics.addScreenShake(5);
+          particles.spawnComicText(
+            player.x + Math.cos(player.angle) * 36,
+            player.y + Math.sin(player.angle) * 36,
+            'BANG! 🔫',
+            '#facc15'
+          );
+          particles.spawnDashBurst(player.x, player.y, player.angle, '#facc15');
+        } else if (offhandVisual === 'toji_chain') {
+          if (audio.playChainWhip) audio.playChainWhip();
+          cinematics.addScreenShake(6);
+          particles.spawnComicText(
+            player.x + Math.cos(player.angle) * 36,
+            player.y + Math.sin(player.angle) * 36,
+            'CHAIN WHIP! ⛓️',
+            '#38bdf8'
+          );
+          particles.spawnDashBurst(player.x, player.y, player.angle, '#38bdf8');
         } else {
           audio.playBonk();
           particles.spawnComicText(

@@ -526,28 +526,47 @@ export class Renderer {
           ctx.lineTo(slashReach + 22, -18);
           ctx.stroke();
         }
-      } else if (weapon?.visual === 'inverted_spear_chain') {
-        // Toji's Inverted Spear: Long piercing silver thrust stream + uncoiling iron chain
-        const thrustReach = radius + 15 + Math.sin(p * Math.PI) * 65;
-        // Chain trail behind spear
+      } else if (weapon?.visual === 'inverted_spear_chain' || (weapon?.visual === 'toji_isoh' && offhand?.visual === 'toji_chain')) {
+        // Toji's Long Whipping Chain & Inverted Spear: Segmented curving iron chain links curving forward with ISoH dagger glinting at the whip tip and dynamic cyan trailing arcs
+        const whipReach = radius + 25 + Math.sin(p * Math.PI) * 95;
+        const whipArc = -Math.PI * 0.6 + p * Math.PI * 1.3;
+
+        // Chain trail whipping forward
         ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2.8;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(10, 0);
-        ctx.lineTo(thrustReach - 15, 0);
+        ctx.moveTo(12, 0);
+        const midAngle = whipArc * 0.5;
+        ctx.quadraticCurveTo(Math.cos(midAngle) * (whipReach * 0.55), Math.sin(midAngle) * (whipReach * 0.55), Math.cos(whipArc) * (whipReach - 16), Math.sin(whipArc) * (whipReach - 16));
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Sharp thrust shockwave cone at tip
+        // Sharp cyan cutting arc wave at whip tip
+        ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - p) * 0.9})`;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, whipReach, whipArc - Math.PI * 0.45, whipArc);
+        ctx.stroke();
+
+        // Gleaming jitte tip glint
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(Math.cos(whipArc) * whipReach, Math.sin(whipArc) * whipReach, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (weapon?.visual === 'toji_isoh') {
+        // Toji's Inverted Spear (dagger slash): Fast piercing cyan/silver jitte thrust
+        const thrustReach = radius + 18 + Math.sin(p * Math.PI) * 45;
         ctx.strokeStyle = `rgba(56, 189, 248, ${1 - p})`;
         ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 14;
-        ctx.lineWidth = 3;
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(thrustReach - 10, -14);
-        ctx.lineTo(thrustReach + 20, 0);
-        ctx.lineTo(thrustReach - 10, 14);
+        ctx.moveTo(thrustReach - 12, -10);
+        ctx.lineTo(thrustReach + 14, 0);
+        ctx.lineTo(thrustReach - 12, 10);
         ctx.stroke();
       } else if (weapon?.visual === 'dragon_slayer') {
         // Guts' Colossal Dragon Slayer: Massive luminous crimson cleave arc with tempered white razor edge (semi-transparent, monsters remain visible!)
@@ -1049,6 +1068,73 @@ export class Renderer {
             ctx.stroke();
             ctx.restore();
           }
+        } else if (offhand.visual === 'toji_chain') {
+          // Toji's Thousand-Mile Chain wrapped around wrist/forearm
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Dangling iron chain links
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(3, 5);
+          ctx.lineTo(6, 12);
+          ctx.lineTo(4, 18);
+          ctx.stroke();
+
+          // If slapping/offhand whip active: draw flailing iron loop
+          if (isSlapping && slapProgress > 0 && slapProgress < 1) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${1 - slapProgress})`;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(18 * slapProgress, 0, 16 + slapProgress * 26, -Math.PI * 0.55, Math.PI * 0.55);
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (offhand.visual === 'toji_glock') {
+          // Toji's Tactical Glock: Matte black handgun with slide, barrel, and trigger guard
+          ctx.fillStyle = '#1e293b';
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.2;
+
+          // Slide & Barrel
+          ctx.fillRect(0, -3, 16, 6);
+          ctx.strokeRect(0, -3, 16, 6);
+
+          // Handle grip
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-2, -1, 5, 9);
+
+          // Muzzle flash when firing (slapProgress active)
+          if (isSlapping && slapProgress > 0 && slapProgress < 0.65) {
+            ctx.save();
+            const flashScale = 1 - (slapProgress / 0.65);
+            ctx.fillStyle = '#facc15';
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.arc(20, 0, 8 * flashScale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sharp yellow/white muzzle star rays
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(16, 0);
+            ctx.lineTo(26 + 10 * flashScale, 0);
+            ctx.moveTo(20, -6 * flashScale);
+            ctx.lineTo(20, 6 * flashScale);
+            ctx.stroke();
+            ctx.restore();
+          }
         } else {
           // Default / Wooden Buckler
           ctx.fillStyle = '#78350f';
@@ -1103,6 +1189,20 @@ export class Renderer {
         rightHandX = 16 + thrust;
         rightHandY = -thrust * 0.1;
         swordAngle = -0.05;
+      } else if (weapon?.visual === 'toji_isoh') {
+        if (offhand?.visual === 'toji_chain') {
+          // Long whip swing motion
+          const whipArc = -Math.PI * 0.45 + p * Math.PI * 1.1;
+          rightHandX = Math.cos(whipArc) * (handDistance + 8);
+          rightHandY = Math.sin(whipArc) * (handDistance + 8);
+          swordAngle = whipArc + Math.PI * 0.35;
+        } else {
+          // Piercing jitte stab/slash
+          const thrust = Math.sin(p * Math.PI) * 36;
+          rightHandX = 14 + thrust;
+          rightHandY = (p - 0.5) * 6;
+          swordAngle = (p - 0.5) * 0.15;
+        }
       } else if (weapon?.visual === 'dragon_slayer') {
         // Guts: Massive overhead down-cleave
         const cleaveArc = -Math.PI * 0.55 + p * Math.PI * 1.5;
@@ -1241,6 +1341,40 @@ export class Renderer {
       ctx.lineTo(24, -2);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+    } else if (weapon?.visual === 'toji_isoh') {
+      // Inverted Spear of Heaven twin-curved jitte dagger blade
+      ctx.fillStyle = '#e2e8f0';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(26, -2);
+      ctx.lineTo(32, 0);
+      ctx.lineTo(26, 2);
+      ctx.lineTo(0, 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inverted jitte hook prong
+      ctx.beginPath();
+      ctx.moveTo(12, -2);
+      ctx.lineTo(14, -8);
+      ctx.lineTo(16, -8);
+      ctx.lineTo(14, -2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Handle wrapping & ring pommel
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-6, -2, 6, 4);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.strokeRect(-6, -2, 6, 4);
+      ctx.beginPath();
+      ctx.arc(-8, 0, 2.5, 0, Math.PI * 2);
       ctx.stroke();
     } else if (weapon?.visual === 'lapse_blue') {
       // Gojo's Lapse Blue floating gravitational sphere

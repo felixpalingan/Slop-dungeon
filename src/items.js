@@ -41,7 +41,9 @@ export const SET_DEFINITIONS = {
     title: 'The Sorcerer Killer',
     anime: 'Heavenly Restriction',
     color: '#38bdf8',
-    requiredItems: ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers', 'inverted_spear_chain'],
+    requiredItems: ['toji_worm', 'toji_shirt', 'toji_pants', 'toji_slippers'],
+    requiredWeaponOneOf: ['toji_isoh', 'inverted_spear_chain'],
+    requiredOffhandOneOf: ['toji_chain', 'toji_glock', 'inverted_spear_chain'],
     ultimateQ: 'inverted_chain_rampage',
     ultimateTitle: 'INVERTED CHAIN RAMPAGE',
     desc: '[Q] Unleashes the Thousand-Mile Chain & Inverted Spear of Heaven (天逆鉾・万浬の鎖): freezes reality with a sonic boom before whipping a 240px multi-layered chain storm that shreds enemies and nullifies/reflects incoming projectiles!'
@@ -114,10 +116,21 @@ export function checkSetBonus(equipment) {
       }
     }
 
-    // Check weapon option if set permits alternate weapons (e.g. Sukuna)
+    // Check weapon option if set permits alternate weapons (e.g. Sukuna, Toji)
     if (isComplete && set.requiredWeaponOneOf) {
       const currentWeaponId = equipment.weapon?.id;
       if (!set.requiredWeaponOneOf.includes(currentWeaponId)) {
+        isComplete = false;
+      }
+    }
+
+    // Check offhand option if set permits alternate offhands (e.g. Toji Modular Loadouts)
+    if (isComplete && set.requiredOffhandOneOf) {
+      const currentOffhandId = equipment.offhand?.id;
+      const currentWeaponId = equipment.weapon?.id;
+      const satisfiesOffhand = (currentOffhandId && set.requiredOffhandOneOf.includes(currentOffhandId)) ||
+        (equipment.weapon?.hands === 2 && set.requiredOffhandOneOf.includes(currentWeaponId));
+      if (!satisfiesOffhand) {
         isComplete = false;
       }
     }
@@ -358,6 +371,40 @@ export const ITEM_CATALOG = {
     speedBonus: 35,
     visual: 'toji_slippers',
     desc: 'Completely silent footsteps. Sprint speed increased by +35.'
+  },
+  'toji_isoh': {
+    id: 'toji_isoh',
+    name: 'Inverted Spear of Heaven',
+    set: 'toji',
+    slot: 'weapon',
+    hands: 1,
+    rarity: 'MYTHIC',
+    damage: 65,
+    speed: 1.45,
+    reach: 62,
+    visual: 'toji_isoh',
+    desc: 'Mythical anti-curse jitte dagger. Piercing strikes nullify and bypass enemy shields and magical barriers.'
+  },
+  'toji_chain': {
+    id: 'toji_chain',
+    name: 'Thousand-Mile Chain',
+    set: 'toji',
+    slot: 'offhand',
+    rarity: 'MYTHIC',
+    damageBuff: 20,
+    reachBonus: 95,
+    visual: 'toji_chain',
+    desc: 'Endless iron chain wrapped along the arm. When paired with Inverted Spear of Heaven, main attacks become a sweeping Long Whipping Attack! Right-click performs sweeping chain flail.'
+  },
+  'toji_glock': {
+    id: 'toji_glock',
+    name: 'Tactical Glock Handgun',
+    set: 'toji',
+    slot: 'offhand',
+    rarity: 'MYTHIC',
+    damage: 58,
+    visual: 'toji_glock',
+    desc: 'Non-cursed semi-automatic firearm designed to assassinate sorcerers through blind spots. Right-click fires high-velocity ballistic bullets with muzzle flash!'
   },
   'inverted_spear_chain': {
     id: 'inverted_spear_chain',
