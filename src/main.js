@@ -5222,6 +5222,11 @@ network.onMessageReceived = (fromPeerId, msg) => {
     const caster = network.remotePlayers.get(msg.peerId) || { x: msg.x, y: msg.y, angle: msg.angle };
     spawnShotgunPellets(caster, true);
     if (audio.playCarnageShotgun) audio.playCarnageShotgun();
+  } else if (msg.type === 'GLOCK_FIRE') {
+    if (msg.peerId === network.myPeerId) return;
+    const caster = network.remotePlayers.get(msg.peerId) || { x: msg.x, y: msg.y, angle: msg.angle, equipment: { offhand: { damage: 58 } } };
+    spawnGlockBullet(caster, true);
+    if (audio.playPistolShot) audio.playPistolShot();
   } else if (msg.type === 'SLOPS_SYNC') {
     const safeAmount = validateSlopsAmount(msg.amount, 999999);
     if (safeAmount !== null) {
@@ -5364,6 +5369,36 @@ function spawnShotgunPellets(caster, isRemote = false) {
       color: '#f59e0b'
     });
   }
+}
+
+function spawnGlockBullet(caster, isRemote = false) {
+  const muzzleDist = (caster.radius || 22) + 18;
+  const attackAngle = caster.angle !== undefined ? caster.angle : 0;
+  const speed = 1550; // high-velocity ballistic bullet
+  const offhand = caster.equipment?.offhand;
+  const baseDmg = offhand?.damage || 58;
+  const critBonus = (caster.equipment?.helmet?.critChance || 0) + (caster.equipment?.weapon?.critChance || 0);
+  const isCrit = Math.random() < (0.12 + critBonus);
+  const damage = Math.round(baseDmg * (0.92 + Math.random() * 0.16) * (isCrit ? 1.85 : 1.0));
+
+  cinematics.projectiles.push({
+    type: 'toji_glock_bullet',
+    caster,
+    isRemote,
+    x: caster.x + Math.cos(attackAngle) * muzzleDist,
+    y: caster.y + Math.sin(attackAngle) * muzzleDist,
+    vx: Math.cos(attackAngle) * speed,
+    vy: Math.sin(attackAngle) * speed,
+    angle: attackAngle,
+    radius: 7,
+    damage,
+    isCrit,
+    knockback: 440,
+    life: 0.38, // ~590px effective travel range
+    maxLife: 0.38,
+    color: '#facc15',
+    hitTargets: new Set()
+  });
 }
 
 function handleAttacks() {
@@ -5589,6 +5624,9 @@ function handleAttacks() {
 }
 
 function handleOffhandAttack() {
+  if (player.equipment?.offhand?.visual === 'toji_glock') {
+    return; // Glock fires physical ballistic bullet projectile; damage handled on projectile impact!
+  }
   const merchantTarget = (currentFloor >= 1 && slopMerchant && Math.hypot(player.x - slopMerchant.x, player.y - slopMerchant.y) <= 450) ? [slopMerchant] : [];
   const targets = currentFloor === 0
     ? [dummy, ...network.remotePlayers.values()]
@@ -6235,6 +6273,10 @@ function gameLoop(now) {
         hitPlayer(proj.damage || 14, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 120);
         return;
       }
+      if (proj.type === 'toji_glock_bullet') {
+        hitPlayer(proj.damage || 58, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 440, 'GUNSHOT! 💥', '#facc15');
+        return;
+      }
       if (proj.type === 'bot_laser_bolt') {
         hitPlayer(proj.damage || 20, Math.atan2(proj.vy || 0, proj.vx || 0), 220, '-20 (LASER!)', '#06b6d4');
         return;
@@ -6273,6 +6315,18 @@ function gameLoop(now) {
         particles.spawnDashBurst(dummy.x, dummy.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#f59e0b');
         const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
         particles.spawnComicText(dummy.x, dummy.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
+        const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), isCrit: proj.isCrit };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'toji_glock_bullet') {
+        dummy.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 440);
+        audio.playBonk();
+        cinematics.addScreenShake(Math.min(10, 3 + (proj.isCrit ? 4 : 2)));
+        particles.spawnDashBurst(dummy.x, dummy.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#facc15');
+        const hitLabel = proj.isCrit ? `CRIT GUNSHOT! -${proj.damage} 💥` : `GUNSHOT! -${proj.damage} 💥`;
+        particles.spawnComicText(dummy.x, dummy.y - 24, hitLabel, proj.isCrit ? '#ef4444' : '#facc15');
         const hitMsg = { type: 'DUMMY_HIT', damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), isCrit: proj.isCrit };
         if (network.isHost) network.broadcast(hitMsg);
         else network.sendToHost(hitMsg);
@@ -6350,6 +6404,21 @@ function gameLoop(now) {
         const hitLabel = proj.isCrit ? `CRIT! -${proj.damage} 💥` : `-${proj.damage}`;
         particles.spawnComicText(target.x, target.y - 24, hitLabel, proj.isCrit ? '#ff0055' : '#f59e0b');
         const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), knockback: proj.knockback || 120, isCrit: proj.isCrit };
+        if (network.isHost) network.broadcast(hitMsg);
+        else network.sendToHost(hitMsg);
+        return;
+      }
+      if (proj.type === 'toji_glock_bullet') {
+        if (target.isLimitlessBarrier) {
+          target.isLimitlessBarrier = false; // Non-cursed ballistic projectile bypasses sensory barrier
+        }
+        target.takeHit(proj.damage, Math.atan2(proj.vy || 0, proj.vx || 0), proj.knockback || 440, proj.isCrit, proj.caster);
+        audio.playBonk();
+        cinematics.addScreenShake(Math.min(10, 3 + (proj.isCrit ? 4 : 2)));
+        particles.spawnDashBurst(target.x, target.y, Math.atan2(proj.vy || 0, proj.vx || 0), '#facc15');
+        const hitLabel = proj.isCrit ? `CRIT GUNSHOT! -${proj.damage} 💥` : `GUNSHOT! -${proj.damage} 💥`;
+        particles.spawnComicText(target.x, target.y - 24, hitLabel, proj.isCrit ? '#ef4444' : '#facc15');
+        const hitMsg = { type: 'MONSTER_HIT', monsterId: target.id, damage: proj.damage, angle: Math.atan2(proj.vy || 0, proj.vx || 0), knockback: proj.knockback || 440, isCrit: proj.isCrit };
         if (network.isHost) network.broadcast(hitMsg);
         else network.sendToHost(hitMsg);
         return;
@@ -6881,6 +6950,13 @@ function gameLoop(now) {
             '#facc15'
           );
           particles.spawnDashBurst(player.x, player.y, player.angle, '#facc15');
+
+          // Spawn high-speed ballistic Glock bullet projectile
+          spawnGlockBullet(player, false);
+
+          const fireMsg = { type: 'GLOCK_FIRE', peerId: network.myPeerId, x: player.x, y: player.y, angle: player.angle };
+          if (network.isHost) network.broadcast(fireMsg);
+          else network.sendToHost(fireMsg);
         } else if (offhandVisual === 'toji_chain') {
           if (audio.playChainWhip) audio.playChainWhip();
           cinematics.addScreenShake(6);

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CinematicManager } from '../../src/cinematics.js';
 import { CombatSystem } from '../../src/combat.js';
 import { checkSetBonus, ITEM_CATALOG } from '../../src/items.js';
+import { Player } from '../../src/player.js';
 
 describe('Toji (Inverted Chain Rampage) & David (Sandevistan) Overhaul (Phase 5)', () => {
   let cinematics;
@@ -214,6 +215,55 @@ describe('Toji (Inverted Chain Rampage) & David (Sandevistan) Overhaul (Phase 5)
       expect(offhandHits[0].attackType).toBe('toji_glock_shot');
       expect(offhandHits[0].knockback).toBe(440);
       expect(distantGojo.isLimitlessBarrier).toBe(false); // Non-cursed bullet bypasses barrier!
+    });
+
+    it('enforces Glock attack cooldown (0.42s) on player.triggerSlap preventing click spam', () => {
+      const player = new Player(100, 100);
+      player.equipItem(ITEM_CATALOG['toji_glock']);
+
+      // First attack triggers successfully
+      const firstShot = player.triggerSlap();
+      expect(firstShot).toBe(true);
+      expect(player.slapCooldownTimer).toBe(0.42);
+
+      // Immediate second attack is blocked by cooldown
+      const secondShot = player.triggerSlap();
+      expect(secondShot).toBe(false);
+
+      // Advance time by 0.30s (still on cooldown: 0.12s remaining)
+      player.update(0.30, { isDown: () => false }, null);
+      expect(player.slapCooldownTimer).toBeCloseTo(0.12, 2);
+      expect(player.triggerSlap()).toBe(false);
+
+      // Advance remaining 0.15s (total 0.45s > 0.42s)
+      player.update(0.15, { isDown: () => false }, null);
+      expect(player.slapCooldownTimer).toBe(0);
+      expect(player.triggerSlap()).toBe(true);
+    });
+
+    it('consumes toji_glock_bullet on hit in cinematics manager', () => {
+      const dummyTarget = { id: 'dummy-hit', x: 200, y: 100, radius: 24, hp: 100 };
+      cinematics.projectiles.push({
+        type: 'toji_glock_bullet',
+        caster: { id: 'toji' },
+        x: 190,
+        y: 100,
+        vx: 1500,
+        vy: 0,
+        radius: 7,
+        damage: 58,
+        life: 0.40,
+        hitTargets: new Set()
+      });
+
+      const hits = [];
+      cinematics.update(0.016, [dummyTarget], (target, proj) => {
+        hits.push({ target, proj });
+      });
+
+      expect(hits.length).toBe(1);
+      expect(hits[0].proj.type).toBe('toji_glock_bullet');
+      expect(hits[0].proj.life).toBe(0); // Consumed on hit!
     });
   });
 });

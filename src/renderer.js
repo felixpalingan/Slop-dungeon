@@ -526,36 +526,141 @@ export class Renderer {
           ctx.lineTo(slashReach + 22, -18);
           ctx.stroke();
         }
-      } else if (weapon?.visual === 'inverted_spear_chain' || (weapon?.visual === 'toji_isoh' && offhand?.visual === 'toji_chain')) {
-        // Toji's Long Whipping Chain & Inverted Spear: Segmented curving iron chain links curving forward with ISoH dagger glinting at the whip tip and dynamic cyan trailing arcs
-        const whipReach = radius + 25 + Math.sin(p * Math.PI) * 95;
-        const whipArc = -Math.PI * 0.6 + p * Math.PI * 1.3;
-
-        // Chain trail whipping forward
+      } else if (weapon?.visual === 'inverted_spear_chain') {
+        // Toji's Inverted Spear & Chain (2H Legacy): Piercing thrust
+        const thrustReach = radius + 15 + Math.sin(p * Math.PI) * 65;
         ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 2.8;
+        ctx.lineWidth = 2.5;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(12, 0);
-        const midAngle = whipArc * 0.5;
-        ctx.quadraticCurveTo(Math.cos(midAngle) * (whipReach * 0.55), Math.sin(midAngle) * (whipReach * 0.55), Math.cos(whipArc) * (whipReach - 16), Math.sin(whipArc) * (whipReach - 16));
+        ctx.moveTo(10, 0);
+        ctx.lineTo(thrustReach - 15, 0);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Sharp cyan cutting arc wave at whip tip
-        ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - p) * 0.9})`;
+        // Sharp thrust shockwave cone at tip
+        ctx.strokeStyle = `rgba(56, 189, 248, ${1 - p})`;
         ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 16;
-        ctx.lineWidth = 3.5;
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, whipReach, whipArc - Math.PI * 0.45, whipArc);
+        ctx.moveTo(thrustReach - 10, -14);
+        ctx.lineTo(thrustReach + 20, 0);
+        ctx.lineTo(thrustReach - 10, 14);
+        ctx.stroke();
+      } else if (weapon?.visual === 'toji_isoh' && offhand?.visual === 'toji_chain') {
+        // TOJI MODULAR COMBO: Inverted Spear of Heaven + Thousand-Mile Chain (Long Whipping Attack)
+        // Hitbox reach is 155px; total radius from center is radius + 155 = ~177px
+        const fullWhipReach = radius + 155;
+        const startAngle = -Math.PI * 0.60;
+        const endAngle = Math.PI * 0.60;
+        const currentAngle = startAngle + p * (endAngle - startAngle);
+
+        const tipX = Math.cos(currentAngle) * fullWhipReach;
+        const tipY = Math.sin(currentAngle) * fullWhipReach;
+
+        // 1. Sweeping Cyan Cursed Energy Cleave Wave (matches the exact 155px reach & 120° arc hitbox)
+        ctx.save();
+        const trailSpan = Math.PI * 0.52;
+        const arcStart = Math.max(startAngle, currentAngle - trailSpan);
+        ctx.beginPath();
+        ctx.arc(0, 0, fullWhipReach, arcStart, currentAngle);
+        ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - p * 0.6) * 0.85})`;
+        ctx.lineWidth = 7;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 20;
         ctx.stroke();
 
-        // Gleaming jitte tip glint
+        // 2. Razor-Sharp White Cutting Edge along the outer boundary
+        ctx.beginPath();
+        ctx.arc(0, 0, fullWhipReach, Math.max(startAngle, currentAngle - Math.PI * 0.35), currentAngle);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - p * 0.5) * 0.95})`;
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Multi-Segment Interlocking Iron Chain uncoiling to full 177px reach
+        ctx.save();
+        const lagAngle = currentAngle - 0.28;
+        const cpX = Math.cos(lagAngle) * (fullWhipReach * 0.55);
+        const cpY = Math.sin(lagAngle) * (fullWhipReach * 0.55);
+
+        const chainSegments = 12;
+        let prevX = 14;
+        let prevY = 6;
+        for (let s = 1; s <= chainSegments; s++) {
+          const t = s / chainSegments;
+          const cx = (1 - t) * (1 - t) * 14 + 2 * (1 - t) * t * cpX + t * t * tipX;
+          const cy = (1 - t) * (1 - t) * 6 + 2 * (1 - t) * t * cpY + t * t * tipY;
+
+          const linkAngle = Math.atan2(cy - prevY, cx - prevX);
+          ctx.save();
+          ctx.translate((prevX + cx) * 0.5, (prevY + cy) * 0.5);
+          ctx.rotate(linkAngle);
+
+          ctx.fillStyle = (s % 2 === 0) ? '#94a3b8' : '#cbd5e1';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 7, 3.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          prevX = cx;
+          prevY = cy;
+        }
+        ctx.restore();
+
+        // 4. Inverted Spear of Heaven Dagger slicing at the whip tip (177px)
+        ctx.save();
+        ctx.translate(tipX, tipY);
+        const bladeAngle = currentAngle + Math.PI * 0.52;
+        ctx.rotate(bladeAngle);
+
+        // Pommel ring tethered to chain
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(-14, 0, 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Grip handle
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-10, -2.5, 10, 5);
+
+        // Jitte blade
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(0, -3);
+        ctx.lineTo(28, -3);
+        ctx.lineTo(34, 0);
+        ctx.lineTo(28, 3);
+        ctx.lineTo(0, 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Jitte hook prong
+        ctx.beginPath();
+        ctx.moveTo(12, -3);
+        ctx.lineTo(14, -10);
+        ctx.lineTo(18, -10);
+        ctx.lineTo(16, -3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Glint on tip
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(Math.cos(whipArc) * whipReach, Math.sin(whipArc) * whipReach, 4, 0, Math.PI * 2);
+        ctx.arc(32, 0, 3, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
       } else if (weapon?.visual === 'toji_isoh') {
         // Toji's Inverted Spear (dagger slash): Fast piercing cyan/silver jitte thrust
         const thrustReach = radius + 18 + Math.sin(p * Math.PI) * 45;
@@ -1191,11 +1296,11 @@ export class Renderer {
         swordAngle = -0.05;
       } else if (weapon?.visual === 'toji_isoh') {
         if (offhand?.visual === 'toji_chain') {
-          // Long whip swing motion
-          const whipArc = -Math.PI * 0.45 + p * Math.PI * 1.1;
-          rightHandX = Math.cos(whipArc) * (handDistance + 8);
-          rightHandY = Math.sin(whipArc) * (handDistance + 8);
-          swordAngle = whipArc + Math.PI * 0.35;
+          // Whipping hand follows launch arc
+          const whipArc = -Math.PI * 0.60 + p * Math.PI * 1.20;
+          rightHandX = Math.cos(whipArc * 0.5) * (handDistance + 6);
+          rightHandY = Math.sin(whipArc * 0.5) * (handDistance + 6);
+          swordAngle = whipArc;
         } else {
           // Piercing jitte stab/slash
           const thrust = Math.sin(p * Math.PI) * 36;
@@ -1343,39 +1448,68 @@ export class Renderer {
       ctx.fill();
       ctx.stroke();
     } else if (weapon?.visual === 'toji_isoh') {
-      // Inverted Spear of Heaven twin-curved jitte dagger blade
-      ctx.fillStyle = '#e2e8f0';
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.5;
+      if (offhand?.visual === 'toji_chain' && isAttacking) {
+        // While whipping, the Inverted Spear is launched out to the 177px whip tip;
+        // The right hand holds the taut chain links!
+        ctx.fillStyle = '#94a3b8';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.ellipse(4, 0, 8, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(12, 0, 7, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        // Inverted Spear of Heaven twin-curved jitte dagger blade in hand
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
 
-      ctx.beginPath();
-      ctx.moveTo(0, -2);
-      ctx.lineTo(26, -2);
-      ctx.lineTo(32, 0);
-      ctx.lineTo(26, 2);
-      ctx.lineTo(0, 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, -2);
+        ctx.lineTo(26, -2);
+        ctx.lineTo(32, 0);
+        ctx.lineTo(26, 2);
+        ctx.lineTo(0, 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-      // Inverted jitte hook prong
-      ctx.beginPath();
-      ctx.moveTo(12, -2);
-      ctx.lineTo(14, -8);
-      ctx.lineTo(16, -8);
-      ctx.lineTo(14, -2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+        // Inverted jitte hook prong
+        ctx.beginPath();
+        ctx.moveTo(12, -2);
+        ctx.lineTo(14, -8);
+        ctx.lineTo(16, -8);
+        ctx.lineTo(14, -2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-      // Handle wrapping & ring pommel
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(-6, -2, 6, 4);
-      ctx.strokeStyle = '#94a3b8';
-      ctx.strokeRect(-6, -2, 6, 4);
-      ctx.beginPath();
-      ctx.arc(-8, 0, 2.5, 0, Math.PI * 2);
-      ctx.stroke();
+        // Handle wrapping & ring pommel
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-6, -2, 6, 4);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.strokeRect(-6, -2, 6, 4);
+        ctx.beginPath();
+        ctx.arc(-8, 0, 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // If paired with Thousand-Mile Chain, draw chain connection between left and right hand!
+        if (offhand?.visual === 'toji_chain') {
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(-8, 0);
+          ctx.quadraticCurveTo(-14, 18, -handDistance, 10);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
     } else if (weapon?.visual === 'lapse_blue') {
       // Gojo's Lapse Blue floating gravitational sphere
       const pulseBlue = (isAttacking && attackProgress > 0 && attackProgress < 1)

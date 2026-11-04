@@ -215,6 +215,9 @@ export class Player {
 
     this.isAttacking = true;
     let speed = weapon?.speed || 1.0;
+    if (weapon?.visual === 'toji_isoh' && this.equipment?.offhand?.visual === 'toji_chain') {
+      speed = 1.05; // Balanced whip cadence for wide 155px reach
+    }
     if (this.isBerserk) speed *= 1.85; // Berserk rage grants +85% attack speed!
     if (this.isSandevistan) speed *= 1.4; // Sandevistan faster fire rate!
     this.attackDuration = Math.max(0.08, 0.22 / speed);
@@ -233,8 +236,11 @@ export class Player {
   triggerSlap() {
     if (this.isDowned || this.isDead || this.isStunned || this.isSlapping || this.slapCooldownTimer > 0) return false;
     this.isSlapping = true;
+    const offhand = this.equipment?.offhand;
+    const cooldown = offhand?.cooldown !== undefined ? offhand.cooldown : 0.24;
+    this.slapDuration = offhand?.slapDuration || 0.18;
     this.slapTimer = this.slapDuration;
-    this.slapCooldownTimer = 0.24;
+    this.slapCooldownTimer = cooldown;
     this.slapProgress = 0;
     return true;
   }

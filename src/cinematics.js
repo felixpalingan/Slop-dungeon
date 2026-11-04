@@ -1117,8 +1117,8 @@ export class CinematicManager {
               proj.hitTargets.add(target);
               if (targetKey) proj.hitTargets.add(targetKey);
               proj.hasHit = true;
-              if (proj.type === 'shotgun_pellet') {
-                proj.life = 0; // Pellet is consumed on hit
+              if (proj.type === 'shotgun_pellet' || proj.type === 'toji_glock_bullet') {
+                proj.life = 0; // Pellet/bullet is consumed on hit
               }
               if (onHitCallback) {
                 const hitProj = proj.type === 'world_cutting_slash'
@@ -1569,6 +1569,46 @@ export class CinematicManager {
           ctx.arc(1, 0, 2, 0, Math.PI * 2);
           ctx.fill();
         }
+      } else if (proj.type === 'toji_glock_bullet') {
+        // Toji's Tactical Glock: High-Velocity Ballistic 9mm Bullet with Golden Tracer Streak
+        const moveAngle = Math.atan2(proj.vy, proj.vx);
+        const speed = Math.hypot(proj.vx, proj.vy);
+        const streakLen = Math.min(34, Math.max(14, speed * 0.022));
+
+        ctx.rotate(moveAngle);
+
+        const glowColor = proj.isCrit ? '#ef4444' : '#facc15';
+        const coreColor = proj.isCrit ? '#ff0055' : '#fbbf24';
+
+        // Outer golden ballistic tracer streak
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-streakLen, 0);
+        ctx.stroke();
+
+        // Inner white-hot lead core streak
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-streakLen * 0.65, 0);
+        ctx.stroke();
+
+        // White-hot bullet tip
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(2, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Golden copper jacket
+        ctx.fillStyle = coreColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.4, 0, Math.PI * 2);
+        ctx.fill();
       } else if (proj.type === 'bot_laser_bolt') {
         // Cyberpunk: Tyger Claw High-Velocity Laser Bolt
         const moveAngle = Math.atan2(proj.vy, proj.vx);

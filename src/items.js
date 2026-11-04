@@ -393,6 +393,8 @@ export const ITEM_CATALOG = {
     rarity: 'MYTHIC',
     damageBuff: 20,
     reachBonus: 95,
+    cooldown: 0.32,
+    slapDuration: 0.18,
     visual: 'toji_chain',
     desc: 'Endless iron chain wrapped along the arm. When paired with Inverted Spear of Heaven, main attacks become a sweeping Long Whipping Attack! Right-click performs sweeping chain flail.'
   },
@@ -403,6 +405,8 @@ export const ITEM_CATALOG = {
     slot: 'offhand',
     rarity: 'MYTHIC',
     damage: 58,
+    cooldown: 0.42,
+    slapDuration: 0.16,
     visual: 'toji_glock',
     desc: 'Non-cursed semi-automatic firearm designed to assassinate sorcerers through blind spots. Right-click fires high-velocity ballistic bullets with muzzle flash!'
   },
